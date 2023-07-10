@@ -12,9 +12,18 @@ runPictograph2 <- function(){
 
   # estimation of copy number cellular fraction
   cncf_est <- estimateCNCF(input_data$tcn, cna_est)
+  
+  # estimate multiplicity
+  m_est <- estimateMultiplicity(input_data, cna_est, cncf_est)
 
   # estimation of mutation cellular fraction for each mutation
+  mcf_est <- estimateMutation(input_data, sep_list, cna_est, cncf_est)
 
+  # combined estimation
+  total_est <- rbind(mcf_est, cncf_est)
+
+  # separate mcf by sample presence
+  total_sep_list <- separateMutationsByMCF(total_est)
 
   # return(input_data)
 }

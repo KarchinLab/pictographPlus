@@ -8,11 +8,52 @@ separateBySamplePresence <- function(input_data) {
   cnaTypes = separateCNAsBySamplePresence(input_data)
   # print(cnaTypes)
 
+  totalTypes = combineMutationCNASamplePresence(input_data)
+
   sep_list <- list()
   sep_list$mutation <- mutationTypes
   sep_list$cna <- cnaTypes
+  sep_list$total <- totalTypes
   print(sep_list)
+  warning("need to test if number of type = 1")
   return(sep_list)
+}
+
+#' separate mutations by sample presence using mcf
+#' @export
+separateMutationsByMCF <- function(mcf) {
+  # returns list of lists --
+  # each item of list contains mcf for a mutation sample presence set
+  # original mutation indices from input_data are recorded in $mutation_indices
+  pres <- ifelse(mcf > 0, 1, 0)
+  pat <- apply(pres, 1, function(x) paste0(x, collapse=""))
+  types <- sort(names(table(pat)), decreasing=TRUE)
+  if (length(types) == 1) {
+    type_indices <- list()
+    type_indices[[types]] <- seq_len(length(nrow(mcf_est)))
+  } else {
+    type_indices <- lapply(types, function(x) which(pat == x))
+    names(type_indices) <- types
+  }
+  warning('consider merge one-sample cluster with other clusters')
+  return(type_indices)
+}
+
+#' combine mutation and cna sample presence
+combineMutationCNASamplePresence <- function(input_data) {
+  mut_pres <- ifelse(input_data$y > 0, 1, 0)
+  cna_pres <- ifelse(input_data$tcn == 2, 0, 1)
+  pres <- rbind(mut_pres, cna_pres)
+  pat <- apply(pres, 1, function(x) paste0(x, collapse=""))
+  types <- sort(names(table(pat)), decreasing=TRUE)
+  if (length(types) == 1) {
+    type_indices <- list()
+    type_indices[[types]] <- seq_len(nrow(pres))
+  } else {
+    type_indices <- lapply(types, function(x) which(pat == x))
+    names(type_indices) <- types
+  }
+  return(type_indices)
 }
 
 #' separate mutations by sample presence
@@ -25,7 +66,7 @@ separateMutationsBySamplePresence <- function(input_data) {
   types <- sort(names(table(pat)), decreasing=TRUE)
   if (length(types) == 1) {
     type_indices <- list()
-    type_indices[[types]] <- seq_len(input_data$I)
+    type_indices[[types]] <- seq_len(nrow(pres))
   } else {
     type_indices <- lapply(types, function(x) which(pat == x))
     names(type_indices) <- types
@@ -44,7 +85,7 @@ separateCNAsBySamplePresence <- function(input_data) {
   types <- sort(names(table(pat)), decreasing=TRUE)
   if (length(types) == 1) {
     type_indices <- list()
-    type_indices[[types]] <- seq_len(input_data$I)
+    type_indices[[types]] <- seq_len(nrow(pres))
   } else {
     type_indices <- lapply(types, function(x) which(pat == x))
     names(type_indices) <- types

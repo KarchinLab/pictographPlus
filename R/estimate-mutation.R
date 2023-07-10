@@ -34,13 +34,15 @@ estimateMutation <- function(input_data, sep_list, cna_est, cncf_est) {
         tmp2 = ifelse(input_data$tcn[cna_index,]==2,0,1)
         tmp3 = tmp1-tmp2
 
-        mcf = y * (2 - 2 * cncf + cna * cncf / n - (m-1) * cncf
+        # estimate multiplicity such that all mcf <= 1
+        m = estimate_multiplicity(y,n,cncf,cna)
+        mcf =( y * (2 - 2 * cncf + cna * cncf) / n )- (m-1) * cncf
+        mcf_est[mutation_index, ] = mcf
+        # likelihood for case 1
 
-        # likelyhood for case 1
+        # likelihood for case 2
 
-        # likelyhood for case 2
-
-        # likelyhood for case 3
+        # likelihood for case 3
 
 
         # # which case is most likely
@@ -63,6 +65,48 @@ estimateMutation <- function(input_data, sep_list, cna_est, cncf_est) {
       }
     }
   }
+  return(mcf_est)
+}
+
+#' estimate multiplicity for all mutations
+#' @export
+estimateMultiplicity <- function(input_data, cna_est, cncf_est) {
+  m_est <- input_data$y
+  # for each box by mutation sample presence
+  for (i in seq_len(nrow(input_data$y))) {
+    mutation_index = i
+    # if mutation overlaps cna
+    if (any(input_data$overlap[mutation_index,]==1)) {
+      
+      # estimate mcf using CNA information
+      cna_index = which(input_data$overlap[mutation_index,]==1)
+      
+      # known information
+      y = input_data$y[mutation_index,] # alt read count; vector
+      n = input_data$n[mutation_index,] # total read count; vector
+      cncf = cncf_est[cna_index, ] # cncf; vector
+      cna = cna_est[cna_index,] #cna: vector
+
+      # estimate multiplicity such that all mcf <= 1
+      m = estimate_multiplicity(y,n,cncf,cna)
+      m_est[mutation_index, ] = rep(m,ncol(input_data$y))
+      } else {
+        # estimate mcf assuming CNA == 2 and multiplicity == 1 in case mutation in cna neutral region
+        m_est[mutation_index, ] = rep(1,ncol(input_data$y))
+      }
+  }
+  return(m_est)
+}
+
+#' estimate multiplicity for one gene such that all mcf <= 1
+estimate_multiplicity <- function(y, n, cncf, cna, threshold=1) {
+  for (m in seq_len(cna[1])) {
+    mcf =( y * (2 - 2 * cncf + cna * cncf) / n )- (m-1) * cncf
+    if (all(mcf <= threshold)) {
+      return(m)
+    }
+  }
+  return(1)
 }
 
 # calculate the likelihood for case1: cna before mutation; multiplicity == 1

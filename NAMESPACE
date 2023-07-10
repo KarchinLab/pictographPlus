@@ -2,9 +2,12 @@
 
 export(estimateCNA)
 export(estimateCNCF)
+export(estimateMultiplicity)
+export(estimateMutation)
 export(importFiles)
 export(runPictograph2)
 export(separateBySamplePresence)
+export(separateMutationsByMCF)
 import(dplyr)
 import(readr)
 import(tidyr)
