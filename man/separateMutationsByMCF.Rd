@@ -2,10 +2,14 @@
 % Please edit documentation in R/sample-presence.R
 \name{separateMutationsByMCF}
 \alias{separateMutationsByMCF}
-\title{separate mutations by sample presence using mcf}
+\title{}
 \usage{
 separateMutationsByMCF(mcf)
 }
 \description{
-separate mutations by sample presence using mcf
+mutationTypes = separateMutationsBySamplePresence(input_data)
+  # print(mutationTypes)
+}
+\details{
+
 }

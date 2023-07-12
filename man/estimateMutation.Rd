@@ -4,7 +4,7 @@
 \alias{estimateMutation}
 \title{estimate mutation cellular fraction}
 \usage{
-estimateMutation(input_data, sep_list, cna_est, cncf_est)
+estimateMutation(input_data, cna_est, cncf_est)
 }
 \description{
 estimate mutation cellular fraction

@@ -4,7 +4,7 @@
 \alias{estimateCNA}
 \title{cluster CNAs and resolve CNA state}
 \usage{
-estimateCNA(tcn)
+estimateCNA(input_data)
 }
 \description{
 cluster CNAs and resolve CNA state

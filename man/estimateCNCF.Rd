@@ -4,7 +4,7 @@
 \alias{estimateCNCF}
 \title{estimation of copy number cellular fraction}
 \usage{
-estimateCNCF(tcn, cna_est)
+estimateCNCF(input_data, cna_est)
 }
 \description{
 estimation of copy number cellular fraction
