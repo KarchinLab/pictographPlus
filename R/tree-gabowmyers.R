@@ -196,3 +196,35 @@ pop <- function(edges_tb, tb_name) {
   assign(tb_name, edges_tb[-1, ], envir = .GlobalEnv)
   return(edges_tb[1, ])
 }
+
+bridgeTestBFS <- function(graph_G, edge_e) {
+  node_to_check <- edge_e$child
+  
+  nodes_connected_to_root <- bfsLong2(graph_G)
+  !(node_to_check %in% nodes_connected_to_root)
+}
+
+bfsLong2 <- function(graph_G) {
+  # returns vector of nodes in main tree (connected to root) including "root" 
+  # starting at root
+  # does not stop if there is a cycle in graph 
+  graph_G$parent <- as.character(graph_G$parent)
+  children <- graph_G[(graph_G$parent == "root"), ]$child
+  nodes <- c("root", children)
+  
+  while(length(children) > 0) {
+    c <- children[1]
+    temp.children <- graph_G[(graph_G$parent == c), ]$child
+    
+    # remove children already seen
+    if (any(temp.children %in% nodes)) {
+      temp.children <- temp.children[! temp.children %in% nodes]
+    }
+    
+    children <- c(children, temp.children)
+    
+    nodes <- c(nodes, temp.children)
+    children <- children[-1]
+  }
+  return(nodes)
+}

@@ -124,15 +124,15 @@ writeClusterAssignmentsTable <- function(z_chain, Mut_ID = NULL) {
 #' @param chosen_K (Optional) Vector of K to choose for each mutation set, in the same order as all_set_results. If left blank, function will select best K automatically selected by \code{clusterSep}
 collectBestKChains <- function(all_set_results, chosen_K = NULL) {
   warning("collecting max K available; need to update BIC")
-  best_set_chains <- lapply(all_set_results, function(x) x$all_chains[[length(x$all_chains)]])
-  # if (is.null(chosen_K)) {
-  #   best_set_chains <- lapply(all_set_results, function(x) x$best_chains)
-  # } else {
-  #   best_set_chains <- mapply(function(set_res, choose_K) set_res$all_chains[[choose_K]],
-  #                             set_res = all_set_results,
-  #                             chosen_K,
-  #                             SIMPLIFY = FALSE)
-  # }
+  # best_set_chains <- lapply(all_set_results, function(x) x$all_chains[[length(x$all_chains)]])
+  if (is.null(chosen_K)) {
+    best_set_chains <- lapply(all_set_results, function(x) x$best_chains)
+  } else {
+    best_set_chains <- mapply(function(set_res, choose_K) set_res$all_chains[[choose_K]],
+                              set_res = all_set_results,
+                              chosen_K,
+                              SIMPLIFY = FALSE)
+  }
   return(best_set_chains)
 }
 

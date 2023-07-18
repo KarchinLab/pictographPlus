@@ -2,16 +2,10 @@
 % Please edit documentation in R/sample-presence.R
 \name{separateMutationsBySamplePresence}
 \alias{separateMutationsBySamplePresence}
-\title{combine mutation and cna sample presence
-separate mutations by sample presence
-separate copy number alterations by sample presence
-sample presence for MCMC}
+\title{sample presence for MCMC}
 \usage{
 separateMutationsBySamplePresence(input_data)
 }
 \description{
-combine mutation and cna sample presence
-separate mutations by sample presence
-separate copy number alterations by sample presence
 sample presence for MCMC
 }

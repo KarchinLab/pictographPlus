@@ -1,104 +1,30 @@
-#' run MCMC with added subclonal copy number
+#' run MCMC for all mutations by sample presence
 #' @export
-mcmcMain <- function(max_K = 5, min_mutation_per_cluster=1) {
-  # read in files
-  data <- importFiles('./inst/extdata/sim_v2_snv.csv', './inst/extdata/sim_v2_cn.csv')
-
-  # initial integer CNA estimation by setting CNA to closest integer depending on the mean across all samples
-  cna_est <- estimateCNA1(data)
-
-  # estimation of copy number cellular fraction
-  cncf_est <- estimateCNCF1(data, cna_est)
-
-  # estimate multiplicity
-  m_est <- estimateMultiplicity1(data, cna_est, cncf_est)
-
-  # update data
-  input_data <- list(y=data$y,
-               n=data$n,
-               m=m_est,
-               cncf=cncf_est,
-               tcn=cna_est)
-  
-  # 1. separate mutations by sample presence
-  sep_list <- separateMutationsBySamplePresence(input_data)
-  
-  # 2. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
-  # TO-DO: implement calc BIC under runMutSetMCMC
-  all_set_results <- runMCMCForAllBoxes(sep_list)
-  
-  # 3. collect best chains
-  best_set_chains <- collectBestKChains(all_set_results)
-  chains <- mergeSetChains(best_set_chains, input_data)
-  
-  plotChainsCCF(chains$w_chain)
-  plotCCFViolin(chains$w_chain, chains$z_chain, indata = input_data)
-  plotClusterAssignmentProbVertical(chains$z_chain, chains$w_chain)
-  
-  writeClusterCCFsTable(chains$w_chain)
-  writeClusterAssignmentsTable(chains$z_chain)
-  library(pictograph)
-  # all_set_results <- vector("list", length(sep_list))
-  # names(all_set_results) <- names(sep_list)
-  # params = c("z", "w", "ystar")
-  # 
-  # # Variables for testing
-  # max_K = 5
-  # min_mutation_per_cluster = 1
-  # n.iter = 1000
-  # n.burn = 100
-  # n.chains = 1
-  # n.adapt=1000
-  # thin = 1
-  # mc.cores = 10
-  # model_type = "spike_and_slab"
-  # beta.prior = FALSE
-  # drop_zero = FALSE
-  # inits = list(".RNG.name" = "base::Wichmann-Hill",
-  #              ".RNG.seed" = 123)
-  # 
-  # for (i in seq_len(length(sep_list))) {
-  #   i = 2
-  #   temp_box <- sep_list[[i]]
-  #   # Max number of clusters cannot be more than number of mutations/min_mutation_per_cluster
-  #   temp_max_K <- min(max_K, length(temp_box$mutation_indices)/min_mutation_per_cluster)
-  #   temp_samps_list <- runMutSetMCMC(temp_box, 
-  #                                    n.iter = n.iter, n.burn = n.burn, thin = thin, 
-  #                                    mc.cores = mc.cores,
-  #                                    inits = inits,
-  #                                    temp_max_K = temp_max_K,
-  #                                    model_type = model_type,
-  #                                    params = params,
-  #                                    beta.prior = beta.prior,
-  #                                    drop_zero = drop_zero)
-  #   
-  #   all_set_results[[i]] <- temp_samps_list
-  #   # break
-  # }
-}
-
-runMCMCForAllBoxes <- function(sep_list){
+runMCMCForAllBoxes <- function(sep_list, max_K = 5, min_mutation_per_cluster = 1, n.iter = 5000, n.burn = 1000, thin = 10,
+                               mc.cores = 4, model_type = "spike_and_slab", beta.prior = FALSE, drop_zero = TRUE,
+                               inits = list(".RNG.name" = "base::Wichmann-Hill",
+                                            ".RNG.seed" = 123)){
   all_set_results <- vector("list", length(sep_list))
   names(all_set_results) <- names(sep_list)
   params = c("z", "w", "ystar")
   
   # Variables for testing
-  max_K = 5
-  min_mutation_per_cluster = 1
-  n.iter = 5000
-  n.burn = 1000
-  n.chains = 1
-  n.adapt=1000
-  thin = 10
-  mc.cores = 10
-  model_type = "spike_and_slab"
-  beta.prior = FALSE
-  drop_zero = FALSE
-  inits = list(".RNG.name" = "base::Wichmann-Hill",
-               ".RNG.seed" = 123)
-  
+  # max_K = 5
+  # min_mutation_per_cluster = 1
+  # n.iter = 5000
+  # n.burn = 1000
+  # # n.chains = 1
+  # # n.adapt=1000
+  # thin = 10
+  # mc.cores = 10
+  # model_type = "spike_and_slab"
+  # beta.prior = FALSE
+  # drop_zero = TRUE
+  # inits = list(".RNG.name" = "base::Wichmann-Hill",
+  #              ".RNG.seed" = 123)
+  # 
   for (i in seq_len(length(sep_list))) {
-    # i = 3
+    # i = 2
     temp_box <- sep_list[[i]]
     # Max number of clusters cannot be more than number of mutations/min_mutation_per_cluster
     temp_max_K <- min(max_K, length(temp_box$mutation_indices)/min_mutation_per_cluster)
@@ -238,6 +164,24 @@ reverseDrop <- function(samps, pattern, n.iter) {
   return(samps)
 }
 
+getBoxInputData <- function(box) {
+  sample_list = vector()
+  for (j in 1:ncol(box$y)) {
+    if (strsplit(box$pattern, "")[[1]][j] == "1") {
+      sample_list <- append(sample_list, j)
+    }
+  }
+  # print(temp_box)
+  box_input_data <- list(I = nrow(box$y),
+                         S = length(sample_list),
+                         y = box$y[,sample_list,drop=FALSE],
+                         n = box$n[,sample_list,drop=FALSE],
+                         m = box$m[,sample_list,drop=FALSE],
+                         icn = box$tcn[,sample_list,drop=FALSE], # integer copy number
+                         cncf = box$cncf[,sample_list,drop=FALSE])
+  return(box_input_data)
+}
+
 runMCMCForABox <- function(box, 
                            n.iter = 10000, n.burn = 1000, thin = 10, mc.cores = 1,
                            inits = list(".RNG.name" = "base::Wichmann-Hill",
@@ -245,7 +189,7 @@ runMCMCForABox <- function(box,
                            params = c("z", "w", "ystar"),
                            max_K = 5, model_type = "simple",
                            beta.prior = FALSE,
-                           drop_zero = FALSE) {
+                           drop_zero = TRUE) {
   # # # returns samps_list 
   # box_input_data <- list(I = nrow(box$y),
   #                        S = ncol(box$y),
@@ -257,28 +201,29 @@ runMCMCForABox <- function(box,
   
   # modify box_input_data so it only contain non-zero samples
   # if (drop_zero) {
-    sample_list = vector()
-    for (j in 1:ncol(box$y)) {
-      if (strsplit(box$pattern, "")[[1]][j] == "1") {
-        sample_list <- append(sample_list, j)
-      }
-    }
-    # print(temp_box)
-    box_input_data <- list(I = nrow(box$y),
-                           S = length(sample_list),
-                           y = box$y[,sample_list,drop=FALSE],
-                           n = box$n[,sample_list,drop=FALSE],
-                           m = box$m[,sample_list,drop=FALSE],
-                           icn = box$tcn[,sample_list,drop=FALSE], # integer copy number
-                           cncf = box$cncf[,sample_list,drop=FALSE])
-    # box_input_data$y <- box$y[,sample_list,drop=FALSE]
-    # box_input_data$n <- box$n[,sample_list,drop=FALSE]
-    # box_input_data$icn <- box$icn[,sample_list,drop=FALSE]
-    # box_input_data$m <- box$m[,sample_list,drop=FALSE]
-    # box_input_data$cncf <- box$cncf[,sample_list,drop=FALSE]
-    # box_input_data$S <- length(sample_list)
+  # sample_list = vector()
+  # for (j in 1:ncol(box$y)) {
+  #   if (strsplit(box$pattern, "")[[1]][j] == "1") {
+  #     sample_list <- append(sample_list, j)
+  #   }
   # }
-
+  # # print(temp_box)
+  # box_input_data <- list(I = nrow(box$y),
+  #                        S = length(sample_list),
+  #                        y = box$y[,sample_list,drop=FALSE],
+  #                        n = box$n[,sample_list,drop=FALSE],
+  #                        m = box$m[,sample_list,drop=FALSE],
+  #                        icn = box$tcn[,sample_list,drop=FALSE], # integer copy number
+  #                        cncf = box$cncf[,sample_list,drop=FALSE])
+  # box_input_data$y <- box$y[,sample_list,drop=FALSE]
+  # box_input_data$n <- box$n[,sample_list,drop=FALSE]
+  # box_input_data$icn <- box$icn[,sample_list,drop=FALSE]
+  # box_input_data$m <- box$m[,sample_list,drop=FALSE]
+  # box_input_data$cncf <- box$cncf[,sample_list,drop=FALSE]
+  # box_input_data$S <- length(sample_list)
+  # }
+  box_input_data <- getBoxInputData(box)
+  
   extdir <- system.file("extdata", package="pictograph2")
   # if (nrow(box$y) == 1) {
   #   # TO-DO
@@ -309,9 +254,9 @@ runMCMCForABox <- function(box,
   if(box_input_data$S == 1) {
     colnames(samps_K1[[1]])[which(colnames(samps_K1[[1]]) == "w")] <- "w[1,1]"
   }
-
+  
   # if (drop_zero) {
-    samps_K1 <- reverseDrop(samps_K1, box$pattern, n.iter)
+  samps_K1 <- reverseDrop(samps_K1, box$pattern, n.iter)
   # }
   # 
   # if(box$I == 1) {
@@ -321,9 +266,9 @@ runMCMCForABox <- function(box,
   # Max number of clusters cannot be more than number of mutations
   # max_K <- min(max_K, length(box$mutation_indices)) # already done in the main step
   if (max_K > 1) {
-
+    
     box_input_data$sample_to_sort <- sample_to_sort
-
+    
     samps_2 <- parallel::mclapply(2:max_K,
                                   function(k) runMCMC(box_input_data, k,
                                                       jags.file, inits, params,
@@ -331,17 +276,17 @@ runMCMCForABox <- function(box,
                                                       n.burn=n.burn,
                                                       beta.prior=beta.prior),
                                   mc.cores=mc.cores)
-
+    
     # if (drop_zero) {
-      for (i in seq_len(length(samps_2))) {
-        samps_2[[i]] <- reverseDrop(samps_2[[i]], box$pattern, n.iter)
-      }
+    for (i in seq_len(length(samps_2))) {
+      samps_2[[i]] <- reverseDrop(samps_2[[i]], box$pattern, n.iter)
+    }
     # }
-
+    
     samps_list <- c(list(samps_K1), samps_2)
     names(samps_list) <- paste0("K", 1:max_K)
     return(samps_list)
-
+    
   } else {
     names(samps_K1) <- "K1"
     return(samps_K1)
@@ -376,9 +321,9 @@ runMutSetMCMC <- function(temp_box,
                                     model = model_type,
                                     beta.prior = beta.prior,
                                     drop_zero = drop_zero)
-
+  
   # Format chains
-  if (drop_zero && temp_box$I == 1) {
+  if (drop_zero && nrow(temp_box$y) == 1) {
     samps_list <- list(formatChains(temp_samps_list))
     names(samps_list) <- "K1"
   } else {
@@ -392,27 +337,27 @@ runMutSetMCMC <- function(temp_box,
   filtered_samps_list <- filterK(samps_list)
   
   # Calculate BIC
-  # K_tested <- seq_len(temp_max_K)
-  # if (temp_max_K > 1) {
-  #   box_indata <- getBoxInputData(temp_box)
-  #   bic_vec <- unname(unlist(parallel::mclapply(samps_list, 
-  #                                               function(chains) calcChainBIC(chains, box_indata),
-  #                                               mc.cores = mc.cores)))
-  #   bic_tb <- tibble(K_tested = K_tested,
-  #                    BIC = bic_vec)
-  #   best_chains <- samps_list[[which.min(bic_vec)]]
-  #   res_list <- list(all_chains = samps_list,
-  #                    BIC = bic_tb,
-  #                    best_chains = best_chains,
-  #                    best_K = which.min(bic_vec))
-  # } else {
-  #   # only 1 variant, so must be 1 cluster and don't need to check BIC
-  #   res_list <- list(all_chains = samps_list,
-  #                    BIC = NA,
-  #                    best_chains = samps_list[[1]],
-  #                    best_K = 1)
-  # }
-  res_list <- list(all_chains = filtered_samps_list)
+  K_tested <- seq_len(length(filtered_samps_list))
+  if (temp_max_K > 1) {
+    box_indata <- getBoxInputData(temp_box)
+    bic_vec <- unname(unlist(parallel::mclapply(filtered_samps_list,
+                                                function(chains) calcChainBIC(chains, box_indata, temp_box$pattern),
+                                                mc.cores = mc.cores)))
+    bic_tb <- tibble(K_tested = K_tested,
+                     BIC = bic_vec)
+    best_chains <- samps_list[[which.min(bic_vec)]]
+    res_list <- list(all_chains = samps_list,
+                     BIC = bic_tb,
+                     best_chains = best_chains,
+                     best_K = which.min(bic_vec))
+  } else {
+    # only 1 variant, so must be 1 cluster and don't need to check BIC
+    res_list <- list(all_chains = filtered_samps_list,
+                     BIC = NA,
+                     best_chains = filtered_samps_list[[1]],
+                     best_K = 1)
+  }
+  # res_list <- list(all_chains = filtered_samps_list)
   return(res_list)
 }
 

@@ -1,0 +1,175 @@
+#' @import magrittr
+calcChainBIC <- function(chains, input.data, pattern) {
+  # n <- input.data$I * input.data$S
+  # est_K <- estimateCCFs(chains$w_chain) %>%
+  #   nrow(.)
+  # ll <- calcChainLogLik(chains, input.data, est_K)
+  # 
+  # BIC <- calcBIC(n, est_K, ll)
+  options(dplyr.summarise.inform = FALSE)
+  w <- chains$w_chain%>%
+    mutate(value = round(value,5),
+           Cluster = as.numeric(gsub("w\\[(.*),.*","\\1", Parameter)),
+           Sample = as.numeric(gsub(".*,(.*)\\]","\\1", Parameter)))%>%
+    group_by(Cluster,Sample)%>%
+    summarize(w = mean(value))%>%
+    ungroup()%>%
+    spread(key = Sample, value = w)
+  
+  ww <- writeClusterAssignmentsTable(chains$z_chain)%>%
+    mutate(Mut_ID = as.numeric(gsub("Mut","",Mut_ID)))%>%
+    arrange(Mut_ID)%>%
+    left_join(w, by = "Cluster")%>%
+    select(-c("Mut_ID","Cluster"))%>%
+    as.matrix()
+  
+  ww <- ww[,which(strsplit(pattern, split="")[[1]]=="1")]
+  
+  vaf <- (ww + (input.data$m - 1) * input.data$cncf) / (2 - 2 * input.data$cncf + input.data$cncf * input.data$icn)
+  
+  lik <- sum(dbinom(input.data$y,input.data$n,vaf,log = T))
+  
+  est_K <- estimateCCFs(chains$w_chain) %>% nrow(.)
+  
+  BIC <- log(input.data$I*input.data$S)*est_K-2*lik
+  return(BIC)
+}
+
+#' Make table listing possible choices of K (minimum BIC and elbow of BIC plot) for each mutation set
+#' 
+#' @export
+#' @import dplyr
+#' @param all_set_results List of MCMC results for each mutation set; returned by \code{clusterSep}
+#' @param sample_names (Optional) Vector of sample IDs, same order as provided as input data (e.g. indata$Sample_ID)
+writeSetKTable <- function(all_set_results, sample_names = NULL) {
+  min_bic_k <- sapply(all_set_results, function(x) x$best_K)
+  elbow_k <- sapply(all_set_results, function(x) ifelse(is.logical(x$BIC), 1, findElbow(x$BIC$BIC)))
+  knee_k <- sapply(all_set_results, function(x) ifelse(is.logical(x$BIC), 1, findKnee(x$BIC$BIC)))
+  min_bic_k_tb <- tibble(set_name_bin = names(all_set_results),
+                         min_BIC = min_bic_k,
+                         elbow = elbow_k,
+                         knee = knee_k)
+  
+  if (!is.null(sample_names)) {
+    min_bic_k_tb <- min_bic_k_tb %>%
+      mutate(set_name_full = sapply(min_bic_k_tb$set_name_bin, 
+                                    function(x) getSetName(x, sample_names, collapse_string = ","))) %>%
+      select(set_name_bin, set_name_full, min_BIC, elbow, knee)
+  }
+  
+  # write chosen K if elbow, knee, and minimum BIC all agree 
+  chosen_K <- rep(NA, length(all_set_results))
+  for (i in seq_len(length(all_set_results))) {
+    chosen_K[i] <- ifelse(length(unique(c(min_bic_k_tb$min_BIC[i],min_bic_k_tb$elbow[i],min_bic_k_tb$knee[i])))==3,
+                          min_bic_k_tb$min_BIC[i],
+                          getmode(c(min_bic_k_tb$min_BIC[i],min_bic_k_tb$elbow[i],min_bic_k_tb$knee[i])))
+    # TO-DO
+  }
+  
+  min_bic_k_tb <- min_bic_k_tb %>%
+    mutate(chosen_K = chosen_K)
+  
+  return(min_bic_k_tb)
+}
+
+findElbow <- function(BIC) {
+  
+  # return first ind if all increasing 
+  if(all (BIC >= BIC[1])) return(1)
+  
+  K_vec <- seq_len(length(BIC))
+  # line defined by two end-points of BIC plot P1 = (x1, y1) and P2 = (x2, y2)
+  x1 <- K_vec[1]
+  y1 <- BIC[1]
+  x2 <- length(BIC)
+  y2 <- BIC[length(BIC)]
+  
+  # calculate distance of each point (x0, y0) to line
+  perp_dist <- sapply(K_vec, function(i) calcDistFromPointToLine(K_vec[i], BIC[i],
+                                                                 x1, y1, 
+                                                                 x2, y2))
+  return(which.max(perp_dist))
+}
+
+getmode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+
+calcDistFromPointToLine <- function (x0, y0,
+                                     x1, y1,
+                                     x2, y2) {
+  numerator <- abs( (x2-x1)*(y1-y0) - (x1-x0)*(y2-y1) )
+  denominator <- sqrt( (x2-x1)^2 + (y2-y1)^2 )
+  distance <- numerator / denominator
+  return(distance)
+}
+
+# angle-based method for knee point detection of BIC 
+# Zhao et al 2008
+# returns index of knee point
+findKnee <- function(BIC, n = 5) {
+  if (length(BIC) == 1) return(1)
+  
+  # return first ind if all increasing 
+  if(all (BIC >= BIC[1])) return(1)
+  
+  # initialize
+  curr_val <- BIC[1]
+  prev_val <- BIC[1]
+  next_val <- BIC[1]
+  
+  # begin
+  diff_fun <- rep(NA, length(BIC))
+  for (m in seq_len(length(BIC))) {
+    curr_val <- BIC[m]
+    next_val <- BIC[min(m+1, length(BIC))]
+    diff_fun[m] <- DiffFun(prev_val, next_val, curr_val)
+    prev_val <- curr_val
+  }
+  
+  # find first n local maximas in diff_fun
+  local_max <- localMaxima(diff_fun)
+  local_max <- local_max[1:min(length(local_max), n)]
+  if (length(local_max) == 1) return(local_max)
+  
+  # for each n with decreasing order of LocalMax value,
+  angle <- c()
+  for (n in local_max) {
+    angle <- c(angle, AngleFun(BIC[max(n-1, 1)], BIC[min(n+1, length(BIC))], BIC[n]))
+  }
+  # return m with the first minima angle
+  return(local_max[localMinima(angle)[1]])
+}
+DiffFun <- function(prev_val, next_val, curr_val) {
+  prev_val + next_val - 2*curr_val
+}
+AngleFun <- function(prev_val, next_val, curr_val) {
+  atan( 1 / abs(curr_val - prev_val) ) + atan( 1 / abs(next_val - curr_val) )
+}
+
+# detect local maxima
+localMaxima <- function(x) {
+  # Use -Inf instead if x is numeric (non-integer)
+  y <- diff(c(-.Machine$integer.max, x)) > 0L # for maxima
+  #y <- diff(c(.Machine$integer.max, x)) < 0L # for mimuma
+  rle(y)$lengths
+  y <- cumsum(rle(y)$lengths)
+  y <- y[seq.int(1L, length(y), 2L)]
+  if (x[[1]] == x[[2]]) {
+    y <- y[-1]
+  }
+  return(y)
+}
+localMinima <- function(x) {
+  # Use -Inf instead if x is numeric (non-integer)
+  #y <- diff(c(-.Machine$integer.max, x)) > 0L # for maxima
+  y <- diff(c(.Machine$integer.max, x)) < 0L # for mimuma
+  rle(y)$lengths
+  y <- cumsum(rle(y)$lengths)
+  y <- y[seq.int(1L, length(y), 2L)]
+  if (x[[1]] == x[[2]]) {
+    y <- y[-1]
+  }
+  return(y)
+}
