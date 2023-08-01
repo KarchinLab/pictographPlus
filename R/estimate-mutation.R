@@ -134,6 +134,7 @@ estimateMultiplicity1 <- function(input_data, cna_est, cncf_est) {
 
 #' estimate multiplicity for one gene such that all mcf <= 1
 estimate_multiplicity <- function(y, n, cncf, cna, threshold=1) {
+  warning("need to add copy number loss events")
   for (m in seq_len(cna[1])) {
     mcf = (y * (2 - 2 * cncf + cna * cncf) / n )- (m-1) * cncf
     if (all(mcf <= threshold)) {
