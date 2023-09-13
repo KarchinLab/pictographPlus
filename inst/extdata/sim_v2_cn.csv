@@ -1,6 +1,6 @@
-﻿sample,chrom,start,end,major,minor
-A,chr1,2,2,1.8,1
-A,chr1,1,1,2.2,1
-B,chr1,2,2,1.8,1
-C,chr1,2,2,1.8,1
-C,chr1,1,1,2.6,1
+﻿sample,chrom,start,end,tcn
+A,chr1,2,2,2.8
+A,chr1,1,1,3.2
+B,chr1,2,2,2.8
+C,chr1,2,2,2.8
+C,chr1,1,1,3.6
