@@ -1,8 +1,12 @@
 #' run MCMC with added subclonal copy number
 #' @export
-mcmcMain <- function(max_K = 5, min_mutation_per_cluster=1, iterations=5) {
+#' max_K: max K for each box
+#' min_mutation_per_cluster: minimum number of mutations per cluster
+#' iterations: number of iterations to run MCMC
+#' min_mutation_per_box: minimum number of mutaitons for each box by sample presence
+mcmcMain <- function(max_K = 5, min_mutation_per_cluster=1, iterations=5, min_mutation_per_box=2) {
   # read in files
-  data <- importFiles('./inst/extdata/sim_v2_snv.csv', './inst/extdata/sim_v2_cn.csv')
+  data <- importFiles('./inst/extdata/sim_v2_snv.csv', './inst/extdata/sim_v2_cn.csv', alt_reads_thresh = 0, vaf_thresh = 0)
   
   for (iteration in seq_len(iterations)) {
     if (iteration == 1) {
@@ -35,7 +39,7 @@ mcmcMain <- function(max_K = 5, min_mutation_per_cluster=1, iterations=5) {
                        tcn=cna)
     
     # 1. separate mutations by sample presence
-    sep_list <- separateMutationsBySamplePresence(input_data)
+    sep_list <- separateMutationsBySamplePresence(input_data, min_mutation_per_box)
     
     # 2. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
     all_set_results <- runMCMCForAllBoxes(sep_list, max_K = 5, min_mutation_per_cluster = 1, 
@@ -101,11 +105,12 @@ mcmcMain <- function(max_K = 5, min_mutation_per_cluster=1, iterations=5) {
   # cncf_update <- reassignCNCF(cncf_init, chains$w_chain)
   # cna_update <- reassignCNA(cncf_update, data$tcn)
   # 
-  writeClusterCCFsTable(chains$w_chain)
-  writeClusterAssignmentsTable(chains$z_chain, Mut_ID = data$MutID, cncf=cncf_update)
+  # writeClusterCCFsTable(chains$w_chain)
+  # writeClusterAssignmentsTable(chains$z_chain, Mut_ID = data$MutID, cncf=cncf_update)
   
   generateAllTrees(chains$w_chain, lineage_precedence_thresh = 0.1, sum_filter_thresh = 0.2)
-  
+  writeClusterCCFsTable(chains$w_chain)
+  writeClusterAssignmentsTable(chains$z_chain, w_chain=chains$w_chain, Mut_ID = data$MutID, cncf=cncf_update)
   scores <- calcTreeScores(chains$w_chain, all_spanning_trees)
   # scores
   # # highest scoring tree
