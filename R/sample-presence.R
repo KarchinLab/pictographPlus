@@ -21,7 +21,7 @@ separateMutationsByMCF <- function(mcf) {
 
 #' sample presence for MCMC
 #' @export
-separateMutationsBySamplePresence <- function(input_data) {
+separateMutationsBySamplePresence <- function(input_data, min_mutation_per_box=2) {
   # returns list of lists -- 
   # each item of list contains input data for a mutation sample presence set 
   # original mutation indices from input_data are recorded in $mutation_indices
