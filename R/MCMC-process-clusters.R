@@ -105,7 +105,7 @@ estimateClusterAssignments <- function(z_chain) {
 #' @param z_chain MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}
 #' @param Mut_ID Vector of mutation IDs, same order as provided as input data (e.g. indata$Mut_ID)
 #' @return A tibble listing mutation IDs and their cluster assignments
-writeClusterAssignmentsTable <- function(z_chain, cncf=NULL, Mut_ID = NULL) {
+writeClusterAssignmentsTable <- function(z_chain, w_chain=NULL, cncf=NULL, Mut_ID = NULL) {
   map_z <- estimateClusterAssignments(z_chain) 
   if (is.null(Mut_ID)) {
     Mut_ID <- paste0("Mut", 1:nrow(map_z))
@@ -116,9 +116,14 @@ writeClusterAssignmentsTable <- function(z_chain, cncf=NULL, Mut_ID = NULL) {
     arrange(Cluster)
   
   if (!is.null(cncf)) {
-    for (i in seq_len(nrow(cncf))) {
-      cls = which(apply(w_mat, 1, function(x) return(all(x == cncf_update[i,]))))
-      map_z <- map_z %>% add_row(Mut_ID=rownames(cncf)[i], Cluster=cls)
+    if (is.null(w_chain)) {
+      warning("w_chain information is required to add CNA to cluster assignment table")
+    } else {
+      w_mat <- estimateCCFs(w_chain)
+      for (i in seq_len(nrow(cncf))) {
+        cls = which(apply(w_mat, 1, function(x) return(all(x == cncf_update[i,]))))
+        map_z <- map_z %>% add_row(Mut_ID=rownames(cncf)[i], Cluster=cls)
+      }
     }
   }
   
