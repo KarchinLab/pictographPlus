@@ -18,11 +18,12 @@ runMCMCForAllBoxes <- function(sep_list, max_K = 5, min_mutation_per_cluster = 2
   # # n.adapt=1000
   # thin = 10
   # mc.cores = 10
-  # model_type = "spike_and_slab"
-  # beta.prior = FALSE
-  # drop_zero = TRUE
-  # inits = list(".RNG.name" = "base::Wichmann-Hill",
-  #              ".RNG.seed" = 123)
+  model_type = "spike_and_slab"
+  beta.prior = FALSE
+  drop_zero = TRUE
+  inits = list(".RNG.name" = "base::Wichmann-Hill",
+               ".RNG.seed" = 123)
+  cluster_diff_thresh=0.05
   # 
   for (i in seq_len(length(sep_list))) {
     # i = 2
