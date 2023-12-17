@@ -80,7 +80,7 @@ smoothCNV <- function(data, cnv_max_dist=2000, cnv_max_percent=0.10) {
 #' @param smooth_cnv: process input CNV to merge  segments with similar distance
 importCopyNumberFile <- function(copy_number_file, cnv_max_dist=2000, cnv_max_percent=0.10, tcn_normal_range=c(1.8, 2.2), smooth_cnv=T, autosome=T) {
   data <- read_csv(copy_number_file, show_col_types = FALSE)
-  data <- data %>% arrange(chrom, start)
+  # data <- data %>% arrange(chrom, start)
   # SMOOTH SEGMENTS
   if (smooth_cnv) {
     data <- smoothCNV(data, cnv_max_dist, cnv_max_percent)
