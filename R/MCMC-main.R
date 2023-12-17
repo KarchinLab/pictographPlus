@@ -35,18 +35,18 @@ mcmcMain <- function(max_K = 5, min_mutation_per_cluster=1, iterations=5, min_mu
     }
     
     # assign integer cna and cncf to each mutation
-    cna <- data$overlap %*% cna_init + 2*(ifelse(rowSums(data$overlap)==0, 1, 0))
+    icn <- data$overlap %*% cna_init + 2*(ifelse(rowSums(data$overlap)==0, 1, 0))
     cncf <- data$overlap %*% cncf_init
     
     # estimate multiplicity
-    m_est <- estimateMultiplicity1(data, cna, cncf)
+    m_est <- estimateMultiplicity1(data, icn, cncf)
     
     # update data
     input_data <- list(y=data$y,
                        n=data$n,
                        m=m_est,
                        cncf=cncf,
-                       tcn=cna)
+                       tcn=icn)
     
     # 1. separate mutations by sample presence
     sep_list <- separateMutationsBySamplePresence(input_data, min_mutation_per_box)
