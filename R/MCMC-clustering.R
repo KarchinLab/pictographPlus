@@ -8,23 +8,7 @@ runMCMCForAllBoxes <- function(sep_list, max_K = 5, min_mutation_per_cluster = 2
   all_set_results <- vector("list", length(sep_list))
   names(all_set_results) <- names(sep_list)
   params = c("z", "w", "ystar")
-  
-  # Variables for testing
-  # max_K = 5
-  # min_mutation_per_cluster = 1
-  # n.iter = 5000
-  # n.burn = 1000
-  # # n.chains = 1
-  # # n.adapt=1000
-  # thin = 10
-  # mc.cores = 10
-  model_type = "spike_and_slab"
-  beta.prior = FALSE
-  drop_zero = TRUE
-  inits = list(".RNG.name" = "base::Wichmann-Hill",
-               ".RNG.seed" = 123)
-  cluster_diff_thresh=0.05
-  # 
+
   for (i in seq_len(length(sep_list))) {
     # i = 2
     temp_box <- sep_list[[i]]
@@ -340,7 +324,7 @@ runMutSetMCMC <- function(temp_box,
   # check whether 1) number of mutations per cluster is at least min_mutation_per_cluster 2) difference between any two cluster less than cluster_diff_thresh 
   filtered_samps_list <- filterK(samps_list, min_mutation_per_cluster = min_mutation_per_cluster,
                                  cluster_diff_thresh = cluster_diff_thresh)
-  
+  # filtered_samps_list <- samps_list
   # Calculate BIC
   K_tested <- seq_len(length(filtered_samps_list))
   if (temp_max_K > 1) {
