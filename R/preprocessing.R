@@ -2,7 +2,7 @@
 #' @export
 #' @param mutation_file mutation data file that contains columns "sample", "mutation", "chrom", "start", "end", total_reads", and "alt_reads";
 #' @param copy_number_file copy number file that contains columns "sample", "chrom", "start", "end", "tcn"
-importFiles <- function(mutation_file, copy_number_file=NULL, alt_reads_thresh = 0, vaf_thresh = 0, cnv_max_dist=2000, cnv_max_percent=0.10, tcn_normal_range=c(1.8, 2.2), smooth_cnv=T, autosome=T) {
+importFiles <- function(mutation_file, copy_number_file=NULL, alt_reads_thresh = 0, vaf_thresh = 0, cnv_max_dist=2000, cnv_max_percent=0.10, tcn_normal_range=c(1.8, 2.2), smooth_cnv=F, autosome=T) {
   
   # keep mutations if alt_reads >= alt_reads_thresh and vaf >= vaf_thresh
   mutation_data = importMutationFile(mutation_file, alt_reads_thresh, vaf_thresh)
