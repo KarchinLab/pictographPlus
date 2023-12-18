@@ -15,6 +15,12 @@ mcmcMain <- function(max_K = 5, min_mutation_per_cluster=1, iterations=5, min_mu
   n.burn = 1000
   thin = 10
   mc.cores = 8
+  model_type = "spike_and_slab"
+  beta.prior = FALSE
+  drop_zero = TRUE
+  inits = list(".RNG.name" = "base::Wichmann-Hill",
+               ".RNG.seed" = 123)
+  cluster_diff_thresh=0.05
   
   data <- importFiles('./inst/extdata/sim_v2_snv.csv', './inst/extdata/sim_v2_cn.csv', alt_reads_thresh = 0, vaf_thresh = 0, smooth_cnv = F)
   
@@ -129,7 +135,7 @@ mcmcMain <- function(max_K = 5, min_mutation_per_cluster=1, iterations=5, min_mu
   # choose color palette; default is viridis
   color_palette = viridis::viridis
   # # plot tree
-  plotTree(best_tree, palette = color_palette)
+  # plotTree(best_tree, palette = color_palette)
   plotEnsembleTree(all_spanning_trees, palette = color_palette)
   
   subclone_props <- calcSubcloneProportions(w_mat, best_tree)
