@@ -2,21 +2,21 @@
 #' @export
 #' @param mutation_file mutation data file that contains columns "sample", "mutation", "chrom", "start", "end", total_reads", and "alt_reads";
 #' @param copy_number_file copy number file that contains columns "sample", "chrom", "start", "end", "tcn"
-importFiles <- function(mutation_file, copy_number_file=NULL, alt_reads_thresh = 0, vaf_thresh = 0, cnv_max_dist=2000, cnv_max_percent=0.30, tcn_normal_range=c(1.8, 2.2), smooth_cnv=F, autosome=T) {
+importFiles <- function(mutation_file, copy_number_file, germline_SNP_file, tumor_SNP_file, cytoband_file=NULL, alt_reads_thresh = 0, vaf_thresh = 0, cnv_max_dist=2000, cnv_max_percent=0.30, tcn_normal_range=c(1.8, 2.2), smooth_cnv=F, autosome=T) {
   
   # keep mutations if alt_reads >= alt_reads_thresh and vaf >= vaf_thresh
   mutation_data = importMutationFile(mutation_file, alt_reads_thresh, vaf_thresh)
   
   copy_number_data = importCopyNumberFile(copy_number_file, cnv_max_dist, cnv_max_percent, tcn_normal_range, smooth_cnv, autosome)
-  warning("importFiles: CNA not checked for overlap yet; user need to make sure CNA seperate")
+
   mutation_data$tcn = copy_number_data$tcn
   
   copy_number_info = importCopyNumberInfo(copy_number_file)
 
-  mutation_data$cytoband = copy_number_info$cytoband
-  mutation_data$drivers = copy_number_info$drivers
-  mutation_data$genes = copy_number_info$genes
-  
+  # mutation_data$cytoband = copy_number_info$cytoband
+  # mutation_data$drivers = copy_number_info$drivers
+  # mutation_data$genes = copy_number_info$genes
+  # 
   mutation_data$overlap = resolveOverlap(mutation_data)
   warning("resolveOverlap: need to check whether a mutation overlaps with two CNA segs")
 
@@ -58,15 +58,20 @@ smoothCNV <- function(data, cnv_max_dist=2000, cnv_max_percent=0.30) {
   
   # samples <- unique(data$sample)
   
-  warning("improvements needed for smoothCNV under preprocessing.R")
-  data <- data %>% arrange(chrom, start)
+  message("improvements needed for smoothCNV under preprocessing.R; currently detecting two segments as the same if overlap and star/end position within certain distance; merge the two segments as the outcome")
+  data <- data %>% 
+    mutate(numeric_chrom = as.numeric(sub("chr", "", chrom))) %>% 
+    arrange(numeric_chrom, start) %>%
+    select(-numeric_chrom)
+  
   indexList = seq_len(nrow(data))
   
   for (i in seq_len(nrow(data))) {
     if (i %in% indexList) {
       # print(data[i,])
       max_dis = max(cnv_max_dist, cnv_max_percent*(data[i,]$end-data[i,]$start))
-      index_selected = which((data$chrom==data[i,]$chrom)&(abs(data$start-data[i,]$start)<max_dis)&(abs(data$end-data[i,]$end)<max_dis))
+      index_selected = which((data$chrom==data[i,]$chrom)&(data$start<=data[i,]$end)&(data[i,]$start<=data$end)&(abs(data$start-data[i,]$start)<max_dis)&(abs(data$end-data[i,]$end)<max_dis))
+      # index_selected = which((data$chrom==data[i,]$chrom)&(abs(data$start-data[i,]$start)<max_dis)&(abs(data$end-data[i,]$end)<max_dis))
       if (length(index_selected) > 1) {
         # list of cnv segments able to merge
         cnv_selected = data[index_selected,]
@@ -122,22 +127,22 @@ importCopyNumberFile <- function(copy_number_file, cnv_max_dist=2000, cnv_max_pe
   return(output_data)
 }
 
-#' get copy number cytoband and genes information
-importCopyNumberInfo <- function(copy_number_file) {
-  drivers = c()
-  genes = c()
-  cytoband = c()
-  
-  data <- read_csv(copy_number_file, show_col_types = FALSE)
-  data$CNA = paste(data$chrom, data$start, data$end, sep = '-')
-  
-  for (i in 1:nrow(data)) {
-    cytoband[data[i,]$CNA] <- data[i,]$cytoband
-    genes[data[i,]$CNA] <- data[i,]$genes
-    drivers[data[i,]$CNA] <- data[i,]$drivers
-  }
-  return(list(cytoband=cytoband, drivers=drivers, genes=genes))
-}
+#' #' get copy number cytoband and genes information
+#' importCopyNumberInfo <- function(copy_number_file) {
+#'   drivers = c()
+#'   genes = c()
+#'   cytoband = c()
+#'   
+#'   data <- read_csv(copy_number_file, show_col_types = FALSE)
+#'   data$CNA = paste(data$chrom, data$start, data$end, sep = '-')
+#'   
+#'   for (i in 1:nrow(data)) {
+#'     cytoband[data[i,]$CNA] <- data[i,]$cytoband
+#'     genes[data[i,]$CNA] <- data[i,]$genes
+#'     drivers[data[i,]$CNA] <- data[i,]$drivers
+#'   }
+#'   return(list(cytoband=cytoband, drivers=drivers, genes=genes))
+#' }
 
 #' import mutation file
 importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh = 0) {
