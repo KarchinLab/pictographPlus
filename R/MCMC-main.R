@@ -41,13 +41,15 @@ mcmcMain <- function(max_K = 3,
   alt_reads_thresh = 0
   vaf_thresh = 0
   cnv_max_dist=2000 
-  cnv_max_percent=0.10 
+  cnv_max_percent=0.30 
   tcn_normal_range=c(1.8, 2.2)
-  smooth_cnv=F
+  smooth_cnv=T
   autosome=T
-  # outputDir='~/Karchin Lab Dropbox/Lai Jillian/htan-mcl-pre-cancer-pancreas/htan-mcl-pre-cancer-pancreas/MCL111_001/'
+  copy_number_file = '~/Karchin Lab Dropbox/Lai Jillian/htan-mcl-pre-cancer-pancreas/htan-mcl-pre-cancer-pancreas/MCL111_001/MCL111_001_cn.csv'
+  mutation_file = '~/Karchin Lab Dropbox/Lai Jillian/htan-mcl-pre-cancer-pancreas/htan-mcl-pre-cancer-pancreas/MCL111_001/MCL111_001_snv.csv'
+  outputDir='~/Karchin Lab Dropbox/Lai Jillian/htan-mcl-pre-cancer-pancreas/htan-mcl-pre-cancer-pancreas/MCL111_001/'
   # data <- importFiles('./inst/extdata/sim_v2_snv.csv', './inst/extdata/sim_v2_cn.csv', alt_reads_thresh = 0, vaf_thresh = 0, smooth_cnv = F)
-  data <- importFiles('~/Karchin Lab Dropbox/Lai Jillian/htan-mcl-pre-cancer-pancreas/htan-mcl-pre-cancer-pancreas/MCL111_001/MCL111_001_snv.csv', '~/Karchin Lab Dropbox/Lai Jillian/htan-mcl-pre-cancer-pancreas/htan-mcl-pre-cancer-pancreas/MCL111_001/MCL111_001_cn.csv')
+  data <- importFiles('~/Karchin Lab Dropbox/Lai Jillian/htan-mcl-pre-cancer-pancreas/htan-mcl-pre-cancer-pancreas/MCL111_001/MCL111_001_snv.csv', '~/Karchin Lab Dropbox/Lai Jillian/htan-mcl-pre-cancer-pancreas/htan-mcl-pre-cancer-pancreas/MCL111_001/MCL111_001_cn.csv', smooth_cnv=T)
   
   for (iteration in seq_len(iterations)) {
     if (iteration == 1) {
@@ -106,13 +108,13 @@ mcmcMain <- function(max_K = 3,
   generateAllTrees(chains$w_chain, lineage_precedence_thresh = 0.02, sum_filter_thresh = 0.1)
   ccfTable = writeClusterCCFsTable(chains$w_chain)
   
-  write.table(ccfTable, file=paste(outputDir, "ccf.csv"), quote = FALSE, sep = ",", row.names = F)
+  # write.table(ccfTable, file=paste(outputDir, "ccf.csv", sep=""), quote = FALSE, sep = ",", row.names = F)
   
   clusterAssingmentTable = writeClusterAssignmentsTable(chains$z_chain, w_chain=chains$w_chain, Mut_ID = data$MutID, cncf=cncf_update)
   
   for (i in seq_len(nrow(clusterAssingmentTable))) {
     # rename chromosome name if CNA in a cluster
-    if (clusterAssingmentTable[i,]$Mut_ID %in% names(data$cytoband)) {
+    if (clusterAssingmentTable[i,]$Mut_ID %in% rownames(data$tcn)) {
       change = "neutral"
       if (mean(cna_update[(clusterAssingmentTable[i,]$Mut_ID),]) < 2) {
         change = "del"
@@ -120,12 +122,16 @@ mcmcMain <- function(max_K = 3,
       if (mean(cna_update[(clusterAssingmentTable[i,]$Mut_ID),]) > 2) {
         change = "dup"
       }
-      new_name = paste(change, data$cytoband[clusterAssingmentTable[i,]$Mut_ID], data$drivers[clusterAssingmentTable[i,]$Mut_ID],sep = ":")
+      
+      ######################################
+      # Add code to add cytoband information
+      ######################################
+      new_name = paste(change, clusterAssingmentTable[i,]$Mut_ID, sep = ":")
       clusterAssingmentTable[i,]$Mut_ID = new_name
     }
   }
   
-  write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign.csv"), quote = FALSE, sep = ",", row.names = F)
+  # write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign.csv", sep=""), quote = FALSE, sep = ",", row.names = F)
   
   scores <- calcTreeScores(chains$w_chain, all_spanning_trees)
 
@@ -138,8 +144,8 @@ mcmcMain <- function(max_K = 3,
   # plotEnsembleTree(all_spanning_trees, palette = color_palette)
   
   subclone_props <- calcSubcloneProportions(w_mat, best_tree)
-  plotSubclonePie(subclone_props, palette=color_palette, sample_names=colnames(input_data$y))
-  plotSubcloneBar(subclone_props, palette=color_palette, sample_names=colnames(input_data$y))
-  save.image(file=paste(outputDir, "PICTograph2.RData"))
+  plotSubclonePie(subclone_props, sample_names=colnames(input_data$y))
+  plotSubcloneBar(subclone_props, sample_names=colnames(input_data$y))
+  # save.image(file=paste(outputDir, "PICTograph2.RData", sep=""))
 }
 
