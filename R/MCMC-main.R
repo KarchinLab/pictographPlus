@@ -137,7 +137,7 @@ mcmcMain <- function(max_K = 3,
 
   # highest scoring tree
   best_tree <- all_spanning_trees[[which.max(scores)]]
-  best_tree <- all_spanning_trees[[12]] # for HTAN-IPMN MCL111_001
+  # best_tree <- all_spanning_trees[[12]] # for HTAN-IPMN MCL111_001
 
   # plot tree
   plotTree(best_tree, palette = viridis::viridis)
