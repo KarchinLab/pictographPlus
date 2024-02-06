@@ -14,6 +14,7 @@ runMCMCForAllBoxes <- function(sep_list, max_K = 5, min_mutation_per_cluster = 2
     temp_box <- sep_list[[i]]
     # Max number of clusters cannot be more than number of mutations/min_mutation_per_cluster
     temp_max_K <- min(max_K, floor(length(temp_box$mutation_indices)/min_mutation_per_cluster))
+    temp_max_K <- max(temp_max_K, 1)
     temp_samps_list <- runMutSetMCMC(temp_box, 
                                      n.iter = n.iter, n.burn = n.burn, thin = thin, 
                                      mc.cores = mc.cores,
