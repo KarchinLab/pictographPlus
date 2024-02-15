@@ -9,14 +9,18 @@ importFiles(
   copy_number_file,
   outputDir,
   SNP_file = NULL,
+  stat_file = NULL,
   cytoband_file = NULL,
   alt_reads_thresh = 0,
   vaf_thresh = 0,
   cnv_max_dist = 2000,
   cnv_max_percent = 0.3,
   tcn_normal_range = c(1.8, 2.2),
-  smooth_cnv = F,
-  autosome = T
+  smooth_cnv = T,
+  autosome = T,
+  mc.cores = 8,
+  pval = 0.05,
+  sim_iter = 100
 )
 }
 \arguments{
