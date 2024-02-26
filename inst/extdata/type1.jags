@@ -1,0 +1,60 @@
+model {
+	for (i in 1:I) { ## for each variant
+		for (s in 1:S) {  ## for each sample
+			y[i,s] ~ dbin(vaf[i,s], n[i,s])
+			## posterior predictive distribution
+			ystar[i,s] ~ dbin(vaf[i,s], n[i,s])
+		}
+	}
+	
+	for (i in 1:I) { ## for each variant
+		for (s in 1:S) {  ## for each sample
+		  tcn.est[i,s] = icn[i] * mcf[z[i], s] + 2 * (1 - mcf[z[i], s])
+			tcn[i,s] ~ dnorm(tcn.est[i,s], 0.01)
+		}
+	}
+	
+	for (i in 1:I) { ## for each variant
+		for (s in 1:S) {  ## for each sample
+			vaf.snv[i,s] <- mcf[z[i], s] / tcn[i,s]
+			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn[i,s]
+			vaf.temp[i,s] <- ifelse(is_cn[i]==0, vaf.snv[i,s], vaf.cna[i,s])
+			vaf[i,s] <- ifelse(vaf.temp[i,s] > 1, 1, vaf.temp[i,s])
+		}
+	}
+	
+	# [𝑍_𝑖│𝜋_1,…,𝜋_𝐾, 𝐾]~ Multinomial(𝜋_1, …,𝜋_K  )
+	for (i in 1:I) {
+	  z[i] ~ dcat(pi[1:K])
+	  
+	  # assuming the max integer copy number is 9
+	  icn1[i] ~ dcat(rep(0.1, 10))
+	  m1[i] ~ dcat(rep(0.1, 10))
+	  
+	  icn[i] <- ifelse(is_cn[i]==0, 2, icn1[i])
+	  m[i] <- ifelse(is_cn[i]==0, 1, min(m1[i], icn1[i]))
+	}
+	
+	# 𝜋_1, …,𝜋_K  ~ Dirichlet(1_1,…,1_K)
+	alpha <- rep(1, K)
+	pi[1:K] ~ ddirch(alpha[1:K])
+
+	for (k in 1:K) {
+		for (s in 1:S) {
+		  # prior is a beta distribution
+			eta[k,s] ~ dbeta(5,2)
+			
+			# estimates mcf [𝑀𝐶𝐹_𝑧𝑠| 𝜂] ~  𝜂Beta(1,1)+(1 −𝜂) x 0
+			z.eta[k,s] ~ dcat(c(eta[k,s], 1-eta[k,s]))
+
+			mcf1[k,s] ~ dbeta(1,1)T(0.005, )
+			# mcf_unsorted[k,s] <- ifelse(z.eta[k,s] == 1, mcf1[k,s], 0)
+			mcf[k,s] <- ifelse(z.eta[k,s] == 1, mcf1[k,s], 0)
+		}
+	}
+
+	# order w for sample_to_sort
+	# for (s in 1:S) {
+	# 	mcf[1:K, s] <- ifelse(s == sample_to_sort, sort(mcf_unsorted[1:K, s]), mcf_unsorted[1:K, s])
+	# }
+}
