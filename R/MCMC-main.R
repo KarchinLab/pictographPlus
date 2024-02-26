@@ -4,7 +4,7 @@
 mcmcMain <- function(mutation_file,
                      copy_number_file,
                      outputDir,
-                     SNP_file=NULL,
+                     SNV_file=NULL,
                      stat_file=NULL, 
                      cytoband_file=NULL, 
                      pval=0.05,
@@ -33,7 +33,7 @@ mcmcMain <- function(mutation_file,
   data <- importFiles(mutation_file, 
                       copy_number_file, 
                       outputDir, 
-                      SNP_file=SNP_file, 
+                      SNV_file=SNV_file, 
                       stat_file=stat_file, 
                       cytoband_file=cytoband_file, 
                       alt_reads_thresh=alt_reads_thresh, 
@@ -46,60 +46,58 @@ mcmcMain <- function(mutation_file,
                       mc.cores=mc.cores, 
                       pval=pval,
                       sim_iter=sim_iter)
-    
-  for (iteration in seq_len(iterations)) {
-    if (iteration == 1) {
-      # initial integer CNA estimation by setting CNA to closest integer depending on the mean across all samples
-      cna_init <- estimateCNA(data)
-      
-      # estimation of copy number cellular fraction
-      cncf_init <- estimateCNCF(data, cna_init)
-    } else {
-      if (all(cna_init==cna_update)) {
-        break
-      } else {
-        cna_init = cna_update
-        cncf_init = cncf_update
-      }
-    }
-    
-    # assign integer cna and cncf to each mutation
-    icn <- data$overlap %*% cna_init + 2*(ifelse(rowSums(data$overlap)==0, 1, 0))
-    cncf <- data$overlap %*% cncf_init
-    
-    # estimate multiplicity
-    m_est <- estimateMultiplicity1(data, icn, cncf)
-    
-    # update data
-    input_data <- list(y=data$y,
-                       n=data$n,
-                       m=m_est,
-                       cncf=cncf,
-                       tcn=icn)
-    
-    # 1. separate mutations by sample presence
-    sep_list <- separateMutationsBySamplePresence(input_data, min_mutation_per_box)
-    
-    # 2. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
-    all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                          n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8)
-    
-    # 3. pick K: most common or min_BIC
-    set_k_choices <- writeSetKTable(all_set_results)
-    
-    # 4. collect best chains
-    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
-    chains <- mergeSetChains(best_set_chains, input_data)
-    
-    # plotChainsCCF(chains$w_chain)
-    # plotCCFViolin(chains$w_chain, chains$z_chain, indata = input_data)
-    # plotClusterAssignmentProbVertical(chains$z_chain, chains$w_chain)
-    
-    # re-estimate cncf by assigning cna to mcf clusters
-    cncf_update <- reassignCNCF(cncf_init, chains$w_chain)
-    warning("mcmcMain: re-assign cluster mcf after merging CNA")
-    cna_update <- reassignCNA(cncf_update, data$tcn)
-  }
+
+
+  # # initial integer CNA estimation by setting CNA to closest integer depending on the mean across all samples
+  # cna_init <- estimateCNA(data)
+  #   
+  # # estimation of copy number cellular fraction
+  # cncf_init <- estimateCNCF(data, cna_init)
+  # 
+  # 
+  # # assign integer cna and cncf to each mutation
+  # icn <- data$overlap %*% cna_init + 2*(ifelse(rowSums(data$overlap)==0, 1, 0))
+  # cncf <- data$overlap %*% cncf_init
+  # 
+  # # estimate multiplicity
+  # m_est <- estimateMultiplicity1(data, icn, cncf)
+  
+  # get index of SNVs in CN-neutral region (no LOH) or CNA events
+  index = which(rowSums(data$tcn)==0 | data$is_cn==1)
+  # update data
+  input_data <- list(y=data$y[index,],
+                     n=data$n[index,],
+                     tcn=data$tcn[index,],
+                     is_cn=data$is_cn[index],
+                     MutID=data$MutID[index])
+  
+  # 1. separate mutations by sample presence
+  sep_list <- separateMutationsBySamplePresence(input_data, min_mutation_per_box)
+  
+  # 2. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
+  all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                        n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type1")
+  
+  # 3. pick K: most common or min_BIC
+  set_k_choices <- writeSetKTable(all_set_results)
+  
+  # 4. collect best chains
+  best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+  chains <- mergeSetChains(best_set_chains, input_data)
+  
+  # plotChainsCCF(chains$w_chain)
+  # plotCCFViolin(chains$w_chain, chains$z_chain, indata = input_data)
+  # plotClusterAssignmentProbVertical(chains$z_chain, chains$w_chain)
+  
+  # re-estimate cncf by assigning cna to mcf clusters
+  cncf_update <- reassignCNCF(cncf_init, chains$w_chain)
+  warning("mcmcMain: re-assign cluster mcf after merging CNA")
+  cna_update <- reassignCNA(cncf_update, data$tcn)
+  
+  
+  
+  
+  
   
   generateAllTrees(chains$w_chain, lineage_precedence_thresh = 0.02, sum_filter_thresh = 0.1)
   ccfTable = writeClusterCCFsTable(chains$w_chain)
