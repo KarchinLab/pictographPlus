@@ -97,7 +97,7 @@ runMutSetMCMC <- function(temp_box,
   if (temp_max_K > 1) {
     box_indata <- getBoxInputData(temp_box)
     bic_vec <- unname(unlist(parallel::mclapply(filtered_samps_list,
-                                                function(chains) calcChainBIC(chains, box_indata, temp_box$pattern, model_type),
+                                                function(chains) calcChainBIC(chains=chains, input.data=box_indata, pattern=temp_box$pattern, model_type),
                                                 mc.cores = mc.cores)))
     bic_tb <- tibble(K_tested = K_tested,
                      BIC = bic_vec)
@@ -130,6 +130,7 @@ runMCMCForABox <- function(box,
                            drop_zero = TRUE) {
 
   # select columns if the presence pattern is 1
+  # box <- temp_box
   box_input_data <- getBoxInputData(box)
   
   extdir <- system.file("extdata", package="pictograph2")
@@ -159,7 +160,7 @@ runMCMCForABox <- function(box,
                       n.burn=n.burn)
   
   if(box_input_data$S == 1) {
-    colnames(samps_K1[[1]])[which(colnames(samps_K1[[1]]) == "w")] <- "w[1,1]"
+    colnames(samps_K1[[1]])[which(colnames(samps_K1[[1]]) == "mcf")] <- "mcf[1,1]"
   }
   
   # if (drop_zero) {
@@ -310,9 +311,9 @@ reverseDrop <- function(samps, pattern, n.iter) {
   # replace current sample id by true sample id from pattern
   for (i in seq_len(length(colnames(samps[[1]])))) {
     # print(colnames(samps[[1]])[i])
-    if (startsWith(colnames(samps[[1]])[i], "w")) {
+    if (startsWith(colnames(samps[[1]])[i], "mcf")) {
       para <- str_extract_all(colnames(samps[[1]])[i], "[0-9]+")[[1]]
-      colnames(samps[[1]])[i] <- paste("w[", para[1], ",", sample_list[strtoi(para[2])], "]", sep = "")
+      colnames(samps[[1]])[i] <- paste("mcf[", para[1], ",", sample_list[strtoi(para[2])], "]", sep = "")
       k_list <- c(k_list, para[1])
     } else if (startsWith(colnames(samps[[1]])[i], "ystar")) {
       para <- str_extract_all(colnames(samps[[1]])[i], "[0-9]+")[[1]]
@@ -332,7 +333,7 @@ reverseDrop <- function(samps, pattern, n.iter) {
   }
   for (k in seq_len(length(k_list))) {
     for (j in seq_len(length(absent_sample))) {
-      col = paste("w[", k_list[k], ",", absent_sample[j], "]", sep = "")
+      col = paste("mcf[", k_list[k], ",", absent_sample[j], "]", sep = "")
       samps[[1]] <- cbind(samps[[1]], col=0)
       colnames(samps[[1]])[colnames(samps[[1]]) == 'col'] <- col
     }
@@ -369,7 +370,7 @@ filterK <- function(samps_list, min_mutation_per_cluster=1, cluster_diff_thresh=
       } else {
         break
       }
-      mcfTable = writeClusterCCFsTable(mcf_chain)
+      mcfTable = writeClusterMCFsTable(mcf_chain)
       # check whether mcf for any cluster is less than cluster_diff_thresh in all samples
       for (j1 in seq_len(k)) {
         if (all(mcfTable[j1,] < cluster_diff_thresh)) {
