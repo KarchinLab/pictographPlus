@@ -6,17 +6,17 @@
 #' @import dplyr
 #' @import tidyr
 #' @param z_chain MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}
-#' @param w_chain MCMC chain of CCF values, which is the first item in the list returned by \code{clusterSep}
+#' @param mcf_chain MCMC chain of CCF values, which is the first item in the list returned by \code{clusterSep}
 #' @param filter_thresh Lowest posterior probability to include cluster assignment. Default value is 0.05 (inclusive)
 #' @param MutID (Optional) Vector of mutation IDs for labeling purposes. Same order as supplied as input data (e.g. indata$Mut_ID)
 #' @param SampleID (Optional) Vector of sample IDs for labeling purposes. Same order as supplied as input data (e.g. indata$Sample_ID)
 plotClusterAssignmentProbVertical <- function(z_chain, 
-                                              w_chain,
+                                              mcf_chain,
                                               filter_thresh = 0.05,
                                               MutID = NULL,
                                               SampleID = NULL) {
   
-  mcmc_z <- generateZPostSummary(z_chain, w_chain, filter_thresh, MutID, SampleID)
+  mcmc_z <- generateZPostSummary(z_chain, mcf_chain, filter_thresh, MutID, SampleID)
   K <- max(mcmc_z$value)
   z.seg.tb <- mcmc_z %>%
     group_by(Parameter) %>%
@@ -45,18 +45,18 @@ plotClusterAssignmentProbVertical <- function(z_chain,
 }
 
 generateZPostSummary <- function(z_chain, 
-                                 w_chain,
+                                 mcf_chain,
                                  filter_thresh = 0.05,
                                  MutID = NULL,
                                  SampleID = NULL) {
   
   map_z <- estimateClusterAssignments(z_chain)
-  map_w <- estimateCCFs(w_chain)
+  map_mcf <- estimateMCFs(mcf_chain)
   
   I <- length(unique(z_chain$Parameter))
   K <- max(unique(z_chain$value))
   num_iter <- max(z_chain$Iteration)
-  S <- ncol(map_w)
+  S <- ncol(map_mcf)
   
   if (is.null(MutID)) {
     mut_labels <- 1:I
@@ -71,7 +71,7 @@ generateZPostSummary <- function(z_chain,
   
   
   
-  tiers <- generateTiers(map_w, sample_labels)
+  tiers <- generateTiers(map_mcf, sample_labels)
   
   mcmc_z <- summarizeZPost(z_chain) %>%
     filter(probability >= filter_thresh)
@@ -133,22 +133,22 @@ generateTiers <- function(w_mat, Sample_ID) {
 #' Plot CCF chain trace 
 #'
 #' @export
-#' @param w_chain MCMC chain of CCF values, which is the first item in the list returned by \code{mergeSetChains}
-plotChainsCCF <- function(w_chain) {
-  cluster <- strsplit(as.character(w_chain$Parameter), ",") %>%
-    sapply(., function(x) gsub("w\\[", "", x[1])) %>%
+#' @param mcf_chain MCMC chain of CCF values, which is the first item in the list returned by \code{mergeSetChains}
+plotChainsCCF <- function(mcf_chain) {
+  cluster <- strsplit(as.character(mcf_chain$Parameter), ",") %>%
+    sapply(., function(x) gsub("mcf\\[", "", x[1])) %>%
     as.numeric
-  sample <- strsplit(as.character(w_chain$Parameter), ",") %>%
+  sample <- strsplit(as.character(mcf_chain$Parameter), ",") %>%
     sapply(., function(x) gsub("\\]", "", x[2])) %>%
     as.numeric
   
-  w_chain <- w_chain %>%
+  mcf_chain <- mcf_chain %>%
     mutate(Cluster = factor(paste0("Cluster ", cluster), 
                             levels = paste0("Cluster ", sort(unique(cluster)))), 
            Sample = factor(paste0("Sample ", sample),
                            levels = paste0("Sample ", sort(unique(sample)))))
   
-  ggplot(w_chain, aes(x = Iteration, y = value)) +
+  ggplot(mcf_chain, aes(x = Iteration, y = value)) +
     geom_line() +
     theme_light() +
     facet_grid(Cluster ~ Sample) +
@@ -158,12 +158,12 @@ plotChainsCCF <- function(w_chain) {
 #' Plot cluster CCF posterior distributions as violin plots
 #' 
 #' @export
-#' @param w_chain MCMC chain of CCF values
+#' @param mcf_chain MCMC chain of CCF values
 #' @param z_chain (Optional) MCMC chain of mutation cluster assignment values. If provided, cluster names will show the number of mutations assigned in brackets
 #' @param indata (Optional) List of input data items 
-plotCCFViolin <- function(w_chain, z_chain = NULL, indata = NULL) {
+plotMCFViolin <- function(mcf_chain, z_chain = NULL, indata = NULL) {
   # process data
-  vdat <- violinProcessData(w_chain, indata)
+  vdat <- violinProcessData(mcf_chain, indata)
   
   if (!is.null(z_chain)) {
     num_muts_in_clusters <- estimateClusterAssignments(z_chain) %>%
@@ -184,20 +184,20 @@ plotCCFViolin <- function(w_chain, z_chain = NULL, indata = NULL) {
   return(vplot)
 }
 
-violinProcessData <- function(w_chain, indata = NULL) {
-  w_mat <- estimateCCFs(w_chain)
-  est_K <- nrow(w_mat)
+violinProcessData <- function(mcf_chain, indata = NULL) {
+  mcf_mat <- estimateMCFs(mcf_chain)
+  est_K <- nrow(mcf_mat)
   
   if (is.null(indata$Sample_ID)) {
-    sample_names <- paste0("Sample ", 1:ncol(w_mat))
+    sample_names <- paste0("Sample ", 1:ncol(mcf_mat))
   } else {
     sample_names <- indata$Sample_ID
   }
   
-  vdat <- w_chain %>%
-    mutate(sample=stringr::str_replace_all(Parameter, "w\\[[:digit:]+,", ""),
+  vdat <- mcf_chain %>%
+    mutate(sample=stringr::str_replace_all(Parameter, "mcf\\[[:digit:]+,", ""),
            sample=stringr::str_replace_all(sample, "\\]", ""),
-           cluster=stringr::str_replace_all(Parameter, "w\\[", ""),
+           cluster=stringr::str_replace_all(Parameter, "mcf\\[", ""),
            cluster=stringr::str_replace_all(cluster, ",[:digit:]\\]", "")) %>%
     mutate(sample=as.numeric(sample),
            sample=sample_names[sample],
@@ -206,7 +206,7 @@ violinProcessData <- function(w_chain, indata = NULL) {
            cluster=paste0("Cluster ", cluster),
            cluster=factor(cluster, level=paste("Cluster", 1:est_K)))
   
-  tiers <- generateTiers(w_mat, sample_names)
+  tiers <- generateTiers(mcf_mat, sample_names)
   
   vdat <- vdat %>%
     mutate(cluster=as.character(cluster)) %>%
