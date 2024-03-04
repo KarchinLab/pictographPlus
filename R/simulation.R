@@ -1,10 +1,11 @@
-simulation_type3_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345) {
+simulation_type3_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345, depth=50) {
   set.seed(1234)
   eta <- 0.8
-  S <- 3
+  S <- 2
   K <- 3
   I <- 100
   num_cn=10
+  depth = 50
   mcf <- ifelse(runif(K*S, 0, 1) < eta, 1, 0) *
     rbeta(K*S, 1, 1) %>%
     matrix(K, S)
@@ -69,7 +70,7 @@ simulation_type3_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
     }
   }
   
-  n <- matrix(rpois(n = I*S, lambda = 50), I, S)
+  n <- matrix(rpois(n = I*S, lambda = depth), I, S)
   y <- matrix(rbinom(n=I*S, size=as.numeric(n), prob=as.numeric(vaf)), I, S)
   
   model <- jags.model(file = "~/JHU/scripts/R/pictograph2/inst/extdata/type3.jags",
