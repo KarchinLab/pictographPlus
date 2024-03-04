@@ -12,7 +12,6 @@ mcmcMain <- function(mutation_file,
                      max_K = 3, 
                      min_mutation_per_cluster=5, 
                      iterations=5, 
-                     min_mutation_per_box=10, 
                      n.iter=5000, 
                      n.burn=1000, 
                      thin=10, 
@@ -47,54 +46,64 @@ mcmcMain <- function(mutation_file,
                       pval=pval,
                       sim_iter=sim_iter)
 
-
-  # # initial integer CNA estimation by setting CNA to closest integer depending on the mean across all samples
-  # cna_init <- estimateCNA(data)
-  #   
-  # # estimation of copy number cellular fraction
-  # cncf_init <- estimateCNCF(data, cna_init)
-  # 
-  # 
-  # # assign integer cna and cncf to each mutation
-  # icn <- data$overlap %*% cna_init + 2*(ifelse(rowSums(data$overlap)==0, 1, 0))
-  # cncf <- data$overlap %*% cncf_init
-  # 
-  # # estimate multiplicity
-  # m_est <- estimateMultiplicity1(data, icn, cncf)
   
-  # get index of SNVs in CN-neutral region (no LOH) or CNA events
+  ##############################################################################
+  #              MCMC 1: SSMs (CN-neutral region) and all CNAs                 #
+  ##############################################################################
+  # 1. get index of SNVs in CN-neutral region (no LOH) or CNA events
   index = which(rowSums(data$tcn)==0 | data$is_cn==1)
-  # update data
+  # 2. update input_data
   input_data <- list(y=data$y[index,],
                      n=data$n[index,],
                      tcn=data$tcn[index,],
                      is_cn=data$is_cn[index],
                      MutID=data$MutID[index])
   
-  # 1. separate mutations by sample presence
-  sep_list <- separateMutationsBySamplePresence(input_data, min_mutation_per_box)
+  # 3. separate mutations by sample presence
+  sep_list <- separateMutationsBySamplePresence(input_data)
   
-  # 2. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
+  # 4. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
+  #    Note: model_type = "type1"
   all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                         n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type1")
   
-  # 3. pick K: most common or min_BIC
+  # 5. pick K: most common or min_BIC
   set_k_choices <- writeSetKTable(all_set_results)
   
-  # 4. collect best chains
+  # 6. collect best chains
   best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
-  
   chains <- mergeSetChains(best_set_chains, input_data)
+  
+  # 7. find integer copy number and multiplicity
+  data$mtp <- findM(data, input_data, chains)
+  data$icn <- findIcn(data, input_data, chains)
+  data$cncf <- findCncf(data, input_data, chains)
+
+  ##############################################################################
+  #              MCMC 2: all SSMs and all CNAs                 #
+  ##############################################################################
+  input_data <- list(y=data$y,
+                     n=data$n,
+                     tcn=data$tcn,
+                     is_cn=data$is_cn,
+                     mtp=data$mtp,
+                     icn=data$icn,
+                     cncf=data$cncf,
+                     MutID=data$MutID)
+  
+  sep_list <- separateMutationsBySamplePresence(input_data)
+  
+  all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                        n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type2")
+  
+  
+  
+  
+  
   
   plotChainsCCF(chains$mcf_chain)
   plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
   plotClusterAssignmentProbVertical(chains$z_chain, chains$mcf_chain)
-  
-  
-  # re-estimate cncf by assigning cna to mcf clusters
-  # cncf_update <- reassignCNCF(cncf_init, chains$w_chain)
-  # warning("mcmcMain: re-assign cluster mcf after merging CNA")
-  # cna_update <- reassignCNA(cncf_update, data$tcn)
   
   
   mcfTable = writeClusterMCFsTable(chains$mcf_chain)
@@ -141,3 +150,80 @@ mcmcMain <- function(mutation_file,
   # save.image(file=paste(outputDir, "PICTograph2.RData", sep=""))
 }
 
+findM <- function(data, input_data, chains) {
+  mTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
+  mTable <- mTable %>% 
+    mutate(order_idx = match(mTable$Mut_ID, input_data$MutID)) %>% 
+    arrange(order_idx) %>% 
+    select(-order_idx)
+  mTable <- mTable[which(input_data$is_cn==1),] 
+  mTable <- mTable %>%
+    mutate(order_idx = match(mTable$Mut_ID, data$MutID[which(data$is_cn==1)])) %>% 
+    arrange(order_idx) %>% 
+    select(-order_idx)
+  
+  ifelse(rowSums(data$tcn)==0, 1, data$overlap %*% as.matrix(mTable$Multiplicity))
+}
+
+findIcn <- function(data, input_data, chains) {
+  icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
+  icnTable <- icnTable %>% 
+    mutate(order_idx = match(icnTable$Mut_ID, input_data$MutID)) %>% 
+    arrange(order_idx) %>% 
+    select(-order_idx)
+  icnTable <- icnTable[which(input_data$is_cn==1),]
+  icnTable <- icnTable %>%
+    mutate(order_idx = match(icnTable$Mut_ID, data$MutID[which(data$is_cn==1)])) %>% 
+    arrange(order_idx) %>% 
+    select(-order_idx)
+  
+  ifelse(rowSums(data$tcn)==0, 2, data$overlap %*% as.matrix(icnTable$icn))
+}
+
+findCncf <- function(data, input_data, chains) {
+  cTable = writeClusterAssignmentsTable(chains$z_chain, Mut_ID = input_data$MutID)
+  cTable <- cTable %>% 
+    mutate(order_idx = match(cTable$Mut_ID, input_data$MutID)) %>% 
+    arrange(order_idx) %>% 
+    select(-order_idx)
+  mcfTable = writeClusterMCFsTable(chains$mcf_chain)
+  colnames(mcfTable) <- c("Cluster", colnames(input_data$y))
+  tmp <- cTable %>% inner_join(mcfTable, by="Cluster") %>% select(-Cluster)
+  tmp1 <- tmp[which(input_data$is_cn==1),]
+  tmp1 <- tmp1 %>% 
+    mutate(order_idx = match(tmp1$Mut_ID, colnames(data$overlap))) %>% 
+    arrange(order_idx) %>% 
+    select(-order_idx)
+  
+  overlap <- data$overlap
+  result_tibble <- tibble(row=1:nrow(overlap))
+  result_tibble$Mut_ID <- apply(overlap, 1, function(row) {
+    cols <- which(row == 1)
+    paste(colnames(overlap)[cols], collapse=", ")
+  })
+  result_tibble$row <- rownames(overlap)
+  tmp2 <-tmp1 %>% 
+    full_join(result_tibble, by="Mut_ID") %>%
+    select(-Mut_ID) %>%
+    rename(Mut_ID = row) %>% 
+    replace(is.na(.), 0) 
+  tmp2 <- tmp2 %>%
+    mutate(order_idx = match(tmp2$Mut_ID, data$MutID)) %>% 
+    arrange(order_idx) %>% 
+    select(-order_idx) 
+  
+  row_name <- tmp2$Mut_ID
+  tmp2 <- tmp2 %>% select(-Mut_ID)
+  tmp2 <- as.matrix(tmp2)
+  rownames(tmp2) <- row_name
+  tmp2
+}
+# findOverlap <- function(data) {
+#   overlap <- data$overlap
+#   colnames(overlap) <- sapply(colnames(data$overlap), function(col) {which(rownames(data$overlap)==col)})
+#   tmp <- vector("numeric", nrow(overlap))
+#   for (i in 1:nrow(overlap)) {
+#     tmp[i] <- ifelse(length(which(overlap[i,] == 1)) > 0, as.numeric(names(which(overlap[i,] == 1))[1]),0)
+#   }
+#   tmp
+# }

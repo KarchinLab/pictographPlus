@@ -21,7 +21,7 @@
 
 #' sample presence for MCMC
 #' @export
-separateMutationsBySamplePresence <- function(input_data, min_mutation_per_box=2) {
+separateMutationsBySamplePresence <- function(input_data) {
   # returns list of lists -- 
   # each item of list contains input data for a mutation sample presence set 
   # original mutation indices from input_data are recorded in $mutation_indices
@@ -48,6 +48,9 @@ separateMutationsBySamplePresence <- function(input_data, min_mutation_per_box=2
                                  n = input_data$n[type_indices[[types[t]]], ,drop=FALSE],
                                  tcn = input_data$tcn[type_indices[[types[t]]], ,drop=FALSE],
                                  is_cn = input_data$is_cn[type_indices[[types[t]]]],
+                                 cncf = input_data$cncf[type_indices[[types[t]]], ,drop=FALSE],
+                                 mtp = input_data$mtp[type_indices[[types[t]]]],
+                                 icn = input_data$icn[type_indices[[types[t]]]],
                                  MutID = input_data$MutID[type_indices[[types[t]]]])
     # if (ncol(input_data$y) == 1) {
     #   break

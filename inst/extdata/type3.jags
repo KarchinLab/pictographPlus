@@ -1,0 +1,61 @@
+model {
+	for (i in 1:I) {
+		for (s in 1:S) {
+			y[i,s] ~ dbin(vaf[i,s], n[i,s])
+			## posterior predictive distribution
+			ystar[i,s] ~ dbin(vaf[i,s], n[i,s])
+		}
+	}
+	
+	for (i in 1:I) {
+		for (s in 1:S) {
+		  tcn.est[i,s] <- icn[q[i]] * mcf[z[q[i]], s] + 2 * (1 - mcf[z[q[i]], s])
+		  
+			vaf.snv[i,s] <- ( mcf[z[i], s] + (m[i] - 1) * mcf[z[q[i]],s] ) / tcn.est[i,s]
+			vaf.cna[i,s] <- ( mcf[z[i], s] * m[i] + 1 - mcf[z[i], s] ) / tcn.est[i,s]
+			vaf.temp[i,s] <- ifelse(is_cn[i]==0, vaf.snv[i,s], vaf.cna[i,s])
+			vaf[i,s] <- ifelse(vaf.temp[i,s] < 0, 0.01, vaf.temp[i,s])
+		}
+	}
+	
+	for (i in 1:I) {
+		for (s in 1:S) {
+			tcn[i,s] ~ dnorm(icn[q[i]] * mcf[z[q[i]], s] + 2 * (1 - mcf[z[q[i]], s]), epsilon)
+		}
+	 }
+	
+	epsilon ~ dnorm(0,1)T(0,)
+
+  for (i in 1:I) {
+  	icn[i] <- ifelse(q[i]==i, icn2[i], icn2[q[i]])
+    m[i] <- ifelse(q[i]==i, m4[i], m4[q[i]])
+  }
+
+	for (i in 1:I) {
+	  z[i] ~ dcat(pi[1:K])
+	  
+	  icn1[i] ~ dpois(2)
+	  icn2[i] <- ifelse(is_cn[i]==0, 2, icn1[i])
+	  
+	  m1[i] ~ dpois(1)
+	  m2[i] <- min(m1[i], icn2[i])
+	  lambda[i] ~ dbin(0.5, 1)
+	  m3[i] <- lambda[i]*m2[i] + (1-lambda[i])*(icn2[i]-m2[i])
+	  m4[i] <- ifelse(is_cn[i]==0, 1, m3[i])
+	}
+	
+	alpha <- rep(1, K)
+	pi[1:K] ~ ddirch(alpha[1:K])
+
+	for (k in 1:K) {
+		for (s in 1:S) {
+
+			z.eta[k,s] ~ dcat(c(eta, 1-eta))
+
+			mcf1[k,s] ~ dbeta(1,1)T(0.05, )
+			mcf[k,s] <- ifelse(z.eta[k,s] == 1, mcf1[k,s], 0)
+		}
+	}
+	
+  eta ~ dbeta(5,2)
+}

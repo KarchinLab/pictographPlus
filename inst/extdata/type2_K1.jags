@@ -9,45 +9,37 @@ model {
 	
 	for (i in 1:I) { ## for each variant
 		for (s in 1:S) {  ## for each sample
-			#epsilon[i] ~ dnorm(0,1)
+		  epsilon[i] ~ dnorm(0,1)
 		  #tcn[i,s] <- icn[i] * mcf[z[i], s] + 2 * (1 - mcf[z[i], s]) + epsilon[i]
-		  tcn[i,s] ~ dnorm(icn[i] * mcf[z[i], s] + 2 * (1 - mcf[z[i], s]), 0.1)
+		  tcn[i,s] ~ dnorm(icn[i] * mcf[z[i], s] + 2 * (1 - mcf[z[i], s]), epsilon[i])
 
 		}
 	}
 	
-	#epsilon1 ~ dnorm(0,1)
-	#epsilon <- abs(epsilon1)
-	
-	
 	for (i in 1:I) { ## for each variant
 		for (s in 1:S) {  ## for each sample
-			vaf.snv[i,s] <- mcf[z[i], s] / tcn[i,s]
+			vaf.snv[i,s] <- (mcf[z[i], s] + (m[i]-1) * cncf[i,s]) / tcn[i,s]
 			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn[i,s]
 			vaf.temp[i,s] <- ifelse(is_cn[i]==0, vaf.snv[i,s], vaf.cna[i,s])
 			vaf[i,s] <- ifelse(vaf.temp[i,s] > 1, 1, vaf.temp[i,s])
 		}
 	}
 	
-	# [𝑍_𝑖│𝜋_1,…,𝜋_𝐾, 𝐾]~ Multinomial(𝜋_1, …,𝜋_K  )
 	for (i in 1:I) {
 	  z[i] <- 1
 	  
-	  # assuming the max integer copy number is 7
-	  icn1[i] ~ dcat(rep(0.125, 8))
-	  icn[i] <- ifelse(is_cn[i]==0, 2, icn1[i]-1)
-
-	  m1[i] ~ dcat(rep(0.25, 4))
-	  m2[i] <- min(m1[i]-1, icn[i])
-	  mcat[i] ~ dcat(c(0.5, 0.5))
-	  m3[i] <- equals(mcat[i], 1) * m2[i] + equals(mcat[i], 2) * (icn[i]-m2[i])
-	  m[i] <- ifelse(is_cn[i]==0, 1, m3[i])
+	  lambda[i] ~ dcat(c(0.5,0.5))
+	  m[i] <- ifelse(lambda[i]==1, mtp[i], icn[i]-mtp[i])
 	}
-	
-	for (s in 1:S) {
+
+  for (s in 1:S) {
+			
 		z.eta[1,s] ~ dcat(c(eta, 1-eta))
+
 		mcf1[1,s] ~ dbeta(1,1)T(0.005, )
 		mcf[1,s] <- ifelse(z.eta[1,s] == 1, mcf1[1,s], 0)
 	}
-	eta ~ dbeta(5,2)
+
+	
+  eta ~ dbeta(5,2)
 }

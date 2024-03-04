@@ -145,6 +145,7 @@ runMCMCForABox <- function(box,
     jags.file.K1 <- file.path(extdir, "type1_K1.jags")
   } else if (model_type == "type2") {
     jags.file <- file.path(extdir, "type2.jags")
+    jags.file.K1 <- file.path(extdir, "type2_K1.jags")
   }
   
   # 
@@ -212,13 +213,27 @@ getBoxInputData <- function(box) {
     }
   }
   # print(temp_box)
-  box_input_data <- list(I = nrow(box$y),
-                         S = length(sample_list),
-                         y = box$y[,sample_list,drop=FALSE],
-                         n = box$n[,sample_list,drop=FALSE],
-                         tcn = box$tcn[,sample_list,drop=FALSE],
-                         is_cn = box$is_cn, # integer copy number
-                         MutID = box$MutID)
+  if (is.null(box$icn)) {
+    box_input_data <- list(I = nrow(box$y),
+                           S = length(sample_list),
+                           y = box$y[,sample_list,drop=FALSE],
+                           n = box$n[,sample_list,drop=FALSE],
+                           tcn = box$tcn[,sample_list,drop=FALSE],
+                           is_cn = box$is_cn, # integer copy number
+                           MutID = box$MutID)
+  } else {
+    box_input_data <- list(I = nrow(box$y),
+                           S = length(sample_list),
+                           y = box$y[,sample_list,drop=FALSE],
+                           n = box$n[,sample_list,drop=FALSE],
+                           tcn = box$tcn[,sample_list,drop=FALSE],
+                           is_cn = box$is_cn, # integer copy number
+                           mtp = box$mtp,
+                           cncf = box$cncf[,sample_list,drop=FALSE],
+                           icn = box$icn,
+                           MutID = box$MutID)
+  }
+  
   # set tcn to 2 if 0
   box_input_data$tcn[box_input_data$tcn==0] <- 2
   return(box_input_data)
