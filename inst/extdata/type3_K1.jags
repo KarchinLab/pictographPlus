@@ -35,7 +35,7 @@ model {
   }
 
 	for (i in 1:I) {
-	  z[i] ~ dcat(pi[1:K])
+	  z[i] <- 1
 	  
 	  icn1[i] ~ dpois(2)
 	  icn2[i] <- ifelse(is_cn[i]==0, 2, icn1[i])
@@ -46,18 +46,14 @@ model {
 	  #m3[i] <- lambda[i]*m2[i] + (1-lambda[i])*(icn2[i]-m2[i])
 	  m3[i] <- ifelse(is_cn[i]==0, 1, m2[i])
 	}
+
+	for (s in 1:S) {
+
+			z.eta[1,s] ~ dcat(c(eta, 1-eta))
+
+			mcf1[1,s] ~ dbeta(1,1)T(0.05, )
+			mcf[1,s] <- ifelse(z.eta[1,s] == 1, mcf1[1,s], 0)
 	
-	alpha <- rep(1, K)
-	pi[1:K] ~ ddirch(alpha[1:K])
-
-	for (k in 1:K) {
-		for (s in 1:S) {
-
-			z.eta[k,s] ~ dcat(c(eta, 1-eta))
-
-			mcf1[k,s] ~ dbeta(1,1)T(0.05, )
-			mcf[k,s] <- ifelse(z.eta[k,s] == 1, mcf1[k,s], 0)
-		}
 	}
 	
   eta ~ dbeta(5,2)

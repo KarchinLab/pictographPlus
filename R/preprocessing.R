@@ -59,6 +59,15 @@ importFiles <- function(mutation_file,
   
   mutation_data$tcn <- mutation_data$overlap %*% mutation_data$tcn
   
+  
+  overlap <- mutation_data$overlap
+  colnames(overlap) <- sapply(colnames(mutation_data$overlap), function(col) {which(rownames(mutation_data$overlap)==col)})
+  q <- vector("numeric", nrow(overlap))
+  for (i in 1:nrow(overlap)) {
+    q[i] <- ifelse(length(which(overlap[i,] == 1)) > 0, as.numeric(names(which(overlap[i,] == 1))[1]),i)
+  }
+  mutation_data$q <- q
+  
   # mutation_data$overlap <- rbind(mutation_data$overlap, matrix(0, nrow=nrow(copy_number_data$tcn), ncol = ncol(copy_number_data$tcn)))
   warning("resolveOverlap: need to check whether a mutation overlaps with two CNA segs")
 
@@ -201,8 +210,8 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, sta
   colnames(tcn_alt) = colname
   
   tcn_tot <- tcn_ref + tcn_alt
+  tcn_alt[tcn_tot==0] <- round(mean(tcn_tot)/2)
   tcn_tot[tcn_tot==0] <- round(mean(tcn_tot))
-  
   # # check lOH using HET SNVs; 
   # # if both germline and tumor SNV counts provided, will check LOH
   # # otherwise, keep CNA outside normal range only

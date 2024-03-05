@@ -29,14 +29,24 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
   
   is_cn <- replicate(input.data$S, input.data$is_cn)
   if (model_type=="type1") {
-    vaf <- ww / 2
+    # vaf <- ww / 2
     vaf <- ifelse(is_cn==0, ww/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
+    vaf <- ifelse(vaf<0, 0.01, vaf)    
+    vaf <- ifelse(vaf>1, 0.99, vaf)
   }
   
   if (model_type=="type2") {
     vaf <- ifelse(is_cn==0, (ww + (mm-1) * input.data$cncf)/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
+    vaf <- ifelse(vaf<0, 0.01, vaf)
+    vaf <- ifelse(vaf>1, 0.99, vaf)
   }
 
+  if (model_type=="type3") {
+    vaf <- ifelse(is_cn==0, (ww + (mm-1) * ww[input.data$q,])/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
+    vaf <- ifelse(vaf<0, 0.01, vaf)
+    vaf <- ifelse(vaf>1, 0.99, vaf)
+  }
+  
   lik <- sum(dbinom(input.data$y,input.data$n,vaf,log = T))
   
   est_K <- estimateMCFs(chains$mcf_chain) %>% nrow(.)
@@ -74,6 +84,7 @@ writeSetKTable <- function(all_set_results, sample_names = NULL) {
                           min_bic_k_tb$min_BIC[i],
                           getmode(c(min_bic_k_tb$min_BIC[i],min_bic_k_tb$elbow[i],min_bic_k_tb$knee[i])))
     # TO-DO
+    chosen_K[i] <-  min_bic_k_tb$min_BIC[i]
   }
   
   min_bic_k_tb <- min_bic_k_tb %>%

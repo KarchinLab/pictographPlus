@@ -25,8 +25,8 @@ separateMutationsBySamplePresence <- function(input_data) {
   # returns list of lists -- 
   # each item of list contains input data for a mutation sample presence set 
   # original mutation indices from input_data are recorded in $mutation_indices
-  # pres <- ifelse(input_data$y > 0 & !input_data$is_cn, 1, 0) + ifelse(input_data$is_cn & input_data$tcn != 2, 1, 0)
-  pres <- ifelse(input_data$y > 0, 1, 0)
+  pres <- ifelse(input_data$y > 0 & !input_data$is_cn, 1, 0) + ifelse(input_data$is_cn & input_data$tcn != 2, 1, 0)
+  # pres <- ifelse(input_data$y > 0, 1, 0)
   
   pat <- apply(pres, 1, function(x) paste0(x, collapse=""))
   types <- sort(names(table(pat)), decreasing=TRUE)

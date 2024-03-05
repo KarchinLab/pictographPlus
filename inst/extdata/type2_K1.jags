@@ -7,39 +7,41 @@ model {
 		}
 	}
 	
-	for (i in 1:I) { ## for each variant
-		for (s in 1:S) {  ## for each sample
-		  epsilon[i] ~ dnorm(0,1)
-		  #tcn[i,s] <- icn[i] * mcf[z[i], s] + 2 * (1 - mcf[z[i], s]) + epsilon[i]
-		  tcn[i,s] ~ dnorm(icn[i] * mcf[z[i], s] + 2 * (1 - mcf[z[i], s]), epsilon[i])
+	for (i in 1:I) {
+		for (s in 1:S) {
+			
+			tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + 2 * (1 - cncf[i,s])
+      tcn.cna.est[i,s] <- icn[i] * mcf[z[i], s] + 2 * (1 - mcf[z[i], s])
+      
+			vaf.snv[i,s] <- (mcf[z[i], s] + (m[i]-1) * cncf[i,s]) / tcn.snv.est[i,s]
+			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn.cna.est[i,s]
+			vaf.temp[i,s] <- ifelse(is_cn[i]==0, vaf.snv[i,s], vaf.cna[i,s])
+			vaf[i,s] <- ifelse(vaf.temp[i,s] < 0 , 0.01 , vaf.temp[i,s])
+		}
+	}
 
+	for (i in 1:I) {
+		for (s in 1:S) {
+			tcn[i,s] ~ dnorm(icn[i] * cncf[i, s] + 2 * (1 - cncf[i, s]), epsilon)
 		}
 	}
 	
-	for (i in 1:I) { ## for each variant
-		for (s in 1:S) {  ## for each sample
-			vaf.snv[i,s] <- (mcf[z[i], s] + (m[i]-1) * cncf[i,s]) / tcn[i,s]
-			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn[i,s]
-			vaf.temp[i,s] <- ifelse(is_cn[i]==0, vaf.snv[i,s], vaf.cna[i,s])
-			vaf[i,s] <- ifelse(vaf.temp[i,s] > 1, 1, vaf.temp[i,s])
-		}
-	}
+	epsilon ~ dnorm(0,1)T(0,)
 	
 	for (i in 1:I) {
 	  z[i] <- 1
 	  
-	  lambda[i] ~ dcat(c(0.5,0.5))
-	  m[i] <- ifelse(lambda[i]==1, mtp[i], icn[i]-mtp[i])
+	  lambda[i] ~ dbin(0.5, 1)
+	  m[i] <- lambda[i]*mtp[i] + (1-lambda[i])*(icn[i]-mtp[i])
 	}
-
+	
   for (s in 1:S) {
 			
-		z.eta[1,s] ~ dcat(c(eta, 1-eta))
+			z.eta[1,s] ~ dcat(c(eta, 1-eta))
 
-		mcf1[1,s] ~ dbeta(1,1)T(0.005, )
-		mcf[1,s] <- ifelse(z.eta[1,s] == 1, mcf1[1,s], 0)
+			mcf1[1,s] ~ dbeta(1,1)T(0.005, )
+			mcf[1,s] <- ifelse(z.eta[1,s] == 1, mcf1[1,s], 0)
 	}
-
 	
   eta ~ dbeta(5,2)
 }

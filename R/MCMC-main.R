@@ -4,6 +4,7 @@
 mcmcMain <- function(mutation_file,
                      copy_number_file,
                      outputDir,
+                     sample_presence=FALSE,
                      SNV_file=NULL,
                      stat_file=NULL, 
                      cytoband_file=NULL, 
@@ -18,7 +19,6 @@ mcmcMain <- function(mutation_file,
                      mc.cores=8, 
                      model_type="spike_and_slab", 
                      beta.prior=FALSE, 
-                     drop_zero=TRUE, 
                      inits=list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123),
                      cluster_diff_thresh=0.05,
                      alt_reads_thresh = 0, 
@@ -46,105 +46,164 @@ mcmcMain <- function(mutation_file,
                       pval=pval,
                       sim_iter=sim_iter)
 
+  if (sample_presence) {
+    
+    ##############################################################################
+    #              MCMC 1: SSMs (CN-neutral region) and all CNAs                 #
+    ##############################################################################
+    # 1. get index of SNVs in CN-neutral region (no LOH) or CNA events
+    index = which(rowSums(data$tcn)==0 | data$is_cn==1)
+    # 2. update input_data
+    input_data <- list(y=data$y[index,],
+                       n=data$n[index,],
+                       tcn=data$tcn[index,],
+                       is_cn=data$is_cn[index],
+                       MutID=data$MutID[index])
+    
+    # 3. separate mutations by sample presence
+    sep_list <- separateMutationsBySamplePresence(input_data)
+    
+    # 4. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
+    #    Note: model_type = "type1"
+    all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                          n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type1")
+    
+    # 5. pick K: most common or min_BIC
+    set_k_choices <- writeSetKTable(all_set_results)
+    
+    # 6. collect best chains
+    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+    chains <- mergeSetChains(best_set_chains, input_data)
+    
+    # 7. find integer copy number and multiplicity
+    data$mtp <- findM(data, input_data, chains)
+    data$icn <- findIcn(data, input_data, chains)
+    data$cncf <- findCncf(data, input_data, chains)
+    
+    ##############################################################################
+    #              MCMC 2: all SSMs and all CNAs                 #
+    ##############################################################################
+    
+    # 8. collect data for the second chain
+    input_data <- list(y=data$y,
+                       n=data$n,
+                       tcn=data$tcn,
+                       is_cn=data$is_cn,
+                       mtp=data$mtp,
+                       icn=data$icn,
+                       cncf=data$cncf,
+                       MutID=data$MutID)
+    # 9. separate mutations by sample presence
+    sep_list <- separateMutationsBySamplePresence(input_data)
+    
+    # 10. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
+    #    Note: model_type = "type1"
+    all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                          n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type2")
+    
+    # 11. pick K: most common or min_BIC
+    set_k_choices <- writeSetKTable(all_set_results)
+    
+    # 12. collect best chains
+    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+    chains <- mergeSetChains(best_set_chains, input_data)
   
-  ##############################################################################
-  #              MCMC 1: SSMs (CN-neutral region) and all CNAs                 #
-  ##############################################################################
-  # 1. get index of SNVs in CN-neutral region (no LOH) or CNA events
-  index = which(rowSums(data$tcn)==0 | data$is_cn==1)
-  # 2. update input_data
-  input_data <- list(y=data$y[index,],
-                     n=data$n[index,],
-                     tcn=data$tcn[index,],
-                     is_cn=data$is_cn[index],
-                     MutID=data$MutID[index])
-  
-  # 3. separate mutations by sample presence
-  sep_list <- separateMutationsBySamplePresence(input_data)
-  
-  # 4. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
-  #    Note: model_type = "type1"
-  all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                        n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type1")
-  
-  # 5. pick K: most common or min_BIC
-  set_k_choices <- writeSetKTable(all_set_results)
-  
-  # 6. collect best chains
-  best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
-  chains <- mergeSetChains(best_set_chains, input_data)
-  
-  # 7. find integer copy number and multiplicity
-  data$mtp <- findM(data, input_data, chains)
-  data$icn <- findIcn(data, input_data, chains)
-  data$cncf <- findCncf(data, input_data, chains)
+    mcfTable = writeClusterMCFsTable(chains$mcf_chain)
+    
+    write.table(mcfTable, file=paste(outputDir, "mcf_SP.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    
+    clusterAssingmentTable = writeClusterAssignmentsTable(chains$z_chain, Mut_ID = input_data$MutID)
+    clusterAssingmentTable
+    write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign_SP.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    
+    icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
+    write.table(icnTable, file=paste(outputDir, "icn_SP.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    
+    multiplicityTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
+    write.table(multiplicityTable, file=paste(outputDir, "multiplicity_SP.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    
+    
+  } else {
+    ##############################################################################
+    #             MCMC chain for all; no sample presence                         #
+    ##############################################################################
+    
+    input_data <- list(y=data$y,
+                       n=data$n,
+                       tcn=data$tcn,
+                       is_cn=data$is_cn,
+                       q=data$q,
+                       MutID=data$MutID)
+    
+    all_set_results <- runMCMCForAllBoxes(input_data, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                          n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type3")
+    
+    # 1. pick K: chosen K is min_BIC
+    set_k_choices <- writeSetKTable(all_set_results)
+    
+    # 2. collect best chains
+    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+    chains <- mergeSetChains(best_set_chains, input_data)
+    
+    mcfTable = writeClusterMCFsTable(chains$mcf_chain)
+    mcfTable
+    
+    write.table(mcfTable, file=paste(outputDir, "mcf.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    
+    clusterAssingmentTable = writeClusterAssignmentsTable(chains$z_chain, Mut_ID = input_data$MutID)
+    clusterAssingmentTable
+    write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    
+    icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
+    write.table(icnTable, file=paste(outputDir, "icn.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    
+    multiplicityTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
+    write.table(multiplicityTable, file=paste(outputDir, "multiplicity.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
 
-  ##############################################################################
-  #              MCMC 2: all SSMs and all CNAs                 #
-  ##############################################################################
-  input_data <- list(y=data$y,
-                     n=data$n,
-                     tcn=data$tcn,
-                     is_cn=data$is_cn,
-                     mtp=data$mtp,
-                     icn=data$icn,
-                     cncf=data$cncf,
-                     MutID=data$MutID)
+  }
   
-  sep_list <- separateMutationsBySamplePresence(input_data)
-  
-  all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                        n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type2")
-  
-  
-  
-  
-  
-  
-  plotChainsCCF(chains$mcf_chain)
+  plotChainsMCF(chains$mcf_chain)
   plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
   plotClusterAssignmentProbVertical(chains$z_chain, chains$mcf_chain)
   
   
-  mcfTable = writeClusterMCFsTable(chains$mcf_chain)
   
-  write.table(mcfTable, file=paste(outputDir, "mcf.csv", sep=""), quote = FALSE, sep = ",", row.names = F)
+  ### Clean copy number segments by removing segments with icn of 2 and multiplicity of 1
   
-  clusterAssingmentTable = writeClusterAssignmentsTable(chains$z_chain, Mut_ID = input_data$MutID)
+  # 
+  # for (i in seq_len(nrow(clusterAssingmentTable))) {
+  #   # rename chromosome name if CNA in a cluster
+  #   if (clusterAssingmentTable[i,]$Mut_ID %in% rownames(data$tcn)) {
+  #     change = "neutral"
+  #     if (mean(cna_update[(clusterAssingmentTable[i,]$Mut_ID),]) < 2) {
+  #       change = "del"
+  #     }
+  #     if (mean(cna_update[(clusterAssingmentTable[i,]$Mut_ID),]) > 2) {
+  #       change = "dup"
+  #     }
+  #     
+  #     ######################################
+  #     # Add code to add cytoband information
+  #     ######################################
+  #     new_name = paste(change, clusterAssingmentTable[i,]$Mut_ID, sep = ":")
+  #     clusterAssingmentTable[i,]$Mut_ID = new_name
+  #   }
+  # }
   
-  for (i in seq_len(nrow(clusterAssingmentTable))) {
-    # rename chromosome name if CNA in a cluster
-    if (clusterAssingmentTable[i,]$Mut_ID %in% rownames(data$tcn)) {
-      change = "neutral"
-      if (mean(cna_update[(clusterAssingmentTable[i,]$Mut_ID),]) < 2) {
-        change = "del"
-      }
-      if (mean(cna_update[(clusterAssingmentTable[i,]$Mut_ID),]) > 2) {
-        change = "dup"
-      }
-      
-      ######################################
-      # Add code to add cytoband information
-      ######################################
-      new_name = paste(change, clusterAssingmentTable[i,]$Mut_ID, sep = ":")
-      clusterAssingmentTable[i,]$Mut_ID = new_name
-    }
-  }
   
-  # write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign.csv", sep=""), quote = FALSE, sep = ",", row.names = F)
-  generateAllTrees(chains$mcf_chain, lineage_precedence_thresh = 0.02, sum_filter_thresh = 0.1)
+  generateAllTrees(chains$mcf_chain, lineage_precedence_thresh = 0.2, sum_filter_thresh = 0.2)
   
-  scores <- calcTreeScores(chains$w_chain, all_spanning_trees)
+  scores <- calcTreeScores(chains$mcf_chain, all_spanning_trees)
 
   # highest scoring tree
   best_tree <- all_spanning_trees[[which.max(scores)]]
-  best_tree <- all_spanning_trees[[12]] # for HTAN-IPMN MCL111_001
+  best_tree <- all_spanning_trees[[12]] # for HTAN-IPMN MCL111_001 SP
 
   # plot tree
   plotTree(best_tree, palette = viridis::viridis)
   # plotEnsembleTree(all_spanning_trees, palette = color_palette)
   
-  subclone_props <- calcSubcloneProportions(w_mat, best_tree)
+  subclone_props <- calcSubcloneProportions(mcf_mat, best_tree)
   plotSubclonePie(subclone_props, sample_names=colnames(input_data$y))
   plotSubcloneBar(subclone_props, sample_names=colnames(input_data$y))
   # save.image(file=paste(outputDir, "PICTograph2.RData", sep=""))
@@ -218,12 +277,13 @@ findCncf <- function(data, input_data, chains) {
   rownames(tmp2) <- row_name
   tmp2
 }
+
 # findOverlap <- function(data) {
 #   overlap <- data$overlap
 #   colnames(overlap) <- sapply(colnames(data$overlap), function(col) {which(rownames(data$overlap)==col)})
 #   tmp <- vector("numeric", nrow(overlap))
 #   for (i in 1:nrow(overlap)) {
-#     tmp[i] <- ifelse(length(which(overlap[i,] == 1)) > 0, as.numeric(names(which(overlap[i,] == 1))[1]),0)
+#     tmp[i] <- ifelse(length(which(overlap[i,] == 1)) > 0, as.numeric(names(which(overlap[i,] == 1))[1]),i)
 #   }
 #   tmp
 # }

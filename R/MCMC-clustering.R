@@ -8,22 +8,21 @@ runMCMCForAllBoxes <- function(sep_list,
                                n.burn = 1000, 
                                thin = 10,
                                mc.cores = 4, 
-                               model_type = "spike_and_slab", 
+                               model_type = "type3", 
                                beta.prior = FALSE, 
-                               drop_zero = TRUE,
                                inits = list(".RNG.name" = "base::Wichmann-Hill",
                                             ".RNG.seed" = 123)){
   
-  all_set_results <- vector("list", length(sep_list))
-  names(all_set_results) <- names(sep_list)
-  params = c("z", "mcf", "icn", "m", "ystar")
-
-  for (i in seq_len(length(sep_list))) {
-    # i = 2
-    temp_box <- sep_list[[i]]
-    # Max number of clusters cannot be more than number of mutations/min_mutation_per_cluster
-    temp_max_K <- min(max_K, floor(length(temp_box$mutation_indices)/min_mutation_per_cluster))
+  if (model_type == "type3") {
+    all_set_results <- vector("list", 1)
+    names(all_set_results) <- paste0(rep("1", ncol(sep_list$y)), collapse = "")
+    params = c("z", "mcf", "icn", "m", "ystar")
+    
+    temp_box <- input_data
+    temp_box$pattern <- paste0(rep("1", ncol(sep_list$y)), collapse = "")
+    temp_max_K <- min(max_K, floor(nrow(temp_box$y)/min_mutation_per_cluster))
     temp_max_K <- max(temp_max_K, 1)
+    
     temp_samps_list <- runMutSetMCMC(temp_box, 
                                      n.iter = n.iter, 
                                      n.burn = n.burn, 
@@ -34,12 +33,37 @@ runMCMCForAllBoxes <- function(sep_list,
                                      model_type = model_type,
                                      params = params,
                                      beta.prior = beta.prior,
-                                     drop_zero = drop_zero,
                                      min_mutation_per_cluster = min_mutation_per_cluster, 
                                      cluster_diff_thresh = cluster_diff_thresh)
     
-    all_set_results[[i]] <- temp_samps_list
-    # break
+    all_set_results[[1]] <- temp_samps_list
+    
+  } else {
+    all_set_results <- vector("list", length(sep_list))
+    names(all_set_results) <- names(sep_list)
+    params = c("z", "mcf", "icn", "m", "ystar")
+    
+    for (i in seq_len(length(sep_list))) {
+      # i = 2
+      temp_box <- sep_list[[i]]
+      # Max number of clusters cannot be more than number of mutations/min_mutation_per_cluster
+      temp_max_K <- min(max_K, floor(length(temp_box$mutation_indices)/min_mutation_per_cluster))
+      temp_max_K <- max(temp_max_K, 1)
+      temp_samps_list <- runMutSetMCMC(temp_box, 
+                                       n.iter = n.iter, 
+                                       n.burn = n.burn, 
+                                       thin = thin, 
+                                       mc.cores = mc.cores,
+                                       inits = inits,
+                                       temp_max_K = temp_max_K,
+                                       model_type = model_type,
+                                       params = params,
+                                       beta.prior = beta.prior,
+                                       min_mutation_per_cluster = min_mutation_per_cluster, 
+                                       cluster_diff_thresh = cluster_diff_thresh)
+      
+      all_set_results[[i]] <- temp_samps_list
+    }
   }
   return(all_set_results)
 }
@@ -55,7 +79,6 @@ runMutSetMCMC <- function(temp_box,
                           model_type = "spike_and_slab",
                           params = c("z", "mcf", "icn", "m", "ystar"),
                           beta.prior = FALSE,
-                          drop_zero = FALSE,
                           min_mutation_per_cluster = 1,
                           cluster_diff_thresh=0.05) {
   #beta.prior not used
@@ -76,11 +99,10 @@ runMutSetMCMC <- function(temp_box,
                                     params = params,
                                     max_K = temp_max_K,
                                     model = model_type,
-                                    beta.prior = beta.prior,
-                                    drop_zero = drop_zero)
+                                    beta.prior = beta.prior)
   
   # Format chains
-  if (drop_zero && nrow(temp_box$y) == 1) {
+  if (nrow(temp_box$y) == 1) {
     samps_list <- list(formatChains(temp_samps_list))
     names(samps_list) <- "K1"
   } else {
@@ -91,11 +113,12 @@ runMutSetMCMC <- function(temp_box,
   # check whether 1) number of mutations per cluster is at least min_mutation_per_cluster 2) difference between any two cluster less than cluster_diff_thresh 
   filtered_samps_list <- filterK(samps_list, min_mutation_per_cluster = min_mutation_per_cluster,
                                  cluster_diff_thresh = cluster_diff_thresh)
+  
   # filtered_samps_list <- samps_list
   # Calculate BIC
   K_tested <- seq_len(length(filtered_samps_list))
   if (temp_max_K > 1) {
-    box_indata <- getBoxInputData(temp_box)
+    box_indata <- getBoxInputData(temp_box, model_type)
     bic_vec <- unname(unlist(parallel::mclapply(filtered_samps_list,
                                                 function(chains) calcChainBIC(chains=chains, input.data=box_indata, pattern=temp_box$pattern, model_type),
                                                 mc.cores = mc.cores)))
@@ -125,13 +148,12 @@ runMCMCForABox <- function(box,
                            inits = list(".RNG.name" = "base::Wichmann-Hill",
                                         ".RNG.seed" = 123),
                            params = c("z", "mcf", "icn", "m", "ystar"),
-                           max_K = 5, model_type = "simple",
-                           beta.prior = FALSE,
-                           drop_zero = TRUE) {
+                           max_K = 5, model_type = "type1",
+                           beta.prior = FALSE) {
 
   # select columns if the presence pattern is 1
   # box <- temp_box
-  box_input_data <- getBoxInputData(box)
+  box_input_data <- getBoxInputData(box, model_type)
   
   extdir <- system.file("extdata", package="pictograph2")
   
@@ -146,6 +168,9 @@ runMCMCForABox <- function(box,
   } else if (model_type == "type2") {
     jags.file <- file.path(extdir, "type2.jags")
     jags.file.K1 <- file.path(extdir, "type2_K1.jags")
+  } else if (model_type == "type3") {
+    jags.file <- file.path(extdir, "type3.jags")
+    jags.file.K1 <- file.path(extdir, "type3_K1.jags")
   }
   
   # 
@@ -203,35 +228,41 @@ runMCMCForABox <- function(box,
   
 }
 
-getBoxInputData <- function(box) {
+getBoxInputData <- function(box, model_type) {
   sample_list = vector()
   
-  # include samples if the pattern is 1; i.e. presence of mutaitons in the sample
+  # include samples if the pattern is 1; i.e. presence of mutations in the sample
   for (j in 1:ncol(box$y)) {
     if (strsplit(box$pattern, "")[[1]][j] == "1") {
       sample_list <- append(sample_list, j)
     }
   }
   # print(temp_box)
-  if (is.null(box$icn)) {
+  if (model_type == "type1") {
     box_input_data <- list(I = nrow(box$y),
                            S = length(sample_list),
                            y = box$y[,sample_list,drop=FALSE],
                            n = box$n[,sample_list,drop=FALSE],
                            tcn = box$tcn[,sample_list,drop=FALSE],
-                           is_cn = box$is_cn, # integer copy number
-                           MutID = box$MutID)
-  } else {
+                           is_cn = box$is_cn)
+  } else if (model_type == "type2") {
     box_input_data <- list(I = nrow(box$y),
                            S = length(sample_list),
                            y = box$y[,sample_list,drop=FALSE],
                            n = box$n[,sample_list,drop=FALSE],
                            tcn = box$tcn[,sample_list,drop=FALSE],
-                           is_cn = box$is_cn, # integer copy number
+                           is_cn = box$is_cn,
                            mtp = box$mtp,
                            cncf = box$cncf[,sample_list,drop=FALSE],
-                           icn = box$icn,
-                           MutID = box$MutID)
+                           icn = box$icn)
+  } else if (model_type == "type3") {
+    box_input_data <- list(I = nrow(box$y),
+                           S = length(sample_list),
+                           y = box$y[,sample_list,drop=FALSE],
+                           n = box$n[,sample_list,drop=FALSE],
+                           tcn = box$tcn[,sample_list,drop=FALSE],
+                           is_cn = box$is_cn,
+                           q = box$q)
   }
   
   # set tcn to 2 if 0

@@ -134,7 +134,7 @@ generateTiers <- function(w_mat, Sample_ID) {
 #'
 #' @export
 #' @param mcf_chain MCMC chain of CCF values, which is the first item in the list returned by \code{mergeSetChains}
-plotChainsCCF <- function(mcf_chain) {
+plotChainsMCF <- function(mcf_chain) {
   cluster <- strsplit(as.character(mcf_chain$Parameter), ",") %>%
     sapply(., function(x) gsub("mcf\\[", "", x[1])) %>%
     as.numeric

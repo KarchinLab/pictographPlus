@@ -1,9 +1,9 @@
 simulation_type3_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345, depth=50) {
-  set.seed(1234)
-  eta <- 0.8
+  set.seed(12345)
+  eta <- 0.85
   S <- 2
   K <- 3
-  I <- 100
+  I <- 70
   num_cn=10
   depth = 50
   mcf <- ifelse(runif(K*S, 0, 1) < eta, 1, 0) *
@@ -29,7 +29,7 @@ simulation_type3_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
   m[ h==1 ] <- ifelse(indices == 1, m[h==1], icn[h==1]-m[h==1])
   
   ## tcn is the fraction copy number of mixture of normal and tumor cells
-  epsilon <- 0
+  epsilon <- 0.1
   tcn <- matrix(2, I, S)
   for (i in 1:I) {
     for (s in 1:S) {
@@ -49,7 +49,7 @@ simulation_type3_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
         q[i] <- sample((I-num_cn+1):I,1)
         tcn[i,] <- tcn[q[i],]
         icn[i] <- icn[q[i]]
-        m[i] <- m[q[i]]
+        m[i] <- sample(c(m[q[i]], icn[q[i]]-m[q[i]]),1)
       } else {
         q[i] <- i
       }
@@ -64,8 +64,10 @@ simulation_type3_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
     for(s in seq_len(S)){
       if(h[i] == 0){
         vaf[i,s] <- max(0, (mcf[z[i], s] + (m[i] - 1) * mcf[z[q[i]],s]) / tcn[i,s])
+        vaf[i,s] <- min(1, vaf[i,s])
       } else{
-        vaf[i,s] <- (mcf[z[i], s]*m[i] + 1 - mcf[z[i], s]) / tcn[i,s]
+        vaf[i,s] <- max(0, (mcf[z[i], s]*m[i] + 1 - mcf[z[i], s]) / tcn[i,s])
+        vaf[i,s] <- min(1, vaf[i,s])
       }
     }
   }
@@ -135,7 +137,7 @@ simulation_type1_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
   pi <- rdirichlet(1, rep(1, K))
   z <- replicate(I, sample(seq_len(K), size=1,
                            replace=TRUE, prob=pi))
-  ## indicator for whether mutation is in copy-altered or LOH region
+  ## indicator for whether mutation is a copy number alteration
   h <- rep(c(0, 1), c(I-num_cn, num_cn))
   ## integer total copy number in the tumor
   icn <- rep(NA, I)
@@ -158,7 +160,7 @@ simulation_type1_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
   
   vaf <- matrix(NA, I, S)
   tcn <- matrix(2, I, S)
-  epsilon <- 0
+  epsilon <- 0.1
   for(i in seq_len(I)){
     for(s in seq_len(S)){
       if(h[i] == 0){
@@ -195,7 +197,7 @@ simulation_type1_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
   mcf
   mcf_est <- writeClusterMCFsTable(chains$mcf_chain)
   mcf_est
-  plotChainsCCF(chains$mcf_chain)
+  plotChainsMCF(chains$mcf_chain)
   
   # which(z==1)
   # which(z==2)
@@ -223,7 +225,7 @@ simulation_type1_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
 }
 
 simulation_type2_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345) {
-  set.seed(12345)
+  set.seed(1234)
   eta <- 0.8
   S <- 3
   K <- 2
@@ -253,7 +255,7 @@ simulation_type2_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
   
   
   ## tcn is the fraction copy number of mixture of normal and tumor cells
-  epsilon <- 0
+  epsilon <- 0.1
   tcn <- matrix(2, I, S)
   for (i in 1:I) {
     for (s in 1:S) {
@@ -275,7 +277,7 @@ simulation_type2_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
         if (icn[q[i]]!=0) {
           cncf[i,] <- mcf[z[q[i]],]
           icn[i] <- icn[q[i]]
-          m[i] <- m[q[i]]
+          m[i] <- sample(c(m[q[i]], icn[q[i]]-m[q[i]]),1)
           tcn[i,] <- tcn[q[i],]
         } else {
           q[i] <- 0
@@ -290,9 +292,9 @@ simulation_type2_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345
   for(i in seq_len(I)){
     for(s in seq_len(S)){
       if(h[i] == 0){
-        vaf[i, s] <- (mcf[z[i], s] + (m[i] - 1) * cncf[i,s]) / tcn[i,s]
+        vaf[i, s] <- max(0, (mcf[z[i], s] + (m[i] - 1) * cncf[i,s]) / tcn[i,s])
       } else{
-        vaf[i,s] <- (mcf[z[i], s]*m[i] + 1 - mcf[z[i], s]) / tcn[i,s]
+        vaf[i,s] <- max(0, (mcf[z[i], s]*m[i] + 1 - mcf[z[i], s]) / tcn[i,s])
       }
     }
   }
