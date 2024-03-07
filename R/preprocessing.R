@@ -36,7 +36,7 @@ importFiles <- function(mutation_file,
                                           mc.cores,
                                           sim_iter)
   
-  mutation_data$tcn = copy_number_data$tcn[, name_order]
+  mutation_data$tcn = copy_number_data$tcn[, name_order, drop=FALSE]
   # mutation_data$tcn_ref = copy_number_data$tcn_ref[, name_order]
   # mutation_data$tcn_alt = copy_number_data$tcn_alt[, name_order]
   
@@ -50,8 +50,8 @@ importFiles <- function(mutation_file,
   
   # bind SSM and CNA
   mutation_data$is_cn <- c(rep(0, nrow(mutation_data$y)), rep(1,nrow(copy_number_data$tcn)))
-  mutation_data$y <- rbind(mutation_data$y, copy_number_data$tcn_alt[, name_order])
-  mutation_data$n <- rbind(mutation_data$n, copy_number_data$tcn_tot[, name_order])
+  mutation_data$y <- rbind(mutation_data$y, copy_number_data$tcn_alt[, name_order, drop=FALSE])
+  mutation_data$n <- rbind(mutation_data$n, copy_number_data$tcn_tot[, name_order, drop=FALSE])
   mutation_data$MutID <- c(mutation_data$MutID, rownames(copy_number_data$tcn))
   mutation_data$I <- mutation_data$I + nrow(copy_number_data$tcn)
   
@@ -61,7 +61,9 @@ importFiles <- function(mutation_file,
   
   
   overlap <- mutation_data$overlap
+  
   colnames(overlap) <- sapply(colnames(mutation_data$overlap), function(col) {which(rownames(mutation_data$overlap)==col)})
+  
   q <- vector("numeric", nrow(overlap))
   for (i in 1:nrow(overlap)) {
     q[i] <- ifelse(length(which(overlap[i,] == 1)) > 0, as.numeric(names(which(overlap[i,] == 1))[1]),i)
@@ -156,9 +158,16 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, sta
   
   data <- read_csv(copy_number_file, show_col_types = FALSE) # read copy number csv file
   
-  data <- check_sample_LOH(data, outputDir, SNV_file, tcn_normal_range=c(1.5, 2.5), pval=0.05) # check unimodality at both normal and tumor sample
+  if ("baf" %in% colnames(data)) {
+    message("inferring allele-specific copy number using BAF")
+  } else if (SNV_file) {
+    message("inferring allele-specific copy number using heterozygous SNVs")
+    data <- check_sample_LOH(data, outputDir, SNV_file, tcn_normal_range=tcn_normal_range, pval=pval) # check unimodality at both normal and tumor sample
+    data <- data[data$to_keep==1,] # keep rows is to_keep is 1
+  } else {
+    stop("Please provide either a baf column in the copy number file or supply a SNV file with heterozygous SNV counts")
+  }
   
-  data <- data[data$to_keep==1,] # keep rows is to_keep is 1
   
   # data$tcn[data$tcn==2] <- 2.01 # make tcn=2 -> 2.01 to avoid confusion during sample presence
   
@@ -189,29 +198,51 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, sta
   rownames(output_data) = rowname
   colnames(output_data) = colname
   
-  tcn_ref <- list()
-  tcn_ref = as.matrix(data[c("sample", "CNA", "tcn_ref")] %>% pivot_wider(names_from = sample, values_from = tcn_ref, values_fill = 0))
-  rownames(tcn_ref) <- tcn_ref[,'CNA']
-  tcn_ref <-tcn_ref[,-1, drop=FALSE]
-  rowname = rownames(tcn_ref)
-  colname = colnames(tcn_ref)
-  tcn_ref <- matrix(as.numeric(tcn_ref), ncol = ncol(tcn_ref))
-  rownames(tcn_ref) = rowname
-  colnames(tcn_ref) = colname
+  if ("baf" %in% colnames(data)) {
+    baf = as.matrix(data[c("sample", "CNA", "baf")] %>% pivot_wider(names_from = sample, values_from = baf, values_fill = 0.5))
+    rownames(baf) <- baf[,'CNA']
+    baf <- baf[,-1, drop=FALSE]
+    rowname = rownames(baf)
+    colname = colnames(baf)
+    baf <- matrix(as.numeric(baf), ncol = ncol(baf))
+    rownames(baf) = rowname
+    colnames(baf) = colname
+    
+    tcn_tot <- matrix(rpois(n = nrow(output_data)*ncol(output_data), lambda = 100), nrow(output_data),ncol(output_data))
+    rownames(tcn_tot) <- rownames(output_data)
+    colnames(tcn_tot) <- colnames(output_data)
+    
+    tcn_alt <- matrix(rbinom(n=nrow(output_data)*ncol(output_data), size=as.numeric(tcn_tot), prob=as.numeric(baf)), nrow(output_data),ncol(output_data))
+    rownames(tcn_alt) <- rownames(output_data)
+    colnames(tcn_alt) <- colnames(output_data)
+    
+  } else if (SNV_file) {
+    tcn_ref <- list()
+    tcn_ref = as.matrix(data[c("sample", "CNA", "tcn_ref")] %>% pivot_wider(names_from = sample, values_from = tcn_ref, values_fill = 0))
+    rownames(tcn_ref) <- tcn_ref[,'CNA']
+    tcn_ref <-tcn_ref[,-1, drop=FALSE]
+    rowname = rownames(tcn_ref)
+    colname = colnames(tcn_ref)
+    tcn_ref <- matrix(as.numeric(tcn_ref), ncol = ncol(tcn_ref))
+    rownames(tcn_ref) = rowname
+    colnames(tcn_ref) = colname
+    
+    tcn_alt <- list()
+    tcn_alt = as.matrix(data[c("sample", "CNA", "tcn_alt")] %>% pivot_wider(names_from = sample, values_from = tcn_alt, values_fill = 0))
+    rownames(tcn_alt) <- tcn_alt[,'CNA']
+    tcn_alt <-tcn_alt[,-1, drop=FALSE]
+    rowname = rownames(tcn_alt)
+    colname = colnames(tcn_alt)
+    tcn_alt <- matrix(as.numeric(tcn_alt), ncol = ncol(tcn_alt))
+    rownames(tcn_alt) = rowname
+    colnames(tcn_alt) = colname
+    
+    tcn_tot <- tcn_ref + tcn_alt
+    tcn_alt[tcn_tot==0] <- round(mean(tcn_tot)/2)
+    tcn_tot[tcn_tot==0] <- round(mean(tcn_tot))
+  }
   
-  tcn_alt <- list()
-  tcn_alt = as.matrix(data[c("sample", "CNA", "tcn_alt")] %>% pivot_wider(names_from = sample, values_from = tcn_alt, values_fill = 0))
-  rownames(tcn_alt) <- tcn_alt[,'CNA']
-  tcn_alt <-tcn_alt[,-1, drop=FALSE]
-  rowname = rownames(tcn_alt)
-  colname = colnames(tcn_alt)
-  tcn_alt <- matrix(as.numeric(tcn_alt), ncol = ncol(tcn_alt))
-  rownames(tcn_alt) = rowname
-  colnames(tcn_alt) = colname
   
-  tcn_tot <- tcn_ref + tcn_alt
-  tcn_alt[tcn_tot==0] <- round(mean(tcn_tot)/2)
-  tcn_tot[tcn_tot==0] <- round(mean(tcn_tot))
   # # check lOH using HET SNVs; 
   # # if both germline and tumor SNV counts provided, will check LOH
   # # otherwise, keep CNA outside normal range only
