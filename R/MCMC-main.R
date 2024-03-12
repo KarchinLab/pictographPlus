@@ -108,19 +108,6 @@ mcmcMain <- function(mutation_file,
     best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
     chains <- mergeSetChains(best_set_chains, input_data)
   
-    mcfTable = writeClusterMCFsTable(chains$mcf_chain)
-    
-    write.table(mcfTable, file=paste(outputDir, "mcf_SP.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-    
-    clusterAssingmentTable = writeClusterAssignmentsTable(chains$z_chain, Mut_ID = input_data$MutID)
-    clusterAssingmentTable
-    write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign_SP.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-    
-    icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
-    write.table(icnTable, file=paste(outputDir, "icn_SP.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-    
-    multiplicityTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
-    write.table(multiplicityTable, file=paste(outputDir, "multiplicity_SP.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
     
     
   } else {
@@ -145,28 +132,27 @@ mcmcMain <- function(mutation_file,
     best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
     chains <- mergeSetChains(best_set_chains, input_data)
     
-    mcfTable = writeClusterMCFsTable(chains$mcf_chain)
-    mcfTable
     
-    write.table(mcfTable, file=paste(outputDir, "mcf.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-    
-    clusterAssingmentTable = writeClusterAssignmentsTable(chains$z_chain, Mut_ID = input_data$MutID)
-    clusterAssingmentTable
-    write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-    
-    icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
-    write.table(icnTable, file=paste(outputDir, "icn.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-    
-    multiplicityTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
-    write.table(multiplicityTable, file=paste(outputDir, "multiplicity.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-
   }
   
   plotChainsMCF(chains$mcf_chain)
-  plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
-  plotClusterAssignmentProbVertical(chains$z_chain, chains$mcf_chain)
+  # plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
+  # plotClusterAssignmentProbVertical(chains$z_chain, chains$mcf_chain)
   
+  mcfTable = writeClusterMCFsTable(chains$mcf_chain)
+  mcfTable
   
+  write.table(mcfTable, file=paste(outputDir, "mcf.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  
+  clusterAssingmentTable = writeClusterAssignmentsTable(chains$z_chain, Mut_ID = input_data$MutID)
+  clusterAssingmentTable
+  write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  
+  icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
+  write.table(icnTable, file=paste(outputDir, "icn.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  
+  multiplicityTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
+  write.table(multiplicityTable, file=paste(outputDir, "multiplicity.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   ### Clean copy number segments by removing segments with icn of 2 and multiplicity of 1
   

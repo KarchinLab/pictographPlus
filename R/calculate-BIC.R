@@ -17,7 +17,7 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
     select(-c("Mut_ID","Cluster"))%>%
     as.matrix()
   
-  ww <- ww[,which(strsplit(pattern, split="")[[1]]=="1")]
+  ww <- ww[,which(strsplit(pattern, split="")[[1]]=="1"),drop=FALSE]
   
   mm <- writeMultiplicityTable(chains$m_chain)%>%
     mutate(Mut_ID = as.numeric(gsub("Mut","",Mut_ID)))%>%
@@ -42,7 +42,7 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
   }
 
   if (model_type=="type3") {
-    vaf <- ifelse(is_cn==0, (ww + (mm-1) * ww[input.data$q,])/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
+    vaf <- ifelse(is_cn==0, (ww + (mm-1) * ww[input.data$q,,drop=FALSE])/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
     vaf <- ifelse(vaf<0, 0.01, vaf)
     vaf <- ifelse(vaf>1, 0.99, vaf)
   }

@@ -49,7 +49,11 @@ model {
 	
 	alpha <- rep(1, K)
 	pi[1:K] ~ ddirch(alpha[1:K])
-
+  
+  #for (s in 1:S) {
+	#	mcf[1:K, s] <- ifelse(s == sample_to_sort, sort(mcf_unsorted[1:K, s]), mcf_unsorted[1:K, s])
+	#}
+	
 	for (k in 1:K) {
 		for (s in 1:S) {
 

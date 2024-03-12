@@ -121,7 +121,7 @@ runMutSetMCMC <- function(temp_box,
     box_indata <- getBoxInputData(temp_box, model_type)
     bic_vec <- unname(unlist(parallel::mclapply(filtered_samps_list,
                                                 function(chains) calcChainBIC(chains=chains, input.data=box_indata, pattern=temp_box$pattern, model_type),
-                                                mc.cores = mc.cores)))
+                                                mc.cores = 2)))
     bic_tb <- tibble(K_tested = K_tested,
                      BIC = bic_vec)
     best_chains <- samps_list[[which.min(bic_vec)]]
@@ -160,7 +160,7 @@ runMCMCForABox <- function(box,
   # choose sample in which mutations are present
   sample_to_sort <- which(colSums(box_input_data$y) > 0)[1]
   
-  # box_input_data$sample_to_sort <- sample_to_sort
+  box_input_data$sample_to_sort <- sample_to_sort
   
   if (model_type == "type1") {
     jags.file <- file.path(extdir, "type1.jags")
