@@ -13,11 +13,10 @@ importFiles <- function(mutation_file,
                         cnv_max_dist=2000, 
                         cnv_max_percent=0.30, 
                         tcn_normal_range=c(1.8, 2.2), 
-                        smooth_cnv=T, 
+                        smooth_cnv=F, 
                         autosome=T, 
                         mc.cores=8, 
-                        pval=0.05,
-                        sim_iter=100) {
+                        pval=0.05) {
   
   # keep mutations if alt_reads >= alt_reads_thresh and vaf >= vaf_thresh
   mutation_data = importMutationFile(mutation_file, alt_reads_thresh, vaf_thresh)
@@ -33,20 +32,9 @@ importFiles <- function(mutation_file,
                                           smooth_cnv, 
                                           autosome, 
                                           pval, 
-                                          mc.cores,
-                                          sim_iter)
+                                          mc.cores)
   
   mutation_data$tcn = copy_number_data$tcn[, name_order, drop=FALSE]
-  # mutation_data$tcn_ref = copy_number_data$tcn_ref[, name_order]
-  # mutation_data$tcn_alt = copy_number_data$tcn_alt[, name_order]
-  
-  # copy_number_info = importCopyNumberInfo(copy_number_file)
-
-  # mutation_data$cytoband = copy_number_info$cytoband
-  # mutation_data$drivers = copy_number_info$drivers
-  # mutation_data$genes = copy_number_info$genes
-  # 
-  # mutation_data$overlap = resolveOverlap(mutation_data)
   
   # bind SSM and CNA
   mutation_data$is_cn <- c(rep(0, nrow(mutation_data$y)), rep(1,nrow(copy_number_data$tcn)))
@@ -97,6 +85,7 @@ resolveOverlap <- function(mutation_data) {
         if (chr==mutations[i,2]) {
           if (strtoi(mutations[i,3]) >= start_pos && strtoi(mutations[i,4]) <= end_pos) {
             output[i,j] = 1
+            break
           }
         }
       } else {
@@ -104,7 +93,6 @@ resolveOverlap <- function(mutation_data) {
           output[i,j] = 1
         }
       }
-      
     }
   }
   return(output)
@@ -154,7 +142,7 @@ smoothCNV <- function(data, cnv_max_dist=2000, cnv_max_percent=0.30) {
 #' @param cnv_max_dist: maximum of distance allowed between two segments to assign as the same one
 #' @param cnv_max_percent: maximum percentage of distance allowed between two segments to assign as the same one
 #' @param smooth_cnv: process input CNV to merge  segments with similar distance
-importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, stat_file=NULL, cnv_max_dist=2000, cnv_max_percent=0.30, tcn_normal_range=c(1.8, 2.2), smooth_cnv=F, autosome=T, pval=0.05, mc.cores=8, sim_iter=100) {
+importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, stat_file=NULL, cnv_max_dist=2000, cnv_max_percent=0.30, tcn_normal_range=c(1.8, 2.2), smooth_cnv=F, autosome=T, pval=0.05, mc.cores=8) {
   
   data <- read_csv(copy_number_file, show_col_types = FALSE) # read copy number csv file
   

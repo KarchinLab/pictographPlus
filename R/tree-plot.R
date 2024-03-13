@@ -77,7 +77,7 @@ plotGraph <- function(am.long, v_color){
   V(ig)$color <- as.list(v_color %>% arrange(match(v_sorted, names(V(ig)))) %>% select(colors))$colors
   par(mar=c(0,0,0,0)+.1)
   igraph::plot.igraph(ig, layout = igraph::layout_as_tree(ig),
-                      vertex.size=34, vertex.frame.color = "#000000", vertex.label.cex = 1.5,
+                      vertex.size=24, vertex.frame.color = "#000000", vertex.label.cex = 1.5,
                       vertex.label.family = "Helvetica", vertex.label.color = "#000000",
                       edge.arrow.size = 0.5, edge.arrow.width = 2)
 }

@@ -17,7 +17,7 @@ calcSubcloneProportions <- function(w_mat, tree_edges) {
     if (length(children) == 1) {
       children_ccfs <- w_mat[children, ]
     } else if (length(children) > 1) {
-      children_ccfs <- w_mat[children, ] %>%
+      children_ccfs <- w_mat[children, ,drop=FALSE] %>%
         colSums
     } else {
       children_ccfs <- rep(0, ncol(w_mat))

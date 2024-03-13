@@ -4,21 +4,17 @@
 mcmcMain <- function(mutation_file,
                      copy_number_file,
                      outputDir,
-                     sample_presence=FALSE,
                      SNV_file=NULL,
                      stat_file=NULL, 
                      cytoband_file=NULL, 
+                     sample_presence=FALSE,
                      pval=0.05,
-                     sim_iter=100,
-                     max_K = 3, 
+                     max_K = 5, 
                      min_mutation_per_cluster=5, 
-                     iterations=5, 
                      n.iter=5000, 
                      n.burn=1000, 
                      thin=10, 
                      mc.cores=8, 
-                     model_type="spike_and_slab", 
-                     beta.prior=FALSE, 
                      inits=list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123),
                      cluster_diff_thresh=0.05,
                      alt_reads_thresh = 0, 
@@ -26,7 +22,7 @@ mcmcMain <- function(mutation_file,
                      cnv_max_dist=2000, 
                      cnv_max_percent=0.30, 
                      tcn_normal_range=c(1.8, 2.2), 
-                     smooth_cnv=T, 
+                     smooth_cnv=F, 
                      autosome=T) {
   
   data <- importFiles(mutation_file, 
@@ -43,8 +39,7 @@ mcmcMain <- function(mutation_file,
                       smooth_cnv=smooth_cnv, 
                       autosome=autosome, 
                       mc.cores=mc.cores, 
-                      pval=pval,
-                      sim_iter=sim_iter)
+                      pval=pval)
 
   if (sample_presence) {
     
@@ -66,8 +61,10 @@ mcmcMain <- function(mutation_file,
     # 4. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
     #    Note: model_type = "type1"
     all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                          n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type1")
+                                          cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+                                          n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
     
+
     # 5. pick K: most common or min_BIC
     set_k_choices <- writeSetKTable(all_set_results)
     
@@ -99,7 +96,8 @@ mcmcMain <- function(mutation_file,
     # 10. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
     #    Note: model_type = "type1"
     all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                          n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type2")
+                                          cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+                                          n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
     
     # 11. pick K: most common or min_BIC
     set_k_choices <- writeSetKTable(all_set_results)
@@ -123,7 +121,8 @@ mcmcMain <- function(mutation_file,
                        MutID=data$MutID)
     
     all_set_results <- runMCMCForAllBoxes(input_data, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                          n.iter = 5000, n.burn = 1000, thin = 10, mc.cores = 8, model_type = "type3")
+                                          cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+                                          n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type3")
     
     # 1. pick K: chosen K is min_BIC
     set_k_choices <- writeSetKTable(all_set_results)
@@ -149,10 +148,16 @@ mcmcMain <- function(mutation_file,
   write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
-  write.table(icnTable, file=paste(outputDir, "icn.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  write.table(icnTable, file=paste(outputDir, "icn_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
+   
   multiplicityTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
-  write.table(multiplicityTable, file=paste(outputDir, "multiplicity.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  write.table(multiplicityTable, file=paste(outputDir, "multiplicity_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  
+  icnTableCN <- icnTable[data$is_cn==1,]
+  multiplicityTableCN <- multiplicityTable[data$is_cn==1,]
+  icnTableCN$Multiplicity <- multiplicityTableCN$Multiplicity
+  write.table(icnTableCN, file=paste(outputDir, "CN_results.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   ### Clean copy number segments by removing segments with icn of 2 and multiplicity of 1
   
@@ -176,23 +181,51 @@ mcmcMain <- function(mutation_file,
   #   }
   # }
   
+  threshes <- allThreshes()
+  # print(threshes)
   
-  generateAllTrees(chains$mcf_chain, lineage_precedence_thresh = 0.2, sum_filter_thresh = 0.2)
+  for (thresh in threshes) {
+    generateAllTrees(chains$mcf_chain, lineage_precedence_thresh = thresh[1], sum_filter_thresh = thresh[2])
+    if (length(all_spanning_trees) > 0) {
+      break
+    }
+  }
+  # generateAllTrees(chains$mcf_chain, lineage_precedence_thresh = 0.1, sum_filter_thresh = 0.2)
   
   scores <- calcTreeScores(chains$mcf_chain, all_spanning_trees)
 
   # highest scoring tree
-  best_tree <- all_spanning_trees[[which.max(scores)]]
-  best_tree <- all_spanning_trees[[12]] # for HTAN-IPMN MCL111_001 SP
-
+  best_tree <- all_spanning_trees[[which(scores == max(scores))[length(which(scores == max(scores)))]]]
+  write.table(best_tree, file=paste(outputDir, "tree.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  
   # plot tree
+  png(paste(outputDir, "tree.png", sep="/"))
+  
   plotTree(best_tree, palette = viridis::viridis)
   # plotEnsembleTree(all_spanning_trees, palette = color_palette)
+  dev.off()
+  
+  purity = c()
+  for (col in names(mcfTable)) {
+    if (col != "Cluster") {
+      pp = mcfTable[[col]]
+      # print(max(pp[which(pp<1)]))
+      purity = c(purity, max(pp[which(pp<1)]))
+    }
+  }
+  names(purity) = colnames(data$y)
+  write.csv(purity, file=paste(outputDir, "purity.csv", sep="/"), quote = FALSE)
   
   subclone_props <- calcSubcloneProportions(mcf_mat, best_tree)
+  rownames(subclone_props) = mcfTable$Cluster
+  colnames(subclone_props) = colnames(data$y)
+  
+  write.csv(subclone_props, file=paste(outputDir, "subclone_proportion.csv", sep="/"), quote = FALSE)
+  
   plotSubclonePie(subclone_props, sample_names=colnames(input_data$y))
   plotSubcloneBar(subclone_props, sample_names=colnames(input_data$y))
-  # save.image(file=paste(outputDir, "PICTograph2.RData", sep=""))
+  
+  save.image(file=paste(outputDir, "PICTograph2.RData", sep="/"))
 }
 
 findM <- function(data, input_data, chains) {
@@ -262,6 +295,21 @@ findCncf <- function(data, input_data, chains) {
   tmp2 <- as.matrix(tmp2)
   rownames(tmp2) <- row_name
   tmp2
+}
+
+allThreshes <- function() {
+  threshes <- list() 
+  threshes[[1]] <- c(0.1,0.1)
+  threshes[[2]] <- c(0.1,0.2)
+  threshes[[3]] <- c(0.2,0.1)
+  threshes[[4]] <- c(0.2,0.2)
+  threshes[[5]] <- c(0.1,0.3)
+  threshes[[6]] <- c(0.3,0.1)
+  threshes[[7]] <- c(0.2,0.3)
+  threshes[[8]] <- c(0.3,0.2)
+  threshes[[9]] <- c(0.3,0.3)
+  threshes[[10]] <- c(0.4,0.4)
+  threshes
 }
 
 # findOverlap <- function(data) {

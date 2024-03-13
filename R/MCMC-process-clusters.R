@@ -226,8 +226,8 @@ writeClusterAssignmentsTable <- function(z_chain, mcf_chain=NULL, cncf=NULL, Mut
     mutate(Parameter_n = as.numeric(gsub("z\\[(\\d+)\\]","\\1",Parameter)))%>%
     arrange(Parameter_n)%>%
     mutate(Mut_ID = Mut_ID, Cluster = value)%>%
-    select(Mut_ID, Cluster)%>%
-    arrange(Cluster)
+    select(Mut_ID, Cluster)
+    # arrange(Cluster)
   
   if (!is.null(cncf)) {
     if (is.null(mcf_chain)) {

@@ -2,14 +2,13 @@
 #' @export
 runMCMCForAllBoxes <- function(sep_list,
                                max_K = 5,
-                               min_mutation_per_cluster = 2,
+                               min_mutation_per_cluster = 5,
                                cluster_diff_thresh=0.05,
                                n.iter = 5000,
                                n.burn = 1000, 
                                thin = 10,
                                mc.cores = 4, 
                                model_type = "type3", 
-                               beta.prior = FALSE, 
                                inits = list(".RNG.name" = "base::Wichmann-Hill",
                                             ".RNG.seed" = 123)){
   
@@ -18,7 +17,7 @@ runMCMCForAllBoxes <- function(sep_list,
     names(all_set_results) <- paste0(rep("1", ncol(sep_list$y)), collapse = "")
     params = c("z", "mcf", "icn", "m", "ystar")
     
-    temp_box <- input_data
+    temp_box <- sep_list
     temp_box$pattern <- paste0(rep("1", ncol(sep_list$y)), collapse = "")
     temp_max_K <- min(max_K, floor(nrow(temp_box$y)/min_mutation_per_cluster))
     temp_max_K <- max(temp_max_K, 1)
@@ -32,7 +31,6 @@ runMCMCForAllBoxes <- function(sep_list,
                                      temp_max_K = temp_max_K,
                                      model_type = model_type,
                                      params = params,
-                                     beta.prior = beta.prior,
                                      min_mutation_per_cluster = min_mutation_per_cluster, 
                                      cluster_diff_thresh = cluster_diff_thresh)
     
@@ -58,7 +56,6 @@ runMCMCForAllBoxes <- function(sep_list,
                                        temp_max_K = temp_max_K,
                                        model_type = model_type,
                                        params = params,
-                                       beta.prior = beta.prior,
                                        min_mutation_per_cluster = min_mutation_per_cluster, 
                                        cluster_diff_thresh = cluster_diff_thresh)
       
@@ -78,17 +75,11 @@ runMutSetMCMC <- function(temp_box,
                           temp_max_K = 5,
                           model_type = "spike_and_slab",
                           params = c("z", "mcf", "icn", "m", "ystar"),
-                          beta.prior = FALSE,
                           min_mutation_per_cluster = 1,
                           cluster_diff_thresh=0.05) {
-  #beta.prior not used
   # warning("beta prior not used or updated in runMCMC")
   # Run MCMC
-  # if (temp_max_K == 1) {
-  #   model_type = "simple"
-  #   beta.prior = FALSE
-  # } 
-  # 
+
   # WORKING PROGRESS
   temp_samps_list <- runMCMCForABox(temp_box,
                                     n.iter = n.iter, 
@@ -98,8 +89,7 @@ runMutSetMCMC <- function(temp_box,
                                     inits = inits,
                                     params = params,
                                     max_K = temp_max_K,
-                                    model = model_type,
-                                    beta.prior = beta.prior)
+                                    model = model_type)
   
   # Format chains
   if (nrow(temp_box$y) == 1) {
@@ -148,8 +138,8 @@ runMCMCForABox <- function(box,
                            inits = list(".RNG.name" = "base::Wichmann-Hill",
                                         ".RNG.seed" = 123),
                            params = c("z", "mcf", "icn", "m", "ystar"),
-                           max_K = 5, model_type = "type1",
-                           beta.prior = FALSE) {
+                           max_K = 5, 
+                           model_type = "type1") {
 
   # select columns if the presence pattern is 1
   # box <- temp_box
@@ -207,8 +197,7 @@ runMCMCForABox <- function(box,
                                   function(k) runMCMC(box_input_data, k,
                                                       jags.file, inits, params,
                                                       n.iter=n.iter, thin=thin,
-                                                      n.burn=n.burn,
-                                                      beta.prior=beta.prior),
+                                                      n.burn=n.burn),
                                   mc.cores=mc.cores)
     
     # if (drop_zero) {
@@ -279,8 +268,7 @@ runMCMC <- function(box_input_data,
                     thin=10, 
                     n.chains=1,
                     n.adapt=1000, 
-                    n.burn=1000,
-                    beta.prior=FALSE) {
+                    n.burn=1000) {
   # if (K > 1) data$K <- K
   if (K > 1) box_input_data$K <- K
   jags.m <- jags.model(jags.file,
@@ -290,56 +278,6 @@ runMCMC <- function(box_input_data,
                        n.adapt = n.adapt)
   if (n.burn > 0) update(jags.m, n.burn)
   samps <- coda.samples(jags.m, params, n.iter=n.iter, thin=thin)
-  
-  if (beta.prior & K > 1) {
-    # use initial MCMC to estimate beta priors for identified clusters
-    initial_chains <- formatChains(samps)
-    est_ccfs <- initial_chains$w_chain %>%
-      estimateCCFs %>%
-      as.data.frame %>%
-      magrittr::set_colnames(1:ncol(.)) %>%
-      tibble %>%
-      mutate(cluster = 1:nrow(.)) %>%
-      pivot_longer(cols = colnames(.)[colnames(.) != "cluster"], 
-                   names_to = "sample", 
-                   values_to = "ccf") %>%
-      mutate(sample = as.numeric(sample))
-    
-    
-    beta_shapes <- lapply(est_ccfs$ccf, estimateBetaPriors)
-    cluster_beta_params <- est_ccfs %>%
-      mutate(shape1 = sapply(beta_shapes, function(x) x[1]),
-             shape2 = sapply(beta_shapes, function(x) x[2]))
-    
-    cluster_shape1 <- cluster_beta_params %>%
-      select(cluster, shape1, sample) %>%
-      pivot_wider(names_from = sample,
-                  values_from = shape1) %>%
-      select(-c(cluster)) %>%
-      as.matrix
-    cluster_shape2 <- cluster_beta_params %>%
-      select(cluster, shape2, sample) %>%
-      pivot_wider(names_from = sample,
-                  values_from = shape2) %>%
-      select(-c(cluster)) %>%
-      as.matrix
-    
-    # run second MCMC with specified beta priors
-    box_input_data$cluster_shape1 <- cluster_shape1
-    box_input_data$cluster_shape2 <- cluster_shape2
-    
-    extdir <- system.file("extdata", package="pictograph")
-    jags.file.beta <- file.path(extdir, "model-simple-set-beta.jags")
-    
-    jags.m.beta <- rjags::jags.model(jags.file.beta,
-                                     box_input_data,
-                                     n.chains = n.chains,
-                                     inits = inits,
-                                     n.adapt = n.adapt)
-    if (n.burn > 0) update(jags.m.beta, n.burn)
-    samps.beta <- rjags::coda.samples(jags.m.beta, params, n.iter=n.iter, thin=thin)
-    return(samps.beta)
-  }
   
   return(samps)
 }
