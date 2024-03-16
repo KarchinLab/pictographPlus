@@ -31,20 +31,20 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
   if (model_type=="type1") {
     # vaf <- ww / 2
     vaf <- ifelse(is_cn==0, ww/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
-    vaf <- ifelse(vaf<0, 0.01, vaf)    
-    vaf <- ifelse(vaf>1, 0.99, vaf)
+    vaf <- ifelse(vaf<=0, 0.01, vaf)    
+    vaf <- ifelse(vaf>=1, 0.99, vaf)
   }
   
   if (model_type=="type2") {
     vaf <- ifelse(is_cn==0, (ww + (mm-1) * input.data$cncf)/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
-    vaf <- ifelse(vaf<0, 0.01, vaf)
-    vaf <- ifelse(vaf>1, 0.99, vaf)
+    vaf <- ifelse(vaf<=0, 0.01, vaf)
+    vaf <- ifelse(vaf>=1, 0.99, vaf)
   }
 
   if (model_type=="type3") {
     vaf <- ifelse(is_cn==0, (ww + (mm-1) * ww[input.data$q,,drop=FALSE])/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
-    vaf <- ifelse(vaf<0, 0.01, vaf)
-    vaf <- ifelse(vaf>1, 0.99, vaf)
+    vaf <- ifelse(vaf<=0, 0.01, vaf)
+    vaf <- ifelse(vaf>=1, 0.99, vaf)
   }
   
   lik <- sum(dbinom(input.data$y,input.data$n,vaf,log = T))
