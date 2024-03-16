@@ -41,6 +41,12 @@ mcmcMain <- function(mutation_file,
                       mc.cores=mc.cores, 
                       pval=pval)
 
+  if (ncol(data$y)==1) {
+    sample_presence = FALSE
+  } 
+  
+  min_mutation_per_cluster <- max(floor(nrow(data$y) / 100), min_mutation_per_cluster)
+  
   if (sample_presence) {
     
     ##############################################################################
@@ -134,17 +140,21 @@ mcmcMain <- function(mutation_file,
     
   }
   
+  
+  png(paste(outputDir, "mcf.png", sep="/"))
   plotChainsMCF(chains$mcf_chain)
+  dev.off()
   # plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
   # plotClusterAssignmentProbVertical(chains$z_chain, chains$mcf_chain)
   
   mcfTable = writeClusterMCFsTable(chains$mcf_chain)
-  mcfTable
+  colnames(mcfTable)=c("Cluster",c(colnames(data$y)))
+  # mcfTable
   
   write.table(mcfTable, file=paste(outputDir, "mcf.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   clusterAssingmentTable = writeClusterAssignmentsTable(chains$z_chain, Mut_ID = input_data$MutID)
-  clusterAssingmentTable
+  # clusterAssingmentTable
   write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
@@ -190,40 +200,66 @@ mcmcMain <- function(mutation_file,
       break
     }
   }
-  # generateAllTrees(chains$mcf_chain, lineage_precedence_thresh = 0.1, sum_filter_thresh = 0.2)
-  
+
   scores <- calcTreeScores(chains$mcf_chain, all_spanning_trees)
 
+  # # plot all tree with best scores
+  # for (i in seq_len(length(which(scores == max(scores))))) {
+  #   idx = which(scores == max(scores))[i]
+  #   print(idx)
+  #   best_tree <- all_spanning_trees[[idx]]
+  #   write.table(best_tree, file=paste(outputDir, "/tree", i, ".csv", sep=""), quote = FALSE, sep = ",", row.names = F)
+  #   
+  #   png(paste(outputDir, "/tree", i, ".png", sep=""))
+  #   # plot tree
+  #   plotTree(best_tree, palette = viridis::viridis)
+  #   # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
+  #   dev.off()
+  #   
+  #   cc <- best_tree %>% filter(parent=="root") %>% select(child)
+  #   purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
+  #   colnames(purity) <- colnames(data$y)
+  #   write.table(purity, file=paste(outputDir, "/purity", i, ".csv", sep=""), quote = FALSE, sep = ",", row.names = F)
+  #   
+  #   subclone_props <- calcSubcloneProportions(mcf_mat, best_tree)
+  #   rownames(subclone_props) = mcfTable$Cluster
+  #   colnames(subclone_props) = colnames(data$y)
+  #   
+  #   write.csv(subclone_props, file=paste(outputDir, "/subclone_proportion", i, ".csv", sep=""), quote = FALSE)
+  #   
+  #   png(paste(outputDir, "/subclone_props", i, ".png", sep=""))
+  #   plotSubclonePie(subclone_props, sample_names=colnames(input_data$y))
+  #   dev.off()
+  # }
+
+  
   # highest scoring tree
   best_tree <- all_spanning_trees[[which(scores == max(scores))[length(which(scores == max(scores)))]]]
   write.table(best_tree, file=paste(outputDir, "tree.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-  
+
   # plot tree
   png(paste(outputDir, "tree.png", sep="/"))
-  
+
   plotTree(best_tree, palette = viridis::viridis)
-  # plotEnsembleTree(all_spanning_trees, palette = color_palette)
+  # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
   dev.off()
-  
-  purity = c()
-  for (col in names(mcfTable)) {
-    if (col != "Cluster") {
-      pp = mcfTable[[col]]
-      # print(max(pp[which(pp<1)]))
-      purity = c(purity, max(pp[which(pp<1)]))
-    }
-  }
-  names(purity) = colnames(data$y)
-  write.csv(purity, file=paste(outputDir, "purity.csv", sep="/"), quote = FALSE)
-  
+
+  cc <- best_tree %>% filter(parent=="root") %>% select(child)
+  purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
+  colnames(purity) <- colnames(data$y)
+  write.table(purity, file=paste(outputDir, "purity.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+
   subclone_props <- calcSubcloneProportions(mcf_mat, best_tree)
   rownames(subclone_props) = mcfTable$Cluster
   colnames(subclone_props) = colnames(data$y)
-  
+
   write.csv(subclone_props, file=paste(outputDir, "subclone_proportion.csv", sep="/"), quote = FALSE)
-  
+
+  png(paste(outputDir, "subclone_props.png", sep="/"))
   plotSubclonePie(subclone_props, sample_names=colnames(input_data$y))
-  plotSubcloneBar(subclone_props, sample_names=colnames(input_data$y))
+  dev.off()
+  # plotSubclonePie(subclone_props, sample_names=colnames(input_data$y))
+  # plotSubcloneBar(subclone_props, sample_names=colnames(input_data$y))
   
   save.image(file=paste(outputDir, "PICTograph2.RData", sep="/"))
 }
@@ -299,16 +335,19 @@ findCncf <- function(data, input_data, chains) {
 
 allThreshes <- function() {
   threshes <- list() 
-  threshes[[1]] <- c(0.1,0.1)
-  threshes[[2]] <- c(0.1,0.2)
-  threshes[[3]] <- c(0.2,0.1)
-  threshes[[4]] <- c(0.2,0.2)
-  threshes[[5]] <- c(0.1,0.3)
-  threshes[[6]] <- c(0.3,0.1)
-  threshes[[7]] <- c(0.2,0.3)
-  threshes[[8]] <- c(0.3,0.2)
-  threshes[[9]] <- c(0.3,0.3)
-  threshes[[10]] <- c(0.4,0.4)
+  threshes[[1]] <- c(0,0)
+  threshes[[2]] <- c(0.1,0)
+  threshes[[3]] <- c(0,0.1)
+  threshes[[4]] <- c(0.1,0.1)
+  threshes[[5]] <- c(0.1,0.2)
+  threshes[[6]] <- c(0.2,0.1)
+  threshes[[7]] <- c(0.2,0.2)
+  threshes[[8]] <- c(0.1,0.3)
+  threshes[[9]] <- c(0.3,0.1)
+  threshes[[10]] <- c(0.2,0.3)
+  threshes[[11]] <- c(0.3,0.2)
+  threshes[[12]] <- c(0.3,0.3)
+  threshes[[13]] <- c(0.4,0.4)
   threshes
 }
 
