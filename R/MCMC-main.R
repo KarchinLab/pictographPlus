@@ -41,12 +41,13 @@ mcmcMain <- function(mutation_file,
                       mc.cores=mc.cores, 
                       pval=pval)
 
+  min_mutation_per_cluster <- max(floor(nrow(data$y)/50), min_mutation_per_cluster)
+  
   if (ncol(data$y)==1) {
     sample_presence = FALSE
+    min_mutation_per_cluster <- max(floor(nrow(data$y)/25), min_mutation_per_cluster)
   } 
-  
-  min_mutation_per_cluster <- max(floor(nrow(data$y) / 100), min_mutation_per_cluster)
-  
+
   if (sample_presence) {
     
     ##############################################################################
@@ -118,6 +119,7 @@ mcmcMain <- function(mutation_file,
     ##############################################################################
     #             MCMC chain for all; no sample presence                         #
     ##############################################################################
+    max_K <- max_K * ncol(data$y)
     
     input_data <- list(y=data$y,
                        n=data$n,
