@@ -181,16 +181,10 @@ runMCMCForABox <- function(box,
     colnames(samps_K1[[1]])[which(colnames(samps_K1[[1]]) == "mcf")] <- "mcf[1,1]"
   }
   
-  # if (drop_zero) {
-  samps_K1 <- reverseDrop(samps_K1, box$pattern, n.iter)
-  # }
-  # 
-  # if(box$I == 1) {
-  #   colnames(samps_K1[[1]])[which(colnames(samps_K1[[1]]) == "z")] <- "z[1]"
-  # }
-  
-  # Max number of clusters cannot be more than number of mutations
-  # max_K <- min(max_K, length(box$mutation_indices)) # already done in the main step
+  if (model_type != "type3") {
+    samps_K1 <- reverseDrop(samps_K1, box$pattern, n.iter)
+  }
+
   if (max_K > 1) {
     
     box_input_data$sample_to_sort <- sample_to_sort
@@ -202,11 +196,11 @@ runMCMCForABox <- function(box,
                                                       n.burn=n.burn),
                                   mc.cores=mc.cores)
     
-    # if (drop_zero) {
-    for (i in seq_len(length(samps_2))) {
-      samps_2[[i]] <- reverseDrop(samps_2[[i]], box$pattern, n.iter)
+    if (model_type != "type3") {
+      for (i in seq_len(length(samps_2))) {
+        samps_2[[i]] <- reverseDrop(samps_2[[i]], box$pattern, n.iter)
+      }
     }
-    # }
     
     samps_list <- c(list(samps_K1), samps_2)
     names(samps_list) <- paste0("K", 1:max_K)
