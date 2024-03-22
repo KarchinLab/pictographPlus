@@ -106,15 +106,16 @@ mcmcMain <- function(mutation_file,
                                           cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                           n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
     
+    all_set_results <- assign("all_set_results", all_set_results, envir = .GlobalEnv)
+    
     # 11. pick K: most common or min_BIC
     set_k_choices <- writeSetKTable(all_set_results)
+    set_k_choices <- assign("set_k_choices", set_k_choices, envir = .GlobalEnv)
     
     # 12. collect best chains
     best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
     chains <- mergeSetChains(best_set_chains, input_data)
   
-    
-    
   } else {
     ##############################################################################
     #             MCMC chain for all; no sample presence                         #
@@ -132,8 +133,11 @@ mcmcMain <- function(mutation_file,
                                           cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                           n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type3")
     
+    all_set_results <- assign("all_set_results", all_set_results, envir = .GlobalEnv)
+    
     # 1. pick K: chosen K is min_BIC
     set_k_choices <- writeSetKTable(all_set_results)
+    set_k_choices <- assign("set_k_choices", set_k_choices, envir = .GlobalEnv)
     
     # 2. collect best chains
     best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
@@ -157,7 +161,6 @@ mcmcMain <- function(mutation_file,
   
   clusterAssingmentTable = writeClusterAssignmentsTable(chains$z_chain, Mut_ID = input_data$MutID)
   # clusterAssingmentTable
-  write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
   write.table(icnTable, file=paste(outputDir, "icn_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
@@ -173,25 +176,33 @@ mcmcMain <- function(mutation_file,
   
   ### Clean copy number segments by removing segments with icn of 2 and multiplicity of 1
   
-  # 
-  # for (i in seq_len(nrow(clusterAssingmentTable))) {
-  #   # rename chromosome name if CNA in a cluster
-  #   if (clusterAssingmentTable[i,]$Mut_ID %in% rownames(data$tcn)) {
-  #     change = "neutral"
-  #     if (mean(cna_update[(clusterAssingmentTable[i,]$Mut_ID),]) < 2) {
-  #       change = "del"
-  #     }
-  #     if (mean(cna_update[(clusterAssingmentTable[i,]$Mut_ID),]) > 2) {
-  #       change = "dup"
-  #     }
-  #     
-  #     ######################################
-  #     # Add code to add cytoband information
-  #     ######################################
-  #     new_name = paste(change, clusterAssingmentTable[i,]$Mut_ID, sep = ":")
-  #     clusterAssingmentTable[i,]$Mut_ID = new_name
-  #   }
-  # }
+  toKeepIndex = c()
+  for (i in seq_len(nrow(clusterAssingmentTable))) {
+    # rename chromosome name if CNA in a cluster
+    
+    if (clusterAssingmentTable[i,]$Mut_ID %in% icnTableCN$Mut_ID) {
+      # print(clusterAssingmentTable[i,]$Mut_ID)
+      
+      icnInfo <- icnTableCN %>% filter(Mut_ID==clusterAssingmentTable[i,]$Mut_ID)
+      if (icnInfo$icn==2 & icnInfo$Multiplicity==1) {
+        # print(icnInfo)
+        # stop("stop")
+        toKeepIndex <- c(toKeepIndex, 0)
+      } else {
+        major_cn = max(icnInfo$Multiplicity, icnInfo$icn-icnInfo$Multiplicity)
+        clusterAssingmentTable[i,]$Mut_ID <- paste(clusterAssingmentTable[i,]$Mut_ID, ";icn:", icnInfo$icn, ";", "major_cn:", major_cn, sep="")
+        # print(change)
+        toKeepIndex <- c(toKeepIndex, 1)
+        # stop()
+      }
+      
+    } else {
+      toKeepIndex <- c(toKeepIndex, 1)
+    }
+  }
+  clusterAssingmentTable$idx <- toKeepIndex
+  clusterAssingmentTable <- clusterAssingmentTable %>% filter(toKeepIndex==1) %>% select(-idx)
+  write.table(clusterAssingmentTable, file=paste(outputDir, "clusterAssign.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   threshes <- allThreshes()
   # print(threshes)
