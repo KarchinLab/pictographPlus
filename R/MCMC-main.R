@@ -56,9 +56,9 @@ mcmcMain <- function(mutation_file,
     # 1. get index of SNVs in CN-neutral region (no LOH) or CNA events
     index = which(rowSums(data$tcn)==0 | data$is_cn==1)
     # 2. update input_data
-    input_data <- list(y=data$y[index,],
-                       n=data$n[index,],
-                       tcn=data$tcn[index,],
+    input_data <- list(y=data$y[index,,drop=FALSE],
+                       n=data$n[index,,drop=FALSE],
+                       tcn=data$tcn[index,,drop=FALSE],
                        is_cn=data$is_cn[index],
                        MutID=data$MutID[index])
     
