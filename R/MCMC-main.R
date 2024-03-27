@@ -40,7 +40,9 @@ mcmcMain <- function(mutation_file,
                       autosome=autosome, 
                       mc.cores=mc.cores, 
                       pval=pval)
-
+  
+  data <- assign("data", data, envir = .GlobalEnv)
+  
   min_mutation_per_cluster <- max(floor(nrow(data$y)/50), min_mutation_per_cluster)
   
   if (ncol(data$y)==1) {
@@ -97,6 +99,8 @@ mcmcMain <- function(mutation_file,
                        icn=data$icn,
                        cncf=data$cncf,
                        MutID=data$MutID)
+    
+    input_data <- assign("input_data", input_data, envir = .GlobalEnv)
     # 9. separate mutations by sample presence
     sep_list <- separateMutationsBySamplePresence(input_data)
     
@@ -141,6 +145,7 @@ mcmcMain <- function(mutation_file,
     
     # 2. collect best chains
     best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+
     chains <- mergeSetChains(best_set_chains, input_data)
     
     
