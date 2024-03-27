@@ -10,8 +10,8 @@ model {
 	for (i in 1:I) {
 		for (s in 1:S) {
 			
-			tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + 2 * (1 - cncf[i,s])
-      tcn.cna.est[i,s] <- icn[i] * mcf[z[i], s] + 2 * (1 - mcf[z[i], s])
+			tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + ploidy * (1 - cncf[i,s])
+      tcn.cna.est[i,s] <- icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s])
       
 			vaf.snv[i,s] <- (mcf[z[i], s] + (m[i]-1) * cncf[i,s]) / tcn.snv.est[i,s]
 			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn.cna.est[i,s]
@@ -23,7 +23,7 @@ model {
 
 	for (i in 1:I) {
 		for (s in 1:S) {
-			tcn[i,s] ~ dnorm(icn[i] * cncf[i, s] + 2 * (1 - cncf[i, s]), epsilon)
+			tcn[i,s] ~ dnorm(icn[i] * cncf[i, s] + ploidy * (1 - cncf[i, s]), epsilon)
 		}
 	}
 	

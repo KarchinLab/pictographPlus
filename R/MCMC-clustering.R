@@ -1,6 +1,7 @@
 #' run MCMC for all mutations by sample presence
 #' @export
 runMCMCForAllBoxes <- function(sep_list,
+                               ploidy=2,
                                max_K = 5,
                                min_mutation_per_cluster = 5,
                                cluster_diff_thresh=0.05,
@@ -24,6 +25,7 @@ runMCMCForAllBoxes <- function(sep_list,
     temp_max_K <- max(temp_max_K, 1)
     
     temp_samps_list <- runMutSetMCMC(temp_box, 
+                                     ploidy=ploidy,
                                      n.iter = n.iter, 
                                      n.burn = n.burn, 
                                      thin = thin, 
@@ -49,7 +51,8 @@ runMCMCForAllBoxes <- function(sep_list,
       # Max number of clusters cannot be more than number of mutations/min_mutation_per_cluster
       temp_max_K <- min(max_K, floor(length(temp_box$mutation_indices)/min_mutation_per_cluster))
       temp_max_K <- max(temp_max_K, 1)
-      temp_samps_list <- runMutSetMCMC(temp_box, 
+      temp_samps_list <- runMutSetMCMC(temp_box,
+                                       ploidy=ploidy,
                                        n.iter = n.iter, 
                                        n.burn = n.burn, 
                                        thin = thin, 
@@ -68,6 +71,7 @@ runMCMCForAllBoxes <- function(sep_list,
 }
 
 runMutSetMCMC <- function(temp_box, 
+                          ploidy=2,
                           n.iter = 10000, 
                           n.burn = 1000, 
                           thin = 10, 
@@ -75,7 +79,7 @@ runMutSetMCMC <- function(temp_box,
                           inits = list(".RNG.name" = "base::Wichmann-Hill",
                                        ".RNG.seed" = 123),
                           temp_max_K = 5,
-                          model_type = "spike_and_slab",
+                          model_type = "type1",
                           params = c("z", "mcf", "icn", "m", "ystar"),
                           min_mutation_per_cluster = 1,
                           cluster_diff_thresh=0.05) {
@@ -84,6 +88,7 @@ runMutSetMCMC <- function(temp_box,
 
   # WORKING PROGRESS
   temp_samps_list <- runMCMCForABox(temp_box,
+                                    ploidy=ploidy,
                                     n.iter = n.iter, 
                                     n.burn = n.burn, 
                                     thin = thin, 
@@ -91,7 +96,7 @@ runMutSetMCMC <- function(temp_box,
                                     inits = inits,
                                     params = params,
                                     max_K = temp_max_K,
-                                    model = model_type)
+                                    model_type = model_type)
   
   # Format chains
   if (length(temp_samps_list) == 1) {
@@ -110,7 +115,7 @@ runMutSetMCMC <- function(temp_box,
   # Calculate BIC
   K_tested <- seq_len(length(filtered_samps_list))
   if (temp_max_K > 1) {
-    box_indata <- getBoxInputData(temp_box, model_type)
+    box_indata <- getBoxInputData(temp_box, ploidy, model_type)
     bic_vec <- unname(unlist(parallel::mclapply(filtered_samps_list,
                                                 function(chains) calcChainBIC(chains=chains, input.data=box_indata, pattern=temp_box$pattern, model_type),
                                                 mc.cores = 2)))
@@ -133,6 +138,7 @@ runMutSetMCMC <- function(temp_box,
 }
 
 runMCMCForABox <- function(box, 
+                           ploidy=2,
                            n.iter = 10000, 
                            n.burn = 1000, 
                            thin = 10, 
@@ -145,7 +151,7 @@ runMCMCForABox <- function(box,
 
   # select columns if the presence pattern is 1
   # box <- temp_box
-  box_input_data <- getBoxInputData(box, model_type)
+  box_input_data <- getBoxInputData(box, ploidy, model_type)
   
   extdir <- system.file("extdata", package="pictograph2")
   
@@ -213,7 +219,7 @@ runMCMCForABox <- function(box,
   
 }
 
-getBoxInputData <- function(box, model_type) {
+getBoxInputData <- function(box, ploidy=2, model_type) {
   sample_list = vector()
   
   # include samples if the pattern is 1; i.e. presence of mutations in the sample
@@ -229,7 +235,8 @@ getBoxInputData <- function(box, model_type) {
                            y = box$y[,sample_list,drop=FALSE],
                            n = box$n[,sample_list,drop=FALSE],
                            tcn = box$tcn[,sample_list,drop=FALSE],
-                           is_cn = box$is_cn)
+                           is_cn = box$is_cn,
+                           ploidy=ploidy)
   } else if (model_type == "type2") {
     box_input_data <- list(I = nrow(box$y),
                            S = length(sample_list),
@@ -239,7 +246,8 @@ getBoxInputData <- function(box, model_type) {
                            is_cn = box$is_cn,
                            mtp = box$mtp,
                            cncf = box$cncf[,sample_list,drop=FALSE],
-                           icn = box$icn)
+                           icn = box$icn,
+                           ploidy=ploidy)
   } else if (model_type == "type3") {
     box_input_data <- list(I = nrow(box$y),
                            S = length(sample_list),
@@ -247,7 +255,8 @@ getBoxInputData <- function(box, model_type) {
                            n = box$n[,sample_list,drop=FALSE],
                            tcn = box$tcn[,sample_list,drop=FALSE],
                            is_cn = box$is_cn,
-                           q = box$q)
+                           q = box$q,
+                           ploidy=ploidy)
   }
   
   # set tcn to 2 if 0

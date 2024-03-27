@@ -8,6 +8,7 @@ mcmcMain <- function(mutation_file,
                      stat_file=NULL, 
                      cytoband_file=NULL, 
                      sample_presence=FALSE,
+                     ploidy=2,
                      pval=0.05,
                      max_K = 5, 
                      min_mutation_per_cluster=5, 
@@ -69,7 +70,7 @@ mcmcMain <- function(mutation_file,
     
     # 4. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
     #    Note: model_type = "type1"
-    all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+    all_set_results <- runMCMCForAllBoxes(sep_list, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                           cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                           n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
     
@@ -106,7 +107,7 @@ mcmcMain <- function(mutation_file,
     
     # 10. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
     #    Note: model_type = "type1"
-    all_set_results <- runMCMCForAllBoxes(sep_list, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+    all_set_results <- runMCMCForAllBoxes(sep_list, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                           cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                           n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
     
@@ -133,7 +134,7 @@ mcmcMain <- function(mutation_file,
                        q=data$q,
                        MutID=data$MutID)
     
-    all_set_results <- runMCMCForAllBoxes(input_data, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+    all_set_results <- runMCMCForAllBoxes(input_data, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                           cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                           n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type3")
     
