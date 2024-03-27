@@ -48,6 +48,7 @@ mcmcMain <- function(mutation_file,
   } 
 
   if (sample_presence) {
+    
     message("Using sample presence")
     ##############################################################################
     #              MCMC 1: SSMs (CN-neutral region) and all CNAs                 #
