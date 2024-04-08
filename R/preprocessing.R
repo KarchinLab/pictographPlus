@@ -3,8 +3,8 @@
 #' @param mutation_file mutation data file that contains columns "sample", "mutation", "chrom", "start", "end", total_reads", and "alt_reads";
 #' @param copy_number_file copy number file that contains columns "sample", "chrom", "start", "end", "tcn"
 importFiles <- function(mutation_file, 
-                        copy_number_file, 
-                        outputDir, 
+                        copy_number_file=NULL, 
+                        outputDir=NULL, 
                         SNV_file=NULL, 
                         stat_file=NULL, 
                         cytoband_file=NULL, 
@@ -18,48 +18,61 @@ importFiles <- function(mutation_file,
                         mc.cores=8, 
                         pval=0.05) {
   
-  # keep mutations if alt_reads >= alt_reads_thresh and vaf >= vaf_thresh
-  mutation_data = importMutationFile(mutation_file, alt_reads_thresh, vaf_thresh)
-  name_order <- colnames(mutation_data$y)
-  
-  copy_number_data = importCopyNumberFile(copy_number_file, 
-                                          outputDir, 
-                                          SNV_file, 
-                                          stat_file, 
-                                          cnv_max_dist, 
-                                          cnv_max_percent, 
-                                          tcn_normal_range, 
-                                          smooth_cnv, 
-                                          autosome, 
-                                          pval, 
-                                          mc.cores)
-  
-  mutation_data$tcn = copy_number_data$tcn[, name_order, drop=FALSE]
-  
-  # bind SSM and CNA
-  mutation_data$is_cn <- c(rep(0, nrow(mutation_data$y)), rep(1,nrow(copy_number_data$tcn)))
-  mutation_data$y <- rbind(mutation_data$y, copy_number_data$tcn_alt[, name_order, drop=FALSE])
-  mutation_data$n <- rbind(mutation_data$n, copy_number_data$tcn_tot[, name_order, drop=FALSE])
-  mutation_data$MutID <- c(mutation_data$MutID, rownames(copy_number_data$tcn))
-  mutation_data$I <- mutation_data$I + nrow(copy_number_data$tcn)
-  
-  mutation_data$overlap = resolveOverlap(mutation_data)
-  
-  mutation_data$tcn <- mutation_data$overlap %*% mutation_data$tcn
-  
-  
-  overlap <- mutation_data$overlap
-  
-  colnames(overlap) <- sapply(colnames(mutation_data$overlap), function(col) {which(rownames(mutation_data$overlap)==col)})
-  
-  q <- vector("numeric", nrow(overlap))
-  for (i in 1:nrow(overlap)) {
-    q[i] <- ifelse(length(which(overlap[i,] == 1)) > 0, as.numeric(names(which(overlap[i,] == 1))[1]),i)
+  if (is.null(outputDir)) {
+    outpurDir = getwd()
   }
-  mutation_data$q <- q
   
-  # mutation_data$overlap <- rbind(mutation_data$overlap, matrix(0, nrow=nrow(copy_number_data$tcn), ncol = ncol(copy_number_data$tcn)))
-  warning("resolveOverlap: need to check whether a mutation overlaps with two CNA segs")
+  if (!is.null(copy_number_file)) {
+    # keep mutations if alt_reads >= alt_reads_thresh and vaf >= vaf_thresh
+    mutation_data = importMutationFile(mutation_file, alt_reads_thresh, vaf_thresh)
+    name_order <- colnames(mutation_data$y)
+    
+    copy_number_data = importCopyNumberFile(copy_number_file, 
+                                            outputDir, 
+                                            SNV_file, 
+                                            stat_file, 
+                                            cnv_max_dist, 
+                                            cnv_max_percent, 
+                                            tcn_normal_range, 
+                                            smooth_cnv, 
+                                            autosome, 
+                                            pval, 
+                                            mc.cores)
+    mutation_data$tcn = copy_number_data$tcn[, name_order, drop=FALSE]
+    
+    # bind SSM and CNA
+    mutation_data$is_cn <- c(rep(0, nrow(mutation_data$y)), rep(1,nrow(copy_number_data$tcn)))
+    mutation_data$y <- rbind(mutation_data$y, copy_number_data$tcn_alt[, name_order, drop=FALSE])
+    mutation_data$n <- rbind(mutation_data$n, copy_number_data$tcn_tot[, name_order, drop=FALSE])
+    mutation_data$MutID <- c(mutation_data$MutID, rownames(copy_number_data$tcn))
+    mutation_data$I <- mutation_data$I + nrow(copy_number_data$tcn)
+    
+    mutation_data$overlap = resolveOverlap(mutation_data)
+    
+    mutation_data$tcn <- mutation_data$overlap %*% mutation_data$tcn
+    
+    
+    overlap <- mutation_data$overlap
+    
+    colnames(overlap) <- sapply(colnames(mutation_data$overlap), function(col) {which(rownames(mutation_data$overlap)==col)})
+    
+    q <- vector("numeric", nrow(overlap))
+    for (i in 1:nrow(overlap)) {
+      q[i] <- ifelse(length(which(overlap[i,] == 1)) > 0, as.numeric(names(which(overlap[i,] == 1))[1]),i)
+    }
+    mutation_data$q <- q
+    
+  } else {
+  
+    mutation_data = importMutationFileOnly(mutation_file, alt_reads_thresh, vaf_thresh)
+    # name_order <- colnames(mutation_data$y)
+    
+    mutation_data$is_cn <- c(rep(0, nrow(mutation_data$y)))
+  }
+  
+  
+  
+  # warning("resolveOverlap: need to check whether a mutation overlaps with two CNA segs")
 
   return(mutation_data)
 }
@@ -647,6 +660,85 @@ importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh =
   }
 
   output_data$position = mutation_position
+  return(output_data)
+}
+
+#' import mutation file
+importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh = 0) {
+  data <- read_csv(mutation_file, show_col_types = FALSE)
+  data <- data %>% filter(alt_reads/total_reads>=vaf_thresh, alt_reads>=alt_reads_thresh)
+  output_data <- list()
+  
+  output_data$y <- as.matrix(data[c("mutation", "sample", "alt_reads")] %>% pivot_wider(names_from = sample, values_from = alt_reads, values_fill = 0))
+  rownames(output_data$y) <- output_data$y[,'mutation']
+  output_data$y <- output_data$y[,-1, drop=FALSE]
+  rowname = rownames(output_data$y)
+  colname = colnames(output_data$y)
+  output_data$y <- matrix(as.numeric(output_data$y), ncol = ncol(output_data$y))
+  rownames(output_data$y) = rowname
+  colnames(output_data$y) = colname
+  
+  output_data$MutID <- rowname
+  
+  output_data$n <- as.matrix(data[c("mutation", "sample", "total_reads")] %>% pivot_wider(names_from = sample, values_from = total_reads, values_fill = 0))
+  rownames(output_data$n) <- output_data$n[,'mutation']
+  output_data$n <- output_data$n[,-1, drop=FALSE]
+  rowname = rownames(output_data$n)
+  colname = colnames(output_data$n)
+  output_data$n <- matrix(as.numeric(output_data$n), ncol = ncol(output_data$n))
+  rownames(output_data$n) = rowname
+  colnames(output_data$n) = colname
+  
+  if (any((output_data$y - output_data$n) > 0)) {
+    warning("Total read count must be equal or bigger than alt read count. Please check input data before proceeding!")
+    stop()
+  }
+  
+  if (any(output_data$n==0)) {
+    print("Total read counts of 0 encoutered. Replaced 0 with mean total read count.")
+    output_data$n[output_data$n==0] <- round(mean(output_data$n))
+  }
+  
+  output_data$icn <- as.matrix(data[c("mutation", "sample", "tumor_integer_copy_number")] %>% pivot_wider(names_from = sample, values_from = tumor_integer_copy_number, values_fill = 2))
+  rownames(output_data$icn) <- output_data$icn[,'mutation']
+  output_data$icn <- as.numeric(output_data$icn[,-1])
+  # rowname = rownames(output_data$icn)
+  # colname = colnames(output_data$icn)
+  # output_data$icn <- matrix(as.numeric(output_data$icn), ncol = ncol(output_data$icn))
+  # rownames(output_data$icn) = rowname
+  # colnames(output_data$icn) = colname
+  
+  output_data$mtp <- as.matrix(data[c("mutation", "sample", "major_integer_copy_number")] %>% pivot_wider(names_from = sample, values_from = major_integer_copy_number, values_fill = 1))
+  rownames(output_data$mtp) <- output_data$mtp[,'mutation']
+  output_data$mtp <- as.numeric(output_data$mtp[,-1])
+  # rowname = rownames(output_data$mtp)
+  # colname = colnames(output_data$mtp)
+  # output_data$mtp <- matrix(as.numeric(output_data$mtp), ncol = ncol(output_data$mtp))
+  # rownames(output_data$mtp) = rowname
+  # colnames(output_data$mtp) = colname
+  
+  output_data$cncf <- as.matrix(data[c("mutation", "sample", "cncf")] %>% pivot_wider(names_from = sample, values_from = cncf, values_fill = 1))
+  rownames(output_data$cncf) <- output_data$cncf[,'mutation']
+  output_data$cncf <- output_data$cncf[,-1,drop=FALSE]
+  rowname = rownames(output_data$cncf)
+  colname = colnames(output_data$cncf)
+  output_data$cncf <- matrix(as.numeric(output_data$cncf), ncol = ncol(output_data$cncf))
+  rownames(output_data$cncf) = rowname
+  colnames(output_data$cncf) = colname
+  
+  output_data$S = ncol(output_data$y)
+  output_data$I = nrow(output_data$y)
+  
+  output_data$tcn = output_data$icn * output_data$cncf + 2 * ( 1 - output_data$cncf)
+  
+  # mutation_position = unique(data[c("mutation", "chrom", "start", "end")])
+  # if (!all(sort(unique(data[c("mutation", "chrom", "start", "end")]) %>% pull(mutation)) == sort(output_data$MutID))) {
+  #   warning("Some mutations may have duplicated chromosome information; keeping the first occurence.")
+  #   mutation_position = mutation_position[match(unique(mutation_position$mutation), mutation_position$mutation), ]
+  # }
+  # 
+  # output_data$position = mutation_position
+  
   return(output_data)
 }
 
