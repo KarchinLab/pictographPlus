@@ -35,19 +35,10 @@ model {
 	  
 	  m1[i] ~ dpois(1)
 	  m2[i] <- min(m1[i], icn[i])
+	  
 	  lambda[i] ~ dbin(0.5, 1)
 	  m3[i] <- lambda[i]*m2[i] + (1-lambda[i])*(icn[i]-m2[i])
 	  m[i] <- ifelse(is_cn[i]==0, 1, m3[i])
-	  
-	  # assuming the max integer copy number is 7
-	  # icn1[i] ~ dcat(rep(0.125, 8))
-	  # icn[i] <- ifelse(is_cn[i]==0, 2, icn1[i]-1)
-
-	  # m1[i] ~ dcat(rep(0.25, 4))
-	  # m2[i] <- min(m1[i]-1, icn[i])
-	  # mcat[i] ~ dcat(c(0.5, 0.5))
-	  # m3[i] <- equals(mcat[i], 1) * m2[i] + equals(mcat[i], 2) * (icn[i]-m2[i])
-	  # m[i] <- ifelse(is_cn[i]==0, 1, m3[i])
 	}
 
 	for (s in 1:S) {
