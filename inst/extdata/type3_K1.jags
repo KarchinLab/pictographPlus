@@ -31,8 +31,10 @@ model {
   	icn[i] <- ifelse(q[i]==i, icn2[i], icn2[q[i]])
   	
   	m4[i] <- ifelse(q[i]==i, m3[i], m3[q[i]])
-  	lambda[i] ~ dbin(0.5, 1)
-  	m[i] <- lambda[i]*m4[i] + (1-lambda[i])*(icn[i]-m4[i])
+  	
+  	m5[i] ~ dcat(c(1/3,1/3,1/3))
+	  m[i] <- ifelse(m5[i] == 1, 1, ifelse(m5[i] == 2, m4[i], icn[i]-m4[i]))
+
   }
 
 	for (i in 1:I) {
@@ -43,8 +45,6 @@ model {
 	  
 	  m1[i] ~ dpois(1)
 	  m2[i] <- min(m1[i], icn2[i])
-	  #lambda[i] ~ dbin(0.5, 1)
-	  #m3[i] <- lambda[i]*m2[i] + (1-lambda[i])*(icn2[i]-m2[i])
 	  m3[i] <- ifelse(is_cn[i]==0, 1, m2[i])
 	}
 
