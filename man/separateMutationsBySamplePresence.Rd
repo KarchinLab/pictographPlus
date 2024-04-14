@@ -2,10 +2,48 @@
 % Please edit documentation in R/sample-presence.R
 \name{separateMutationsBySamplePresence}
 \alias{separateMutationsBySamplePresence}
-\title{sample presence for MCMC}
+\title{#' separate mutations by sample presence using mcf
+#' @export
+separateMutationsByMCF <- function(mcf) {
+  # returns list of lists --
+  # each item of list contains mcf for a mutation sample presence set
+  # original mutation indices from input_data are recorded in $mutation_indices
+  pres <- ifelse(mcf > 0, 1, 0)
+  pat <- apply(pres, 1, function(x) paste0(x, collapse=""))
+  types <- sort(names(table(pat)), decreasing=TRUE)
+  if (length(types) == 1) {
+    type_indices <- list()
+    type_indices[[types]] <- seq_len(length(nrow(mcf_est)))
+  } else {
+    type_indices <- lapply(types, function(x) which(pat == x))
+    names(type_indices) <- types
+  }
+  warning('consider merge one-sample cluster with other clusters')
+  return(type_indices)
+}
+sample presence for MCMC}
 \usage{
-separateMutationsBySamplePresence(input_data, min_mutation_per_box = 2)
+separateMutationsBySamplePresence(input_data)
 }
 \description{
+#' separate mutations by sample presence using mcf
+#' @export
+separateMutationsByMCF <- function(mcf) {
+  # returns list of lists --
+  # each item of list contains mcf for a mutation sample presence set
+  # original mutation indices from input_data are recorded in $mutation_indices
+  pres <- ifelse(mcf > 0, 1, 0)
+  pat <- apply(pres, 1, function(x) paste0(x, collapse=""))
+  types <- sort(names(table(pat)), decreasing=TRUE)
+  if (length(types) == 1) {
+    type_indices <- list()
+    type_indices[[types]] <- seq_len(length(nrow(mcf_est)))
+  } else {
+    type_indices <- lapply(types, function(x) which(pat == x))
+    names(type_indices) <- types
+  }
+  warning('consider merge one-sample cluster with other clusters')
+  return(type_indices)
+}
 sample presence for MCMC
 }

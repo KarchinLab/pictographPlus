@@ -7,7 +7,7 @@
 mergeSetChains(best_set_chains, indata)
 }
 \arguments{
-\item{best_set_chains}{List of lists of MCMC chains (w_chain, z_chain, ystar_chain) for each mutation set}
+\item{best_set_chains}{List of lists of MCMC chains (mcf_chain, z_chain, ystar_chain) for each mutation set}
 
 \item{indata}{List of input data objects (same as provided to clusterSep)}
 }

@@ -4,14 +4,14 @@
 \alias{filterEdgesBasedOnCCFs}
 \title{Filter possible edges based on lineage precedence}
 \usage{
-filterEdgesBasedOnCCFs(graph_G, w, thresh = 0.1)
+filterEdgesBasedOnCCFs(graph_G, mcf, thresh = 0.1)
 }
 \arguments{
 \item{graph_G}{tibble of possible edges with columns edge, parent, child}
 
-\item{w}{matrix of CCF values (rows = clusters, columns = samples)}
-
 \item{thresh}{maximum allowed violation of lineage precedence (default = 0.1)}
+
+\item{w}{matrix of CCF values (rows = clusters, columns = samples)}
 }
 \description{
 Filter possible edges based on lineage precedence

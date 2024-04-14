@@ -7,7 +7,7 @@
 importCopyNumberFile(
   copy_number_file,
   outputDir,
-  SNP_file = NULL,
+  SNV_file = NULL,
   stat_file = NULL,
   cnv_max_dist = 2000,
   cnv_max_percent = 0.3,
@@ -15,8 +15,7 @@ importCopyNumberFile(
   smooth_cnv = F,
   autosome = T,
   pval = 0.05,
-  mc.cores = 8,
-  sim_iter = 100
+  mc.cores = 8
 )
 }
 \arguments{

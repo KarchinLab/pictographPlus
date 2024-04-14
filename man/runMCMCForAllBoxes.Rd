@@ -6,16 +6,16 @@
 \usage{
 runMCMCForAllBoxes(
   sep_list,
+  sample_presence = FALSE,
+  ploidy = 2,
   max_K = 5,
-  min_mutation_per_cluster = 2,
+  min_mutation_per_cluster = 5,
   cluster_diff_thresh = 0.05,
   n.iter = 5000,
   n.burn = 1000,
   thin = 10,
   mc.cores = 4,
-  model_type = "spike_and_slab",
-  beta.prior = FALSE,
-  drop_zero = TRUE,
+  model_type = "type3",
   inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 123)
 )
 }
