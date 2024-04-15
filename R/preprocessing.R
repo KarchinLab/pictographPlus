@@ -19,7 +19,7 @@ importFiles <- function(mutation_file,
                         pval=0.05) {
   
   if (is.null(outputDir)) {
-    outpurDir = getwd()
+    outputDir = getwd()
   }
   
   if (!is.null(copy_number_file)) {
@@ -31,6 +31,7 @@ importFiles <- function(mutation_file,
                                             outputDir, 
                                             SNV_file, 
                                             stat_file, 
+                                            name_order,
                                             cnv_max_dist, 
                                             cnv_max_percent, 
                                             tcn_normal_range, 
@@ -38,6 +39,7 @@ importFiles <- function(mutation_file,
                                             autosome, 
                                             pval, 
                                             mc.cores)
+    
     mutation_data$tcn = copy_number_data$tcn[, name_order, drop=FALSE]
     
     # bind SSM and CNA
@@ -155,7 +157,7 @@ smoothCNV <- function(data, cnv_max_dist=2000, cnv_max_percent=0.30) {
 #' @param cnv_max_dist: maximum of distance allowed between two segments to assign as the same one
 #' @param cnv_max_percent: maximum percentage of distance allowed between two segments to assign as the same one
 #' @param smooth_cnv: process input CNV to merge  segments with similar distance
-importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, stat_file=NULL, cnv_max_dist=2000, cnv_max_percent=0.30, tcn_normal_range=c(1.8, 2.2), smooth_cnv=F, autosome=T, pval=0.05, mc.cores=8) {
+importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, stat_file=NULL, name_order=NULL, cnv_max_dist=2000, cnv_max_percent=0.30, tcn_normal_range=c(1.8, 2.2), smooth_cnv=F, autosome=T, pval=0.05, mc.cores=8) {
   
   data <- read_csv(copy_number_file, show_col_types = FALSE) # read copy number csv file
   
@@ -199,6 +201,9 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, sta
   rownames(output_data) = rowname
   colnames(output_data) = colname
   
+  output_data <- add_missing_column(name_order, output_data, 2)
+  
+  
   if ("baf" %in% colnames(data)) {
     baf = as.matrix(data[c("sample", "CNA", "baf")] %>% pivot_wider(names_from = sample, values_from = baf, values_fill = 0.5))
     rownames(baf) <- baf[,'CNA']
@@ -213,9 +218,13 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, sta
     rownames(tcn_tot) <- rownames(output_data)
     colnames(tcn_tot) <- colnames(output_data)
     
+    tcn_tot <- add_missing_column(name_order, tcn_tot, 200)
+    
     tcn_alt <- matrix(round(tcn_tot * baf), nrow(output_data),ncol(output_data))
     rownames(tcn_alt) <- rownames(output_data)
     colnames(tcn_alt) <- colnames(output_data)
+    
+    tcn_alt <- add_missing_column(name_order, tcn_alt, 100)
     
   } else if (!is.null(SNV_file)) {
     tcn_ref <- list()
@@ -239,8 +248,13 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, sta
     colnames(tcn_alt) = colname
     
     tcn_tot <- tcn_ref + tcn_alt
-    tcn_alt[tcn_tot==0] <- round(mean(tcn_tot)/2)
-    tcn_tot[tcn_tot==0] <- round(mean(tcn_tot))
+    alt_mean <- round(mean(tcn_tot)/2)
+    tot_mean <- round(mean(tcn_tot))
+    tcn_alt[tcn_tot==0] <- alt_mean
+    tcn_tot[tcn_tot==0] <- tot_mean
+    
+    tcn_tot <- add_missing_column(name_order, tcn_tot, tot_mean)
+    tcn_alt <- add_missing_column(name_order, tcn_alt, alt_mean)
   }
   
   
@@ -280,6 +294,21 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, sta
   return_data$tcn_tot <- tcn_tot
   return_data$tcn_alt <- tcn_alt
   return(return_data)
+}
+
+add_missing_column <- function(name_order, output_data, val) {
+  matches <- name_order %in% colnames(output_data)
+  sorted_matrix <- output_data[, colnames(output_data) %in% name_order, drop = FALSE]
+  sorted_matrix <- sorted_matrix[, match(name_order[matches], colnames(output_data))]
+  non_matches <- name_order[!matches]
+  if (length(non_matches) > 0) {
+    zero_cols <- matrix(val, nrow = nrow(output_data), ncol = length(non_matches))
+    colnames(zero_cols) <- non_matches
+    sorted_matrix <- cbind(sorted_matrix, zero_cols)
+  }
+  output_data <- sorted_matrix
+  
+  return(output_data)
 }
 
 #' @import LaplacesDemon
@@ -376,7 +405,11 @@ check_sample_LOH <- function(data, outputDir, SNV_file, tcn_normal_range=c(1.52,
         if (!germline_test$p.value < pval/nrow(data)) {
           if (data[i,]$tcn > tcn_normal_range[1] & data[i,]$tcn < tcn_normal_range[2]) {
             if (tumor_test$p.value < pval/nrow(data)) {
-              to_keep_index <- c(to_keep_index, 1)
+              
+              # to_keep_index <- c(to_keep_index, 1)
+              warning("check_sample_LOH diptest seems not working; not detecting LOH; more testing needed")
+              
+              to_keep_index <- c(to_keep_index, 0)
               plot(density(vaf), xlim=c(0,1), main = paste(data[i,]$sample, "\n", data[i,]$chrom, ":", data[i,]$start, "-", data[i,]$end, "\n tcn: ", data[i,]$tcn, ", pval: ", tumor_test$p.value, sep=""))
               # print(i)
               # stop()
