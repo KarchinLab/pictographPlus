@@ -44,8 +44,11 @@ mcmcMain <- function(mutation_file,
                       pval=pval)
   
   if (is.null(outputDir)) {
-    outpurDir = getwd()
+    outputDir = getwd()
   }
+  
+  # data_matrix <- ifelse(data$y[data$is_cn==0,]>0, 1, 0)
+  # upset(as.data.frame(data_matrix))
   
   data <- assign("data", data, envir = .GlobalEnv)
   
@@ -96,16 +99,6 @@ mcmcMain <- function(mutation_file,
       all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                             cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                             n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
-      
-      # all_set_results <- assign("all_set_results", all_set_results, envir = .GlobalEnv)
-      # 
-      # # 11. pick K: most common or min_BIC
-      # set_k_choices <- writeSetKTable(all_set_results)
-      # set_k_choices <- assign("set_k_choices", set_k_choices, envir = .GlobalEnv)
-      # 
-      # # 12. collect best chains
-      # best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
-      # chains <- mergeSetChains(best_set_chains, input_data)
     }
   } else {
     
@@ -172,16 +165,6 @@ mcmcMain <- function(mutation_file,
         all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                               cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                               n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
-        
-        # all_set_results <- assign("all_set_results", all_set_results, envir = .GlobalEnv)
-        # 
-        # # 11. pick K: most common or min_BIC
-        # set_k_choices <- writeSetKTable(all_set_results)
-        # set_k_choices <- assign("set_k_choices", set_k_choices, envir = .GlobalEnv)
-        # 
-        # # 12. collect best chains
-        # best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
-        # chains <- mergeSetChains(best_set_chains, input_data)
         
       } else {
         
@@ -259,18 +242,6 @@ mcmcMain <- function(mutation_file,
       all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=FALSE, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                             cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                             n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type3")
-      
-      # all_set_results <- assign("all_set_results", all_set_results, envir = .GlobalEnv)
-      # 
-      # # 1. pick K: chosen K is min_BIC
-      # set_k_choices <- writeSetKTable(all_set_results)
-      # set_k_choices <- assign("set_k_choices", set_k_choices, envir = .GlobalEnv)
-      # 
-      # # 2. collect best chains
-      # best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
-      # 
-      # chains <- mergeSetChains(best_set_chains, input_data)
-      
     }
   }
   
@@ -281,7 +252,12 @@ mcmcMain <- function(mutation_file,
   set_k_choices <- assign("set_k_choices", set_k_choices, envir = .GlobalEnv)
   
   # 12. collect best chains
-  best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+  if (dual_model) {
+    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+  } else {
+    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$min_BIC)
+  }
+  
   chains <- mergeSetChains(best_set_chains, input_data)
   
   
