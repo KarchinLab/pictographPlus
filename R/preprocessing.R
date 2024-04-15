@@ -744,6 +744,8 @@ importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thre
   output_data$mtp <- as.matrix(data[c("mutation", "sample", "major_integer_copy_number")] %>% pivot_wider(names_from = sample, values_from = major_integer_copy_number, values_fill = 1))
   rownames(output_data$mtp) <- output_data$mtp[,'mutation']
   output_data$mtp <- as.numeric(output_data$mtp[,-1])
+  # output_data$mtp <- estimateMultiplicityMatrix(output_data)[,1]
+  
   # rowname = rownames(output_data$mtp)
   # colname = colnames(output_data$mtp)
   # output_data$mtp <- matrix(as.numeric(output_data$mtp), ncol = ncol(output_data$mtp))
@@ -771,6 +773,7 @@ importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thre
   # }
   # 
   # output_data$position = mutation_position
+  
   
   return(output_data)
 }
