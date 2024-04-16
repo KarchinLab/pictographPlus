@@ -81,6 +81,18 @@ mcmcMain <- function(mutation_file,
       all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                             cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                             n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
+      if (all(input_data$cncf==1)) {
+        purity <- estimatePurity(all_set_results, input_data)
+        for (i in seq_along(purity)) {
+          input_data$cncf[, i] <- purity[[i]]
+        }
+        
+        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
+        
+      }
+      
       
     } else {
       message("Not using sample presence; SSM only")
@@ -99,6 +111,18 @@ mcmcMain <- function(mutation_file,
       all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                             cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                             n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
+      
+      if (all(input_data$cncf==1)) {
+        purity <- estimatePurity(all_set_results, input_data)
+        for (i in seq_along(purity)) {
+          input_data$cncf[, i] <- purity[[i]]
+        }
+        
+        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
+        
+      }
     }
   } else {
     
@@ -252,11 +276,8 @@ mcmcMain <- function(mutation_file,
   set_k_choices <- assign("set_k_choices", set_k_choices, envir = .GlobalEnv)
   
   # 12. collect best chains
-  if (dual_model) {
-    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
-  } else {
-    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$min_BIC)
-  }
+  best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+
   
   chains <- mergeSetChains(best_set_chains, input_data)
   
@@ -364,13 +385,6 @@ mcmcMain <- function(mutation_file,
   best_tree <- all_spanning_trees[[which(scores == max(scores))[length(which(scores == max(scores)))]]]
   write.table(best_tree, file=paste(outputDir, "tree.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
 
-  # plot tree
-  png(paste(outputDir, "tree.png", sep="/"))
-
-  plotTree(best_tree, palette = viridis::viridis)
-  # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
-  dev.off()
-
   cc <- best_tree %>% filter(parent=="root") %>% select(child)
   purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
   colnames(purity) <- colnames(data$y)
@@ -389,8 +403,41 @@ mcmcMain <- function(mutation_file,
   # plotSubcloneBar(subclone_props, sample_names=colnames(input_data$y))
   
   save.image(file=paste(outputDir, "PICTograph2.RData", sep="/"))
+  
+  if (nrow(best_tree) >1 ) {
+    # plot tree
+    png(paste(outputDir, "tree.png", sep="/"))
+    
+    plotTree(best_tree, palette = viridis::viridis)
+    # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
+    dev.off()
+  }
+  
 }
 
+
+estimatePurity <- function(all_set_results, input_data) {
+  set_k_choices <- writeSetKTable(all_set_results)
+  best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+  chains <- mergeSetChains(best_set_chains, input_data)
+  mcfTable = writeClusterMCFsTable(chains$mcf_chain)
+
+  threshes <- allThreshes()
+  
+  for (thresh in threshes) {
+    generateAllTrees(chains$mcf_chain, lineage_precedence_thresh = thresh[1], sum_filter_thresh = thresh[2])
+    if (length(all_spanning_trees) > 0) {
+      break
+    }
+  }
+
+  scores <- calcTreeScores(chains$mcf_chain, all_spanning_trees)
+  best_tree <- all_spanning_trees[[which(scores == max(scores))[length(which(scores == max(scores)))]]]
+  cc <- best_tree %>% filter(parent=="root") %>% select(child)
+  purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
+  
+  return(purity)
+}
 findM <- function(data, input_data, chains) {
   mTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
   mTable <- mTable %>% 
