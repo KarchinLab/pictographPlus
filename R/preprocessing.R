@@ -214,7 +214,7 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, sta
     rownames(baf) = rowname
     colnames(baf) = colname
     
-    tcn_tot <- matrix(200, nrow(output_data),ncol(output_data))
+    tcn_tot <- matrix(200, nrow(output_data), ncol(output_data))
     rownames(tcn_tot) <- rownames(output_data)
     colnames(tcn_tot) <- colnames(output_data)
     
@@ -299,7 +299,7 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, sta
 add_missing_column <- function(name_order, output_data, val) {
   matches <- name_order %in% colnames(output_data)
   sorted_matrix <- output_data[, colnames(output_data) %in% name_order, drop = FALSE]
-  sorted_matrix <- sorted_matrix[, match(name_order[matches], colnames(output_data))]
+  sorted_matrix <- sorted_matrix[, match(name_order[matches], colnames(output_data)), drop = FALSE]
   non_matches <- name_order[!matches]
   if (length(non_matches) > 0) {
     zero_cols <- matrix(val, nrow = nrow(output_data), ncol = length(non_matches))
