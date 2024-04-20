@@ -765,6 +765,8 @@ create.cpov <- function(mcf_stats, alpha=0.05, zero.thresh=0.01, mcf_matrix = NU
                             choose(S, k) / (2^S))
         }
       }
+      
+      pval <- ifelse(is.nan(pval), 1, pval)
       ##
       ## edge seems to be based on this ad-hoc statistic, not
       ## the probability of the tree
