@@ -718,7 +718,7 @@ summarizeWChain <- function(w.chain) {
   return(mcf_stats)
 }
 
-create.cpov <- function(mcf_stats, alpha=0.05, zero.thresh=0.01, mcf_matrix = NULL, restriction.val = 1) {
+create.cpov <- function(mcf_stats, alpha=0.05, zero.thresh=0.001, mcf_matrix = NULL, restriction.val = 1) {
   cpov <- NA
   MCF <- NA
   
@@ -766,7 +766,7 @@ create.cpov <- function(mcf_stats, alpha=0.05, zero.thresh=0.01, mcf_matrix = NU
         }
       }
       
-      pval <- ifelse(is.nan(pval), 1, pval)
+      pval <- ifelse(is.nan(pval), 0, pval)
       ##
       ## edge seems to be based on this ad-hoc statistic, not
       ## the probability of the tree
@@ -814,7 +814,7 @@ getChildren <- function(am.long, node) {
   return(edges$child)
 }
 
-calcMassCost <- function(am, mcf_matrix, am_format="long") {
+calcMassCost <- function(am, mcf_matrix, purity, am_format="long") {
   num_samples <- ncol(mcf_matrix)
   
   if (am_format == "long") {
@@ -826,9 +826,9 @@ calcMassCost <- function(am, mcf_matrix, am_format="long") {
     for (i in seq_len(length(parent_nodes))) {
       parent_node <- parent_nodes[i]
       
-      # root CCF is 1
+      # root MCF is purity instead of 1
       if (parent_node == "root") {
-        parent_w <- rep(1, num_samples)
+        parent_w <- rep(purity, num_samples) # 1 replaced by purity
       } else {
         parent_w <- mcf_matrix[as.numeric(parent_node), ,drop=FALSE]
       }
@@ -895,7 +895,7 @@ edgesToAmLong <- function(edges) {
   return(admat)
 }
 
-calcTreeFitness <- function(admat, cpov, mcf_matrix, am_format = "long", weight_mass = 1, weight_topology = 1, scaling_coeff=5) {
+calcTreeFitness <- function(admat, cpov, mcf_matrix, purity, am_format = "long", weight_mass = 1, weight_topology = 1, scaling_coeff=5) {
   # if only edges are given, change into long format
   if (am_format == "edges") {
     admat <- edgesToAmLong(admat)
@@ -903,7 +903,7 @@ calcTreeFitness <- function(admat, cpov, mcf_matrix, am_format = "long", weight_
   }
   
   TC <- calcTopologyCost(admat, cpov, am_format)
-  MC <- calcMassCost(admat, mcf_matrix, am_format)
+  MC <- calcMassCost(admat, mcf_matrix, purity, am_format)
   Z <- weight_topology * TC + weight_mass * MC
   fitness <- exp(-scaling_coeff * Z)
   fitness
@@ -945,12 +945,25 @@ satisfiesCCFSumProperties <- function(am_long, mcf_matrix, threshold = 0.2) {
 #' @export
 #' @param w_chain MCMC chain of CCF values, which is the first item in the list returned by \code{clusterSep}
 #' @param trees list of tibbles, where each tibble contains edges of a tree with columns edge, parent, child
-calcTreeScores <- function(mcf_chain, trees, mc.cores = 1) {
-  mcf_stats <- summarizeWChain(mcf_chain)
+calcTreeScores <- function(mcf_chain, trees, purity, mc.cores = 1) {
+  # calculate mean and sd of mcf for each cluster in each sample
+  mcf_stats <- summarizeWChain(mcf_chain) 
+  
+  # create cpov matrix
+  # first: using sample presence to create a binary matrix; 0 is i can be a ancestor of j; 1 if not
+  # second: for i,j pair that pass the sample presence test, calc stats of the difference between mcf of all 
+  # samples; return binary matrix
+  # problem: is the stats calculation in create.cpov correct? only using cluster so is actually POV instead 
+  # of CPOV
   cpov <- create.cpov(mcf_stats)
   mcf_mat <- estimateMCFs(mcf_chain)
+  
+  # first calculate topology cost: sum of the cpov matrix over all edges
+  # potential problem: mcf[i]=0.4->mcf[j]=0.6 has same weight as mcf[i]=0.5->mcf[j]=0.6
+  # second calculate mass cost: take the max mass violation among all samples; is there a better strategy?
+  # fitness is exp(-5*(topology cost + mass cost))
   schism_scores <- unlist(parallel:::mclapply(trees, 
-                                              function(x) calcTreeFitness(x, cpov, mcf_mat, am_format = "edges"),
+                                              function(x) calcTreeFitness(x, cpov, mcf_mat, purity, am_format = "edges"),
                                               mc.cores = mc.cores))
   return(schism_scores)
 }
