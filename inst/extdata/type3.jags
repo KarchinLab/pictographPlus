@@ -63,7 +63,7 @@ model {
 			z.eta[k,s] ~ dcat(c(eta, 1-eta))
 
 			mcf1[k,s] ~ dbeta(1,1)T(0.05, )
-			mcf_unsorted[k,s] <- ifelse(z.eta[k,s] == 1, mcf1[k,s], 0)
+			mcf_unsorted[k,s] <- ifelse(z.eta[k,s] == 1, mcf1[k,s]*purity, 0)
 		}
 	}
 	
