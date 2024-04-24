@@ -1,0 +1,31 @@
+model {
+	for (i in 1:I) { ## for each variant
+		for (s in 1:S) {  ## for each sample
+			vaf.temp[i,s] <- ifelse(icn[i,s] < 3, mcf[z[i], s]/tcn[i,s], (icn[i,s]-2)*mcf[z[i], s]/tcn[i,s])
+			vaf[i,s] <- ifelse(vaf.temp[i,s] > 1, 1, vaf.temp[i,s])
+			#y[i, s] ~ dbin(vaf[i,s], n[i,s])
+			## posterior predictive distribution
+			ystar[i, s] ~ dbin(vaf[i, s], n[i, s])
+		}
+		z[i] ~ dcat(pi[1:K])
+	}
+	
+	alpha <- rep(1, K)
+	pi[1:K] ~ ddirch(alpha[1:K])
+  
+  for (s in 1:S) {
+		mcf[1:K, s] <- ifelse(s == sample_to_sort, sort(mcf_unsorted[1:K, s]), mcf_unsorted[1:K, s])
+	}
+	
+	for (k in 1:K) {
+		for (s in 1:S) {
+
+			z.eta[k,s] ~ dcat(c(eta, 1-eta))
+
+			mcf1[k,s] ~ dbeta(1,1)T(0.05, )
+			mcf_unsorted[k,s] <- ifelse(z.eta[k,s] == 1, mcf1[k,s], 0)
+		}
+	}
+	
+  eta ~ dbeta(5,2)
+}
