@@ -46,7 +46,7 @@ model {
 			z.eta[1,s] ~ dcat(c(eta, 1-eta))
 
 			mcf1[1,s] ~ dbeta(1,1)T(0.05, )
-			mcf[1,s] <- ifelse(z.eta[1,s] == 1, mcf1[1,s], 0)
+			mcf[1,s] <- ifelse(z.eta[1,s] == 1, mcf1[1,s]*purity, 0)
 	}
 	
   eta ~ dbeta(5,2)
