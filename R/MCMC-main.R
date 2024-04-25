@@ -290,7 +290,7 @@ mcmcMain <- function(mutation_file,
   png(paste(outputDir, "mcf.png", sep="/"))
   plotChainsMCF(chains$mcf_chain)
   dev.off()
-  # plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
+  plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
   # plotClusterAssignmentProbVertical(chains$z_chain, chains$mcf_chain)
   
   mcfTable = writeClusterMCFsTable(chains$mcf_chain)
@@ -348,6 +348,7 @@ mcmcMain <- function(mutation_file,
   # print(threshes)
 
   for (thresh in threshes) {
+    print(thresh)
     generateAllTrees(chains$mcf_chain, lineage_precedence_thresh = thresh[1], sum_filter_thresh = thresh[2])
     if (length(all_spanning_trees) > 0) {
       break
@@ -391,7 +392,16 @@ mcmcMain <- function(mutation_file,
   # highest scoring tree
   best_tree <- all_spanning_trees[[which(scores == max(scores))[length(which(scores == max(scores)))]]]
   write.table(best_tree, file=paste(outputDir, "tree.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-
+  
+  if (nrow(best_tree) >1 ) {
+    # plot tree
+    png(paste(outputDir, "tree.png", sep="/"))
+    
+    plotTree(best_tree, palette = viridis::viridis)
+    # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
+    dev.off()
+  }
+  
   cc <- best_tree %>% filter(parent=="root") %>% select(child)
   purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
   colnames(purity) <- colnames(data$y)
@@ -410,15 +420,6 @@ mcmcMain <- function(mutation_file,
   # plotSubcloneBar(subclone_props, sample_names=colnames(input_data$y))
   
   save.image(file=paste(outputDir, "PICTograph2.RData", sep="/"))
-  
-  if (nrow(best_tree) >1 ) {
-    # plot tree
-    png(paste(outputDir, "tree.png", sep="/"))
-    
-    plotTree(best_tree, palette = viridis::viridis)
-    # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
-    dev.off()
-  }
   
 }
 
