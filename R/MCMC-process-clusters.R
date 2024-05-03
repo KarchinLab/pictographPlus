@@ -251,8 +251,8 @@ writeClusterAssignmentsTable <- function(z_chain, mcf_chain=NULL, cncf=NULL, Mut
     }
   }
   
-  map_z <- map_z %>%
-    arrange(Cluster)
+  # map_z <- map_z %>%
+  #   arrange(Cluster)
   return(map_z)
 }
 
