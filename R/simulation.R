@@ -1,4 +1,4 @@
-simulation_type3_jags <- function(ets=0.8, S=3, K=2, I=50, num_cn=10, seed=12345, depth=50) {
+simulation_type3_jags <- function(eta=0.8, S=3, K=2, I=50, num_cn=10, seed=12345, depth=50) {
   set.seed(12345)
   eta <- 0.85
   S <- 2
