@@ -16,8 +16,8 @@ model {
 			vaf.snv[i,s] <- (mcf[z[i], s] + (m[i]-1) * cncf[i,s]) / tcn.snv.est[i,s]
 			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn.cna.est[i,s]
 			vaf.temp[i,s] <- ifelse(is_cn[i]==0, vaf.snv[i,s], vaf.cna[i,s])
-			vaf.temp1[i,s] <- ifelse(vaf.temp[i,s] <= 0, 0.001, vaf.temp[i,s])
-			vaf[i,s] <- ifelse(vaf.temp1[i,s] >= 1, 0.999, vaf.temp1[i,s])
+			vaf.temp1[i,s] <- ifelse(vaf.temp[i,s] < 0, 0, vaf.temp[i,s])
+			vaf[i,s] <- ifelse(vaf.temp1[i,s] > 1, 1, vaf.temp1[i,s])
 		}
 	}
 
@@ -44,7 +44,7 @@ model {
 			
 			z.eta[1,s] ~ dcat(c(eta, 1-eta))
 
-			mcf1[1,s] ~ dbeta(1,1)T(0.005, )
+			mcf1[1,s] ~ dbeta(1,1)T(0.01, )
 			mcf[1,s] <- ifelse(z.eta[1,s] == 1, mcf1[1,s]*purity, 0)
 	}
 	
