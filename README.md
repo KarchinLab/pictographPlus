@@ -22,12 +22,6 @@ library(pictograph2)
 vignette("pictograph2", package = "pictograph2")
 ```
 
-### parameters for each function
-The details of the parameters for each function can be viewed in R using help(function). For example:
-```
-help(mcmcMain)
-```
-
 ### 1. Input data
 
 Pictograph2 takes input data in multiple formats for flexible user inputs:
@@ -69,7 +63,7 @@ Pictograph2 takes input data in multiple formats for flexible user inputs:
     | sample2 | mut1 | 100 | 50 | chr1 | 10 | 1000 |
 
     | sample | chrom | start | end | tcn | baf
-    | ---- | ---- | ---- | ---- | ---- | ---- | --- |
+    | ---- | ---- | ---- | ---- | ---- | ---- |
     | sample1 | chr1 | 10 | 1000 | 3.6 | 0.3 |
     | sample1 | chr2 | 2000| 3000 | 3.4 | 0.3 |
     | sample2 | chr1 | 10 | 1000 | 3.6 | 0.4 |
