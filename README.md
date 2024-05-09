@@ -46,3 +46,27 @@ Pictograph2 takes input data in multiple formats for flexible user inputs:
 
 ### 2. Run PICTograph2 using the main function
 
+Run an automated pipeline of the tool using the function mcmcMain. The only required user input is the "mutation_file", along with the "copy_number_file" and "SNV_file" if using format 2 or 3 mentioned above. Users can specify the destination of output files using "outputDir" option. If the outputDir is not specified, output files will be stored in the current working directory.
+
+```
+# here we use the example 1 file as a demo
+mcmcMain(mutation_file=system.file('extdata/examples/example1_snv.csv', package = 'pictograph2'), outputDir=system.file('extdata/examples/output', package = 'pictograph2'))
+```
+
+This will run PICTograph2 and save the output files in 'extdata/examples/output' directory. 
+
+### 3. Output files
+
+| File name | Explanation |
+| ------------- | ------------- |
+| mcf.csv | estimated MCF for each cluster in each sample  |
+| clusterAssign.csv | cluster assignment of each SSM/CNA to each cluster  |
+| CN_results.csv | estimation of the integer and major copy number of CNAs; will be empty if the input file is a single csv file (i.e. no separate CNA information)|
+| tree.csv | the tree with the highest score; all trees with tied highest score is available under all_trees directory. |
+| subclone_proportion.csv | estimated proportion of each cluster in each sample |
+| purity.csv | estimated purity for each sample, based on the tree structure |
+| tree_ensemble.png | the image of the ensembled tree of all trees with the same highest score  |
+| tree.png | the image of a tree with the best score  |
+| upsetR.png | the mutation profiles between samples; only available if number of samples is bigger than 1.|
+| violin.png | a violin plot of the MCF|
+| mcf.png | the MCF chain trace from JAGS|
