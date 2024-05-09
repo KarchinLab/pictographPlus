@@ -39,8 +39,8 @@ Pictograph2 takes input data in multiple formats for flexible user inputs:
     | sample | mutation | total_reads | alt_reads | tumor_integer_copy_number | cncf |
     | ---- | ---- | ---- | ---- | ---- | ---- |
     | sample1 | mut1 | 100 | 67 | 4 | 0.8 |
-    | sample1 | mut2 | 50 | 67 | 3 | 1 |
-    | sample2 | mut1 | 100 | 50 | 4 | 0.7 |
+    | sample1 | mut2 | 100 | 67 | 4 | 0.8 |
+    | sample2 | mut1 | 100 | 40 | 2 | 1 |
 
 * Users can also provide an optional column "major_integer_copy_number" that provides the information of the integer copy number of the major allele. If "major_integer_copy_number" is not provided, it will be estimated using an internal function built in the package. Example input files can be found under "inst/extdata/examples". See files that starts with example2.
 
@@ -61,6 +61,18 @@ Pictograph2 takes input data in multiple formats for flexible user inputs:
 2) Two csv files, one for SSM and one for CNA
 
 * The second option is to provide the SSM read counts and copy number alterations (CNA) in two separate files. In this case, the SSM file should contain columns "sample", "mutation", "total_reads", "alt_reads", "chrom", "start", and "end". The "purity" column with be optional. The CNA file should contain columns "sample", "chrom", "start", "end", "tcn" and "baf". See files that starts with example3.
+
+    | sample | mutation | total_reads | alt_reads | chrom | start | end |
+    | ---- | ---- | ---- | ---- | ---- | ---- | --- |
+    | sample1 | mut1 | 100 | 67 | chr1 | 10 | 1000 |
+    | sample1 | mut2 | 50 | 67 | chr2 | 2000| 3000 |
+    | sample2 | mut1 | 100 | 50 | chr1 | 10 | 1000 |
+
+    | sample | chrom | start | end | tcn | baf
+    | ---- | ---- | ---- | ---- | ---- | ---- | --- |
+    | sample1 | chr1 | 10 | 1000 | 3.6 | 0.3 |
+    | sample1 | chr2 | 2000| 3000 | 3.4 | 0.3 |
+    | sample2 | chr1 | 10 | 1000 | 3.6 | 0.4 |
 
 3) Three csv files, one for ssm, one for CNA, and one for germline heterozygous single nucleotide variants (SNV)
 
