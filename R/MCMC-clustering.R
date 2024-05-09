@@ -35,7 +35,8 @@ runMCMCForAllBoxes <- function(sep_list,
                                      model_type = model_type,
                                      params = params,
                                      min_mutation_per_cluster = min_mutation_per_cluster, 
-                                     cluster_diff_thresh = cluster_diff_thresh)
+                                     cluster_diff_thresh = cluster_diff_thresh,
+                                     sample_presence=sample_presence)
     
     all_set_results[[1]] <- temp_samps_list
     
@@ -62,7 +63,8 @@ runMCMCForAllBoxes <- function(sep_list,
                                        model_type = model_type,
                                        params = params,
                                        min_mutation_per_cluster = min_mutation_per_cluster, 
-                                       cluster_diff_thresh = cluster_diff_thresh)
+                                       cluster_diff_thresh = cluster_diff_thresh,
+                                       sample_presence=sample_presence)
       
       all_set_results[[i]] <- temp_samps_list
     }
@@ -82,7 +84,8 @@ runMutSetMCMC <- function(temp_box,
                           model_type = "type1",
                           params = c("z", "mcf", "icn", "m", "ystar"),
                           min_mutation_per_cluster = 1,
-                          cluster_diff_thresh=0.05) {
+                          cluster_diff_thresh=0.05,
+                          sample_presence=FALSE) {
   # warning("beta prior not used or updated in runMCMC")
   # Run MCMC
 
@@ -96,7 +99,8 @@ runMutSetMCMC <- function(temp_box,
                                     inits = inits,
                                     params = params,
                                     max_K = temp_max_K,
-                                    model_type = model_type)
+                                    model_type = model_type,
+                                    sample_presence=sample_presence)
   
   # Format chains
   if (length(temp_samps_list) == 1) {
@@ -161,7 +165,8 @@ runMCMCForABox <- function(box,
                                         ".RNG.seed" = 123),
                            params = c("z", "mcf", "icn", "m", "ystar"),
                            max_K = 5, 
-                           model_type = "type1") {
+                           model_type = "type1",
+                           sample_presence=FALSE) {
 
   # select columns if the presence pattern is 1
   # box <- temp_box
