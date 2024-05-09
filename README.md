@@ -34,13 +34,29 @@ Pictograph2 takes input data in multiple formats for flexible user inputs:
 
 1) A single csv file that contains SSM and CNA information
 
-* The first option is to provide a single csv file that contains at least columns named "sample", "mutation", "total_reads", "alt_reads", "tumor_integer_copy_number", and "cncf". Users can also provide an optional column "major_integer_copy_number" that provides the information of the integer copy number of the major allele. If "major_integer_copy_number" is not provided, it will be estimated using an internal function built in the package. Another optional column is "purity" column that provides the information of normal contamination of a sample. Putiry of 0.8 wil be used if not provided. Example input files can be found under "inst/extdata/examples". See files that starts with example1 and example2.
+* The first option is to provide a single csv file that contains at least columns named "sample", "mutation", "total_reads", "alt_reads", "tumor_integer_copy_number", and "cncf". Example input files can be found under "inst/extdata/examples". See files that starts with example1.
 
     | sample | mutation | total_reads | alt_reads | tumor_integer_copy_number | cncf |
     | ---- | ---- | ---- | ---- | ---- | ---- |
     | sample1 | mut1 | 100 | 67 | 4 | 0.8 |
     | sample1 | mut2 | 50 | 67 | 3 | 1 |
     | sample2 | mut1 | 100 | 50 | 4 | 0.7 |
+
+* Users can also provide an optional column "major_integer_copy_number" that provides the information of the integer copy number of the major allele. If "major_integer_copy_number" is not provided, it will be estimated using an internal function built in the package. Example input files can be found under "inst/extdata/examples". See files that starts with example2.
+
+    | sample | mutation | total_reads | alt_reads | tumor_integer_copy_number | major_integer_copy_number | cncf |
+    | ---- | ---- | ---- | ---- | ---- | ---- | --- |
+    | sample1 | mut1 | 100 | 67 | 4 | 3 | 0.8 |
+    | sample1 | mut2 | 50 | 67 | 3 | 2| 1 |
+    | sample2 | mut1 | 100 | 50 | 4 | 3| 0.7 |
+
+* Another optional column is "purity" column that provides the information of normal contamination of a sample. Putiry of 0.8 wil be used if not provided. 
+
+    | sample | mutation | total_reads | alt_reads | tumor_integer_copy_number | major_integer_copy_number | cncf | purity |
+    | ---- | ---- | ---- | ---- | ---- | ---- | --- | --- |
+    | sample1 | mut1 | 100 | 67 | 4 | 3 | 0.8 | 0.9 |
+    | sample1 | mut2 | 50 | 67 | 3 | 2| 1 | 0.9 |
+    | sample2 | mut1 | 100 | 50 | 4 | 3| 0.7 | 0.9 |
 
 2) Two csv files, one for SSM and one for CNA
 
