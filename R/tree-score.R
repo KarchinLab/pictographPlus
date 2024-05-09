@@ -829,7 +829,8 @@ calcMassCost <- function(am, mcf_matrix, purity, am_format="long") {
       
       # root MCF is purity instead of 1
       if (parent_node == "root") {
-        parent_w <- rep(purity, num_samples) # 1 replaced by purity
+        # parent_w <- rep(1, num_samples) # 1 replaced by purity
+        parent_w <- purity
       } else {
         parent_w <- mcf_matrix[as.numeric(parent_node), ,drop=FALSE]
       }
