@@ -1,14 +1,25 @@
-#' run MCMC with added subclonal copy number
+#' run PICTograph2 in an automated pipeline
 #' 
+#' run MCMC chains to  infer the clonal evolution of tumors from single or multi-region sequencing data. 
+#' This function automatically runs a pipeline of the tool. It models uncertainty of mutation cellular 
+#' fraction (MCF) in small somatic mutations (SSMs) and copy number alterations (CNAs), assigning SSMs 
+#' and CNAs to subclones using a Bayesian hierarchical model, and reconstruct tumor evolutionary trees 
+#' that are constrained based on principles of lineage precedence, sum condition, and optionally by 
+#' sample-presence. 
+#' 
+#' @param mutation_file description
+#' @param copy_number_file description
+#' @param SNV_file description
+#' @param outputDir description
+#' @param sample_presence description
 #' @export
 mcmcMain <- function(mutation_file,
                      copy_number_file=NULL,
-                     outputDir=NULL,
                      SNV_file=NULL,
-                     stat_file=NULL, 
+                     outputDir=NULL,
                      sample_presence=FALSE,
                      dual_model=TRUE,
-                     purity=0.8,
+                     score="silhouette", # either BIC or silhouette
                      ploidy=2,
                      pval=0.05,
                      max_K = 5, 
@@ -31,7 +42,6 @@ mcmcMain <- function(mutation_file,
                       copy_number_file, 
                       outputDir, 
                       SNV_file=SNV_file, 
-                      stat_file=stat_file, 
                       alt_reads_thresh=alt_reads_thresh, 
                       vaf_thresh=vaf_thresh, 
                       cnv_max_dist=cnv_max_dist, 
@@ -42,26 +52,20 @@ mcmcMain <- function(mutation_file,
                       mc.cores=mc.cores, 
                       pval=pval)
   
+  # use working directory to save outputs if outputDir is not provided
   if (is.null(outputDir)) {
     outputDir = getwd()
   }
   
+  # save upset plot
   data_matrix <- ifelse(data$y[data$is_cn==0,]>0, 1, 0)
-  # data_matrix <- data_matrix[, order(colnames(data_matrix))]
-  # upset(as.data.frame(data_matrix))
   png(paste(outputDir, "upsetR.png", sep="/"), res=100)
-  upset(as.data.frame(data_matrix), text.scale = c(1.5, 1.5, 1.5, 1.5, 1.5, 1.5), keep.order = T, sets = rev(colnames(data_matrix)))
+  print(upset(as.data.frame(data_matrix), text.scale = c(1.5, 1.5, 1.5, 1.5, 1.5, 1.5), keep.order = T, sets = rev(colnames(data_matrix))))
   dev.off()
   
   data <- assign("data", data, envir = .GlobalEnv)
   
-  # min_mutation_per_cluster <- max(floor(nrow(data$y)/50), min_mutation_per_cluster)
-  
-  # if (ncol(data$y)==1) {
-  #   min_mutation_per_cluster <- max(floor(nrow(data$y)/25), min_mutation_per_cluster)
-  # } 
-  
-  if (is.null(copy_number_file)) {
+  if (is.null(copy_number_file)) { # use model 2 if only mutation file is provided
     ## use only SSM wiht CNA information provided
     
     if (sample_presence) {
@@ -73,30 +77,18 @@ mcmcMain <- function(mutation_file,
                          mtp=data$mtp,
                          icn=data$icn,
                          cncf=data$cncf,
-                         MutID=data$MutID)
+                         MutID=data$MutID,
+                         purity=data$purity)
       
       input_data <- assign("input_data", input_data, envir = .GlobalEnv)
-      # 9. separate mutations by sample presence
+      
+      # separate mutations by sample presence
       sep_list <- separateMutationsBySamplePresence(input_data)
       
-      # 10. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
-      #    Note: model_type = "type1"
-      all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, purity=purity, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                            cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+      # For each presence set, run clustering MCMC, calculate silhouette and BIC and choose best K
+      all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                            cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                             n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
-      if (all(input_data$cncf==1)) {
-        purity <- estimatePurity(all_set_results, input_data)
-        for (i in seq_along(purity)) {
-          input_data$cncf[, i] <- purity[[i]]
-        }
-        
-        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, purity=purity, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits,
-                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
-        
-      }
-      
-      
     } else {
       message("Not using sample presence; SSM only")
 
@@ -107,25 +99,14 @@ mcmcMain <- function(mutation_file,
                    mtp=data$mtp,
                    icn=data$icn,
                    cncf=data$cncf,
-                   MutID=data$MutID)
+                   MutID=data$MutID,
+                   purity=data$purity)
 
       input_data <- assign("input_data", input_data, envir = .GlobalEnv)
       
-      all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, purity=purity, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                            cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+      all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                            cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                             n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
-      
-      if (all(input_data$cncf==1)) {
-        purity <- estimatePurity(all_set_results, input_data)
-        for (i in seq_along(purity)) {
-          input_data$cncf[, i] <- purity[[i]]
-        }
-        
-        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, purity=purity, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits,
-                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
-        
-      }
     }
   } else {
     
@@ -145,15 +126,16 @@ mcmcMain <- function(mutation_file,
                            n=data$n[index,,drop=FALSE],
                            tcn=data$tcn[index,,drop=FALSE],
                            is_cn=data$is_cn[index],
-                           MutID=data$MutID[index])
+                           MutID=data$MutID[index],
+                           purity=data$purity)
         
         # 3. separate mutations by sample presence
         sep_list <- separateMutationsBySamplePresence(input_data)
         
         # 4. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
         #    Note: model_type = "type1"
-        all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, purity=purity, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+        all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                               n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
         
         
@@ -161,7 +143,12 @@ mcmcMain <- function(mutation_file,
         set_k_choices <- writeSetKTable(all_set_results)
         
         # 6. collect best chains
-        best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+        if (score == "silhouette") {
+          best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$silhouette_K)
+        } else {
+          best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$BIC_K)
+        }
+        
         chains <- mergeSetChains(best_set_chains, input_data)
         
         # 7. find integer copy number and multiplicity
@@ -181,7 +168,8 @@ mcmcMain <- function(mutation_file,
                            mtp=data$mtp,
                            icn=data$icn,
                            cncf=data$cncf,
-                           MutID=data$MutID)
+                           MutID=data$MutID,
+                           purity=data$purity)
         
         input_data <- assign("input_data", input_data, envir = .GlobalEnv)
         # 9. separate mutations by sample presence
@@ -189,8 +177,8 @@ mcmcMain <- function(mutation_file,
         
         # 10. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
         #    Note: model_type = "type1"
-        all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, purity=purity, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+        all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                               n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
         
       } else {
@@ -206,16 +194,16 @@ mcmcMain <- function(mutation_file,
                            n=data$n[index,,drop=FALSE],
                            tcn=data$tcn[index,,drop=FALSE],
                            is_cn=data$is_cn[index],
-                           MutID=data$MutID[index])
+                           MutID=data$MutID[index],
+                           purity=data$purity)
         
         input_data <- assign("input_data", input_data, envir = .GlobalEnv)
         # 3. separate mutations by sample presence
         # sep_list <- separateMutationsBySamplePresence(input_data)
         
         # 4. For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
-        #    Note: model_type = "type1"
-        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, purity=purity, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                               n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
         
         
@@ -223,7 +211,11 @@ mcmcMain <- function(mutation_file,
         set_k_choices <- writeSetKTable(all_set_results)
         
         # 6. collect best chains
-        best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
+        if (score == "silhouette") {
+          best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$silhouette_K)
+        } else {
+          best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$BIC_K)
+        }
         chains <- mergeSetChains(best_set_chains, input_data)
         
         # 7. find integer copy number and multiplicity
@@ -243,12 +235,13 @@ mcmcMain <- function(mutation_file,
                            mtp=data$mtp,
                            icn=data$icn,
                            cncf=data$cncf,
-                           MutID=data$MutID)
+                           MutID=data$MutID,
+                           purity=data$purity)
         
         input_data <- assign("input_data", input_data, envir = .GlobalEnv)
 
-        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, purity=purity, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                               n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
         
       }
@@ -265,11 +258,12 @@ mcmcMain <- function(mutation_file,
                          tcn=data$tcn,
                          is_cn=data$is_cn,
                          q=data$q,
-                         MutID=data$MutID)
+                         MutID=data$MutID,
+                         purity=data$purity)
       
       input_data <- assign("input_data", input_data, envir = .GlobalEnv)
       
-      all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=FALSE, purity=purity, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+      all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=FALSE, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                             cluster_diff_thresh = cluster_diff_thresh, inits = inits,
                                             n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type3")
     }
@@ -282,15 +276,25 @@ mcmcMain <- function(mutation_file,
   set_k_choices <- assign("set_k_choices", set_k_choices, envir = .GlobalEnv)
   
   # 12. collect best chains
-  best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
-
-  
+  if (score=="silhouette") {
+    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$silhouette_K)
+  } else {
+    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$BIC_K)
+  }
   chains <- mergeSetChains(best_set_chains, input_data)
   
   png(paste(outputDir, "mcf.png", sep="/"))
-  plotChainsMCF(chains$mcf_chain)
+  print(
+    plotChainsMCF(chains$mcf_chain)
+  )
   dev.off()
-  plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
+  
+  png(paste(outputDir, "violin.png", sep="/"))
+  print(
+    plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
+  )
+  dev.off()
+  # plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
   # plotClusterAssignmentProbVertical(chains$z_chain, chains$mcf_chain)
   
   mcfTable = writeClusterMCFsTable(chains$mcf_chain)
@@ -320,7 +324,7 @@ mcmcMain <- function(mutation_file,
 
   for (thresh in threshes) {
     print(thresh)
-    generateAllTrees(chains$mcf_chain, lineage_precedence_thresh = thresh[1], sum_filter_thresh = thresh[2])
+    generateAllTrees(chains$mcf_chain, data$purity, lineage_precedence_thresh = thresh[1], sum_filter_thresh = thresh[2])
     if (length(all_spanning_trees) > 0) {
       break
     }
@@ -336,39 +340,11 @@ mcmcMain <- function(mutation_file,
     cncfTable <- findCncf(data, input_data, chains)
   }
   
-  # scores <- calcTreeScores(chains$mcf_chain, all_spanning_trees, purity)
+  # scores <- calcTreeScores(chains$mcf_chain, all_spanning_trees, purity=data$purity)
   
-  scores <- calculateTreeScoreMutations(chains$mcf_chain, data, icnTable, cncfTable, multiplicityTable, clusterAssingmentTable, purity, all_spanning_trees)
-    
-  # # plot all tree with best scores
-  # for (i in seq_len(length(which(scores == max(scores))))) {
-  #   idx = which(scores == max(scores))[i]
-  #   print(idx)
-  #   best_tree <- all_spanning_trees[[idx]]
-  #   write.table(best_tree, file=paste(outputDir, "/tree", i, ".csv", sep=""), quote = FALSE, sep = ",", row.names = F)
-  #   
-  #   png(paste(outputDir, "/tree", i, ".png", sep=""))
-  #   # plot tree
-  #   plotTree(best_tree, palette = viridis::viridis)
-  #   # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
-  #   dev.off()
-  #   
-  #   cc <- best_tree %>% filter(parent=="root") %>% select(child)
-  #   purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
-  #   colnames(purity) <- colnames(data$y)
-  #   write.table(purity, file=paste(outputDir, "/purity", i, ".csv", sep=""), quote = FALSE, sep = ",", row.names = F)
-  #   
-  #   subclone_props <- calcSubcloneProportions(mcf_mat, best_tree)
-  #   rownames(subclone_props) = mcfTable$Cluster
-  #   colnames(subclone_props) = colnames(data$y)
-  #   
-  #   write.csv(subclone_props, file=paste(outputDir, "/subclone_proportion", i, ".csv", sep=""), quote = FALSE)
-  #   
-  #   png(paste(outputDir, "/subclone_props", i, ".png", sep=""))
-  #   plotSubclonePie(subclone_props, sample_names=colnames(input_data$y))
-  #   dev.off()
-  # }
-
+  scores <- calculateTreeScoreMutations(chains$mcf_chain, data, icnTable, cncfTable, multiplicityTable, clusterAssingmentTable, data$purity, all_spanning_trees)
+  
+  plotAllTrees(outputDir, scores, all_spanning_trees, mcfTable, data) # plot all possible trees
   
   # highest scoring tree
   best_tree <- all_spanning_trees[[which(scores == max(scores))[length(which(scores == max(scores)))]]]
@@ -379,7 +355,10 @@ mcmcMain <- function(mutation_file,
     png(paste(outputDir, "tree.png", sep="/"))
     
     plotTree(best_tree, palette = viridis::viridis)
-    # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
+    dev.off()
+    
+    png(paste(outputDir, "tree_ensemble.png", sep="/"))
+    plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
     dev.off()
   }
   
@@ -395,9 +374,8 @@ mcmcMain <- function(mutation_file,
   write.csv(subclone_props, file=paste(outputDir, "subclone_proportion.csv", sep="/"), quote = FALSE)
 
   png(paste(outputDir, "subclone_props.png", sep="/"))
-  plotSubclonePie(subclone_props, sample_names=colnames(input_data$y))
+  print(plotSubclonePie(subclone_props, sample_names=colnames(input_data$y)))
   dev.off()
-  # plotSubclonePie(subclone_props, sample_names=colnames(input_data$y))
   # plotSubcloneBar(subclone_props, sample_names=colnames(input_data$y))
   
   ### Clean copy number segments by removing segments with icn of 2 and multiplicity of 1
@@ -434,28 +412,40 @@ mcmcMain <- function(mutation_file,
   
 }
 
-estimatePurity <- function(all_set_results, input_data) {
-  set_k_choices <- writeSetKTable(all_set_results)
-  best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$chosen_K)
-  chains <- mergeSetChains(best_set_chains, input_data)
-  mcfTable = writeClusterMCFsTable(chains$mcf_chain)
-
-  threshes <- allThreshes()
+plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data) {
+  # plot all tree with best scores
   
-  for (thresh in threshes) {
-    generateAllTrees(chains$mcf_chain, lineage_precedence_thresh = thresh[1], sum_filter_thresh = thresh[2])
-    if (length(all_spanning_trees) > 0) {
-      break
-    }
+  outputDir = paste(outputDir, "all_trees", sep = "/")
+  suppressWarnings(dir.create(outputDir))
+  
+  for (i in seq_len(length(which(scores == max(scores))))) {
+    idx = which(scores == max(scores))[i]
+    best_tree <- all_spanning_trees[[idx]]
+    write.table(best_tree, file=paste(outputDir, "/tree", i, ".csv", sep=""), quote = FALSE, sep = ",", row.names = F)
+
+    png(paste(outputDir, "/tree", i, ".png", sep=""))
+    # plot tree
+    plotTree(best_tree, palette = viridis::viridis)
+    # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
+    dev.off()
+
+    cc <- best_tree %>% filter(parent=="root") %>% select(child)
+    purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
+    colnames(purity) <- colnames(data$y)
+    write.table(purity, file=paste(outputDir, "/tree_", i, "_purity.csv", sep=""), quote = FALSE, sep = ",", row.names = F)
+
+    subclone_props <- calcSubcloneProportions(mcf_mat, best_tree)
+    rownames(subclone_props) = mcfTable$Cluster
+    colnames(subclone_props) = colnames(data$y)
+
+    write.csv(subclone_props, file=paste(outputDir, "/tree_", i, "_subclone_proportion.csv", sep=""), quote = FALSE)
+
+    png(paste(outputDir, "/tree_", i, "_subclone_proportion.png", sep=""))
+    print(plotSubclonePie(subclone_props, sample_names=colnames(input_data$y)))
+    dev.off()
   }
-
-  scores <- calcTreeScores(chains$mcf_chain, all_spanning_trees)
-  best_tree <- all_spanning_trees[[which(scores == max(scores))[length(which(scores == max(scores)))]]]
-  cc <- best_tree %>% filter(parent=="root") %>% select(child)
-  purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
-  
-  return(purity)
 }
+
 findM <- function(data, input_data, chains) {
   mTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
   mTable <- mTable %>% 
@@ -542,13 +532,3 @@ allThreshes <- function() {
   threshes[[13]] <- c(0.4,0.4)
   threshes
 }
-
-# findOverlap <- function(data) {
-#   overlap <- data$overlap
-#   colnames(overlap) <- sapply(colnames(data$overlap), function(col) {which(rownames(data$overlap)==col)})
-#   tmp <- vector("numeric", nrow(overlap))
-#   for (i in 1:nrow(overlap)) {
-#     tmp[i] <- ifelse(length(which(overlap[i,] == 1)) > 0, as.numeric(names(which(overlap[i,] == 1))[1]),i)
-#   }
-#   tmp
-# }
