@@ -4,8 +4,8 @@
 #' @param copy_number_file copy number file that contains columns "sample", "chrom", "start", "end", "tcn"
 importFiles <- function(mutation_file, 
                         copy_number_file=NULL, 
-                        outputDir=NULL, 
                         SNV_file=NULL, 
+                        outputDir=NULL,
                         stat_file=NULL, 
                         alt_reads_thresh = 0, 
                         vaf_thresh = 0, 
@@ -655,6 +655,20 @@ importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh =
   rownames(output_data$n) = rowname
   colnames(output_data$n) = colname
 
+  if ("purity" %in% colnames(data)) {
+    output_data$purity <- as.matrix(data[c("mutation", "sample", "purity")] %>% pivot_wider(names_from = sample, values_from = purity, values_fill = 0))
+    rownames(output_data$purity) <- output_data$purity[,'mutation']
+    output_data$purity <- output_data$purity[,-1, drop=FALSE]
+    rowname = rownames(output_data$purity)
+    colname = colnames(output_data$purity)
+    output_data$purity <- matrix(as.numeric(output_data$purity), ncol = ncol(output_data$purity))
+    rownames(output_data$purity) = rowname
+    colnames(output_data$purity) = colname
+    output_data$purity = colSums(output_data$purity) / colSums(!!output_data$purity)
+  } else {
+    output_data$purity = rep(0.8, ncol(output_data$y))
+  }
+  
   if (any((output_data$y - output_data$n) > 0)) {
     warning("Total read count must be equal or bigger than alt read count. Please check input data before proceeding!")
     stop()
@@ -753,6 +767,20 @@ importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thre
     output_data$mtp <- as.numeric(output_data$mtp[,2])
   } else {
     output_data$mtp <- estimateMultiplicityMatrix(output_data)[,1]
+  }
+  
+  if ("purity" %in% colnames(data)) {
+    output_data$purity <- as.matrix(data[c("mutation", "sample", "purity")] %>% pivot_wider(names_from = sample, values_from = purity, values_fill = 0))
+    rownames(output_data$purity) <- output_data$purity[,'mutation']
+    output_data$purity <- output_data$purity[,-1, drop=FALSE]
+    rowname = rownames(output_data$purity)
+    colname = colnames(output_data$purity)
+    output_data$purity <- matrix(as.numeric(output_data$purity), ncol = ncol(output_data$purity))
+    rownames(output_data$purity) = rowname
+    colnames(output_data$purity) = colname
+    output_data$purity = colSums(output_data$purity) / colSums(!!output_data$purity)
+  } else {
+    output_data$purity = rep(0.8, ncol(output_data$y))
   }
   
   # mutation_position = unique(data[c("mutation", "chrom", "start", "end")])
