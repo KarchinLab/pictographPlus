@@ -30,6 +30,8 @@ Pictograph2 takes input data in multiple formats for flexible user inputs:
 
 * The first option is to provide a single csv file that contains at least columns named "sample", "mutation", "total_reads", "alt_reads", "tumor_integer_copy_number", and "cncf". Example input files can be found under "inst/extdata/examples". See files that start with example1.
 
+* SSM file
+
     | sample | mutation | total_reads | alt_reads | tumor_integer_copy_number | cncf |
     | ---- | ---- | ---- | ---- | ---- | ---- |
     | sample1 | mut1 | 100 | 67 | 4 | 0.8 |
