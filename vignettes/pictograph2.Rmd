@@ -67,6 +67,60 @@ mcmcMain(mutation_file=system.file('extdata/examples/example1_snv.csv', package 
          SNV_file=NULL,
          outputDir=system.file('extdata/examples/output', package = 'pictograph2'))
 ```
+## 4. Parameters
+
+Description of the available parameters can be found using: 
+
+```{r}
+help(mcmcMain)
+```
+
+
+## 5. Output files
+
+### 5.1 mcf.csv 
+
+estimated MCF for each cluster in each sample
+
+### 5.2 clusterAssign.csv 
+
+cluster assignment of each SSM/CNA to each cluster
+
+### 5.3 CN_results.csv 
+estimation of the integer and major copy number of CNAs; will be empty if the input file is a single csv file (i.e. no separate CNA information)
+
+### 5.4 tree.csv 
+
+the tree with the highest score; all trees with tied highest score is available under all_trees directory
+
+### 5.5 subclone_proportion.csv 
+
+estimated proportion of each cluster in each sample
+
+### 5.6 purity.csv 
+
+estimated purity for each sample, based on the tree structure
+
+### 5.7 tree_ensemble.png 
+
+the image of the ensemble tree of all trees with the same highest score
+
+### 5.8 tree.png 
+
+the image of a tree with the best score 
+
+### 5.9 upsetR.png 
+
+the mutation profiles between samples; only available if number of samples is bigger than 1.
+
+### 5.10 violin.png 
+
+a violin plot of the MCF
+
+### 5.11mcf.png 
+
+the MCF chain trace from JAGS
+
 
 ## 3. Clustering mutations and estimating CCFs
 
