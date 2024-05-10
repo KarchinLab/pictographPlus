@@ -29,7 +29,6 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
   
   is_cn <- replicate(input.data$S, input.data$is_cn)
   if (model_type=="type1") {
-    # vaf <- ww / 2
     vaf <- ifelse(is_cn==0, ww/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
     vaf <- ifelse(vaf<=0, 0.001, vaf)    
     vaf <- ifelse(vaf>=1, 0.999, vaf)
@@ -145,19 +144,6 @@ min_bic_k <- sapply(all_set_results, function(x) x$BIC_best_K)
         select(set_name_bin, set_name_full, min_BIC, elbow, knee)
     }
     
-    # # write chosen K if elbow, knee, and minimum BIC all agree 
-    # chosen_K <- rep(NA, length(all_set_results))
-    # for (i in seq_len(length(all_set_results))) {
-    #   chosen_K[i] <- ifelse(length(unique(c(min_bic_k_tb$min_BIC[i],min_bic_k_tb$elbow[i],min_bic_k_tb$knee[i])))==3,
-    #                         min_bic_k_tb$min_BIC[i],
-    #                         getmode(c(min_bic_k_tb$min_BIC[i],min_bic_k_tb$elbow[i],min_bic_k_tb$knee[i])))
-    #   # TO-DO
-    #   # chosen_K[i] <-  min_bic_k_tb$min_BIC[i]
-    # }
-    
-    # min_bic_k_tb <- min_bic_k_tb %>%
-    #   mutate(chosen_K = chosen_K)
-
     min_bic_k_tb <- min_bic_k_tb %>%
       mutate(BIC_K = round((min_BIC + elbow + knee) / 3))
     

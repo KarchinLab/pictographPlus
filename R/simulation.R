@@ -448,3 +448,63 @@ simulation_normal <- function(depth=30, num_SNV=30) {
   plot(density(vaf), xlim=c(0,1), main = title)
 }
 
+simulation_CNA_germline_SNV <- function(mcf=0.9, icn=2, minor_cn=1, depth=30, num_SNV=30, seed=NULL, normal_prop=1) {
+  
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+  
+  tcn = 2 * (1-mcf) + icn * mcf
+  
+  # if a proportion of SNVs on CNA is actually on CN-neutral region
+  num_neutral = round(num_SNV * normal_prop)
+  SNV_depth_neutral = rpois(n = num_neutral, lambda = depth)
+  SNV_alt_neutral = numeric(num_neutral)
+  for (i in seq_len(num_neutral)) {
+    SNV_alt_neutral[i] <- rbinom(n=1, size=SNV_depth_neutral[i], prob=0.5)
+  }
+  
+  vaf_neutral = SNV_alt_neutral / SNV_depth_neutral
+  
+  # Actual tumor proportion
+  num_SNV = num_SNV - num_neutral
+  
+  # generate depth for each SNV
+  depth_total = rpois(n = num_SNV, lambda = depth * tcn / 2)
+  
+  # assign each SNV to one copy
+  SNV_assignment = sample(c(1, 2), size = num_SNV, replace = TRUE) # which segment
+  
+  # generate depth for germline
+  SNV_depth_germline = numeric(num_SNV)
+  for (i in seq_len(num_SNV)) {
+    SNV_depth_germline[i] <- rbinom(n=1, size=depth_total[i], prob=2 * (1-mcf)/tcn)
+  }
+  
+  SNV_alt_germline = numeric(num_SNV)
+  for (i in seq_len(num_SNV)) {
+    SNV_alt_germline[i] <- rbinom(n=1, size=SNV_depth_germline[i], prob=0.5)
+  }
+  
+  vaf_germline <- SNV_alt_germline/SNV_depth_germline
+  
+  # generate depth for tumor
+  SNV_depth_tumor = depth_total - SNV_depth_germline 
+  SNV_alt_tumor = numeric(num_SNV)
+  for (i in seq_len(num_SNV)) {
+    if (icn == 0) {
+      SNV_alt_tumor[i] <- 0
+    } else {
+      tumor_vaf = minor_cn / icn
+      if (SNV_assignment[i] == 1) {
+        tumor_vaf = 1 - (minor_cn / icn)
+      } 
+      SNV_alt_tumor[i] <- rbinom(n=1, size=SNV_depth_tumor[i], prob=tumor_vaf)
+    }
+  }
+  
+  vaf_tumor = c((SNV_alt_germline + SNV_alt_tumor) / depth_total, vaf_neutral)
+  
+  is.unimodal(vaf_tumor)
+}
+
