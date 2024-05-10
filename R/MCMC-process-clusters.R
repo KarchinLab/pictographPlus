@@ -1,7 +1,7 @@
-#' Determine most probable mutation cluster assignments by taking those with highest posterior probability
+#' Determine most probable integer assignments by taking those with highest posterior probability
 #' 
 #' @export
-#' @param icn_chain MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}
+#' @param icn_chain MCMC chain of integer copy number assignment values
 estimateICN <- function(icn_chain) {
   it <- max(icn_chain$Iteration)
   mcmc_icn <- icn_chain %>%
@@ -31,10 +31,10 @@ estimateICN <- function(icn_chain) {
   }
   return(map_icn)
 }
-#' Determine most probable mutation cluster assignments by taking those with highest posterior probability. 
+#' Determine most probable integer copy number by taking those with highest posterior probability. 
 #' 
 #' @export
-#' @param icn_chain MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}
+#' @param icn_chain MCMC chain of integer copy number
 #' @param Mut_ID Vector of mutation IDs, same order as provided as input data (e.g. indata$Mut_ID)
 #' @return A tibble listing mutation IDs and their cluster assignments
 writeIcnTable <- function(icn_chain, Mut_ID = NULL) {
@@ -56,7 +56,7 @@ writeIcnTable <- function(icn_chain, Mut_ID = NULL) {
 #' Determine most probable mutation cluster assignments by taking those with highest posterior probability
 #' 
 #' @export
-#' @param z_chain MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}
+#' @param m_chain MCMC chain of multiplicity assignment values
 estimateMultiplicity <- function(m_chain) {
   it <- max(m_chain$Iteration)
   mcmc_m <- m_chain %>%
@@ -87,10 +87,10 @@ estimateMultiplicity <- function(m_chain) {
   return(map_m)
 }
 
-#' Determine most probable mutation cluster assignments by taking those with highest posterior probability. 
+#' Determine most probable multiplicity assignments by taking those with highest posterior probability. 
 #' 
 #' @export
-#' @param m_chain MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}
+#' @param m_chain MCMC chain of mutation cluster assignment values
 #' @param Mut_ID Vector of mutation IDs, same order as provided as input data (e.g. indata$Mut_ID)
 #' @return A tibble listing mutation IDs and their cluster assignments
 writeMultiplicityTable <- function(m_chain, Mut_ID = NULL) {
@@ -110,27 +110,11 @@ writeMultiplicityTable <- function(m_chain, Mut_ID = NULL) {
 #' Determine the most probable cluster MCF values by taking the mean of the posterior distributions
 #' 
 #' @export
-#' @param mcf_chain MCMC chain of CCF values, which is the first item in the list returned by \code{clusterSep}
-#' @return matrix of estimated cluster CCFs
+#' @param mcf_chain MCMC chain of mCF values
+#' @return matrix of estimated cluster MCFs
 estimateMCFs <- function(mcf_chain) {
   S <- numberSamples(mcf_chain)
   K <- numberClusters(mcf_chain)
-  # # density plot 
-  # mcf.dens <- ggplot(mcf_chain, aes(x = value)) +
-  #   geom_density() +
-  #   facet_wrap(~Parameter, ncol = S, scales = "free_y") +
-  #   theme_light()
-  # # find peak for MAP mcf
-  # mcf.dens.p <- ggplot_build(mcf.dens)$data[[1]]
-  # mcf.map <- mcf.dens.p %>%
-  #   as_tibble() %>%
-  #   group_by(PANEL) %>%
-  #   reframe(value = x[max(y) == y])
-  # mcf.map <- mcf.map %>%
-  #   mutate(Parameter = unique(mcf_chain$Parameter),
-  #          value_rounded = round(value, 3))
-  # # return mcf matrix
-  # mcf.map.matrix <- matrix(mcf.map$value_rounded, K, S, byrow=TRUE)
   temp <- mcf_chain %>% 
     mutate(
       I = as.numeric(gsub("mcf\\[([0-9]+),[0-9]+\\]", "\\1", Parameter)),
@@ -166,12 +150,12 @@ numberClusters <- function(mcf_stats){
   K
 }
 
-#' Determine the most probable cluster CCF values by taking the mode of the posterior distributions
+#' Determine the most probable cluster MCF values by taking the mode of the posterior distributions
 #' 
 #' @export
-#' @param mcf_chain MCMC chain of CCF values, which is the first item in the list returned by \code{clusterSep}
+#' @param mcf_chain MCMC chain of MCF values
 #' @param Sample_ID Vector of sample IDs, same order as provided as input data (e.g. indata$Sample_ID)
-#' @return A tibble of estimated cluster CCFs in each sample 
+#' @return A tibble of estimated cluster MCFs in each sample 
 writeClusterMCFsTable <- function(mcf_chain, Sample_ID = NULL) {
   map_mcf <- as.data.frame(estimateMCFs(mcf_chain))
   
@@ -188,7 +172,7 @@ writeClusterMCFsTable <- function(mcf_chain, Sample_ID = NULL) {
 #' Determine most probable mutation cluster assignments by taking those with highest posterior probability
 #' 
 #' @export
-#' @param z_chain MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}
+#' @param z_chain MCMC chain of mutation cluster assignment values
 estimateClusterAssignments <- function(z_chain) {
   it <- max(z_chain$Iteration)
   mcmc_z <- z_chain %>%
@@ -222,7 +206,7 @@ estimateClusterAssignments <- function(z_chain) {
 #' Determine most probable mutation cluster assignments by taking those with highest posterior probability. 
 #' 
 #' @export
-#' @param z_chain MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}
+#' @param z_chain MCMC chain of mutation cluster assignment values
 #' @param Mut_ID Vector of mutation IDs, same order as provided as input data (e.g. indata$Mut_ID)
 #' @return A tibble listing mutation IDs and their cluster assignments
 writeClusterAssignmentsTable <- function(z_chain, mcf_chain=NULL, cncf=NULL, Mut_ID = NULL) {
@@ -235,8 +219,7 @@ writeClusterAssignmentsTable <- function(z_chain, mcf_chain=NULL, cncf=NULL, Mut
     arrange(Parameter_n)%>%
     mutate(Mut_ID = Mut_ID, Cluster = value)%>%
     select(Mut_ID, Cluster)
-    # arrange(Cluster)
-  
+
   if (!is.null(cncf)) {
     if (is.null(mcf_chain)) {
       warning("mcf_chain information is required to add CNA to cluster assignment table")
@@ -248,16 +231,14 @@ writeClusterAssignmentsTable <- function(z_chain, mcf_chain=NULL, cncf=NULL, Mut
       }
     }
   }
-  
-  # map_z <- map_z %>%
-  #   arrange(Cluster)
+
   return(map_z)
 }
 
 #' Collect chains for best K of each mutation set 
 #' 
 #' @export
-#' @param all_set_results List of MCMC results for each mutation set; returned by \code{clusterSep}
+#' @param all_set_results List of MCMC results for each mutation set
 #' @param chosen_K (Optional) Vector of K to choose for each mutation set, in the same order as all_set_results. If left blank, function will select best K automatically selected by \code{clusterSep}
 collectBestKChains <- function(all_set_results, chosen_K = NULL) {
   # best_set_chains <- lapply(all_set_results, function(x) x$all_chains[[length(x$all_chains)]])
@@ -297,17 +278,13 @@ mergeSetChains <- function(best_set_chains, indata) {
     ystar_chain <- relabel_ystar_chain(temp_ystar_chain,
                                        sep_list[[1]]$mutation_indices)
     for (i in 2:length(best_set_chains)) {
-      # print(i)
       temp_mcf_chain <- best_set_chains[[i]]$mcf_chain
       temp_m_chain <- best_set_chains[[i]]$m_chain
       temp_icn_chain <-  best_set_chains[[i]]$icn_chain
       temp_z_chain <- best_set_chains[[i]]$z_chain
       temp_ystar_chain <- best_set_chains[[i]]$ystar_chain
       new_cluster_labels <- seq_len(best_K_vals[i]) + sum(best_K_vals[1:(i-1)])
-      
-      
-      
-      ###WORKING HERE###
+
       temp_relabeled_mcf_chain <- relabel_mcf_chain(temp_mcf_chain, new_cluster_labels)
       temp_relabeled_icn_chain <- relabel_icn_chain(temp_icn_chain, new_cluster_labels, 
                                                 sep_list[[i]]$mutation_indices)
@@ -417,11 +394,6 @@ relabel_m_chain <- function(m_chain, new_cluster_labels, mutation_indices) {
   if (length(mutation_indices) != length(unique(m_chain$Parameter))) {
     stop("number of supplied mutation indices does not match the number of mutations in m_chain")
   }
-  ## would break when no mutation is assigned to a cluster
-  ## poor choice of k, would prob lower the k
-  # if (length(new_cluster_labels) < length(unique(m_chain$value))) {
-  #   stop("number of supplied new cluster labels does not match the number of clusters in m_chain")
-  # }
   new_m <- m_chain %>%
     mutate(i = as.numeric(gsub("\\]", "", 
                                gsub("m\\[", "", 
@@ -442,11 +414,6 @@ relabel_icn_chain <- function(icn_chain, new_cluster_labels, mutation_indices) {
   if (length(mutation_indices) != length(unique(icn_chain$Parameter))) {
     stop("number of supplied mutation indices does not match the number of mutations in icn_chain")
   }
-  ## would break when no mutation is assigned to a cluster
-  ## poor choice of k, would prob lower the k
-  # if (length(new_cluster_labels) < length(unique(icn_chain$value))) {
-  #   stop("number of supplied new cluster labels does not match the number of clusters in icn_chain")
-  # }
   new_icn <- icn_chain %>%
     mutate(i = as.numeric(gsub("\\]", "", 
                                gsub("icn\\[", "", 
