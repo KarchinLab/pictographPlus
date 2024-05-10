@@ -4,7 +4,7 @@
 \alias{writeSetKTable}
 \title{Make table listing possible choices of K (minimum BIC and elbow of BIC plot) for each mutation set}
 \usage{
-writeSetKTable(all_set_results, score = "BIC", sample_names = NULL)
+writeSetKTable(all_set_results, sample_names = NULL)
 }
 \arguments{
 \item{all_set_results}{List of MCMC results for each mutation set; returned by \code{clusterSep}}
