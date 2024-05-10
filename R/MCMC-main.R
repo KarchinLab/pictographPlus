@@ -59,7 +59,6 @@ mcmcMain <- function(mutation_file,
                       tcn_normal_range=tcn_normal_range, 
                       smooth_cnv=smooth_cnv, 
                       autosome=autosome, 
-                      mc.cores=mc.cores, 
                       pval=pval)
   
   # use working directory to save outputs if outputDir is not provided
