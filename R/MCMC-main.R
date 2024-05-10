@@ -12,7 +12,6 @@
 #' @param SNV_file a csv file that include information for germline heterozygous SNVs.
 #' @param outputDir output directory for saving all files.
 #' @param sample_presence whether to use sample presence to separate the mutations. Not applicable if dual_model is set to FALSE and a copy number file is provided.
-#' @param dual_model whether to use one model or two separate models.
 #' @param score scoring function to estimate the number of clusters. silhouette or BIC.
 #' @param max_K user defined maximum number of clusters.
 #' @param min_mutation_per_cluster minumum number of mutations in each cluster.
@@ -28,7 +27,7 @@ mcmcMain <- function(mutation_file,
                      SNV_file=NULL,
                      outputDir=NULL,
                      sample_presence=TRUE,
-                     dual_model=TRUE,
+                     dual_model=TRUE, # placeholder; dual_model=FALSE still require testing
                      score="silhouette", # either BIC or silhouette
                      ploidy=2, # placeholder
                      pval=0.05, # placeholder
