@@ -384,14 +384,14 @@ filterK <- function(samps_list, min_mutation_per_cluster=1, cluster_diff_thresh=
       mcfTable = writeClusterMCFsTable(mcf_chain)
       # check whether mcf for any cluster is less than cluster_diff_thresh in all samples
       for (j1 in seq_len(k)) {
-        if (all(mcfTable[j1,] < cluster_diff_thresh)) {
+        if (all(mcfTable[j1,2:ncol(mcfTable)] < cluster_diff_thresh)) {
           toBreak = T
         }
       }
       # check whether mcf difference between any two clusters less than cluster_diff_thresh in all samples
       for (j1 in seq_len(k-1)) {
         for (j2 in seq(j1+1, k)) {
-          diff = abs(mcfTable[j1,] - mcfTable[j2,])
+          diff = abs(mcfTable[j1,2:ncol(mcfTable)] - mcfTable[j2,2:ncol(mcfTable)])
           if (all(diff < cluster_diff_thresh)) {
             toBreak = T
           }
