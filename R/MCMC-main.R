@@ -33,12 +33,12 @@ mcmcMain <- function(mutation_file,
                      pval=0.05, # placeholder
                      max_K = 10, 
                      min_mutation_per_cluster=5, 
+                     cluster_diff_thresh=0.05,
                      n.iter=5000, 
                      n.burn=1000, 
                      thin=10, 
                      mc.cores=8, 
                      inits=list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123),
-                     cluster_diff_thresh=0.05,
                      alt_reads_thresh = 0, # placeholder
                      vaf_thresh = 0, # placeholder
                      cnv_max_dist=2000, # placeholder
