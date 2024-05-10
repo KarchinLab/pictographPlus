@@ -193,7 +193,7 @@ Two JAGS models are implemented within the package. Let's first go over the nota
 
 [ $Z_i$ | &pi;$_1$,...&pi;$_K$ ] ~ Multinomial(&pi;$_1$,...&pi;$_K$)
 
-&pi;$_{1}$,...&pi;$_K$ ~ Dirichlet($1_1$,...,$1_K$)
+\( &pi;$_{1}$,...&pi;$_K$ ~ Dirichlet($1_1$,...,$1_K$) \)
 
 [ $mcf_{KS}$ | &eta; ] ~ &eta;Beta(1,1) + (1-&eta;)x0
 
