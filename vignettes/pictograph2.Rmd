@@ -37,7 +37,7 @@ Pictograph2 takes input data in multiple formats for flexible user inputs:
 2) Two csv files, one for SSM and one for CNA
 3) Three csv files, one for ssm, one for CNA, and one for germline heterozygous single nucleotide variants (SNV)
 
-2.1. The first option is to provide a single csv file that contains at least columns named "sample", "mutation", "total_reads", "alt_reads", "tumor_integer_copy_number", and "cncf".  
+2.1. The first option is to provide a single csv file that contains at least columns named "sample", "mutation", "total_reads", "alt_reads", "tumor_integer_copy_number", and "cncf".  If a mutation has no copy number alteration, set cncf to 0.
 
 ```{r}
 head(read.csv(system.file('extdata/examples/example1_snv.csv', package = 'pictograph2')))
