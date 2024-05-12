@@ -199,17 +199,18 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, nam
     rownames(baf) = rowname
     colnames(baf) = colname
     
-    tcn_tot <- matrix(200, nrow(output_data), ncol(output_data))
+    tcn_tot <- matrix(2000, nrow(output_data), ncol(output_data))
     rownames(tcn_tot) <- rownames(output_data)
     colnames(tcn_tot) <- colnames(output_data)
     
-    tcn_tot <- add_missing_column(name_order, tcn_tot, 200)
+    tcn_tot <- add_missing_column(name_order, tcn_tot, 2000)
     
     tcn_alt <- matrix(round(tcn_tot * baf), nrow(output_data),ncol(output_data))
+    tcn_alt <- pmax(tcn_alt, tcn_tot - tcn_alt)
     rownames(tcn_alt) <- rownames(output_data)
     colnames(tcn_alt) <- colnames(output_data)
     
-    tcn_alt <- add_missing_column(name_order, tcn_alt, 100)
+    tcn_alt <- add_missing_column(name_order, tcn_alt, 1000)
     
   } else if (!is.null(SNV_file)) {
     tcn_ref <- list()
@@ -233,13 +234,16 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, nam
     colnames(tcn_alt) = colname
     
     tcn_tot <- tcn_ref + tcn_alt
-    alt_mean <- round(mean(tcn_tot)/2)
-    tot_mean <- round(mean(tcn_tot))
+    alt_mean <- round(mean(tcn_tot[tcn_tot!=0])/2)
+    tot_mean <- round(mean(tcn_tot[tcn_tot!=0]))
     tcn_alt[tcn_tot==0] <- alt_mean
     tcn_tot[tcn_tot==0] <- tot_mean
     
     tcn_tot <- add_missing_column(name_order, tcn_tot, tot_mean)
     tcn_alt <- add_missing_column(name_order, tcn_alt, alt_mean)
+    
+    tcn_tot <- tcn_tot
+    tcn_alt <- tcn_alt
   }
   
   return_data <- list()
@@ -302,18 +306,18 @@ check_sample_LOH <- function(data, outputDir, SNV_file, tcn_normal_range=c(1.5, 
       tumor_test <- dip.test(vaf)
       
       if (is.unimodal(vaf)) { # if similar to germline distribution, alt and ref will be the sum of all
-        tcn_alt[i] = round(mean(SNV_temp[[alt]]))
-        tcn_ref[i] = round(mean(SNV_temp[[ref]]))
+        tcn_alt[i] = mean(SNV_temp[[alt]])
+        tcn_ref[i] = mean(SNV_temp[[ref]])
       } else if (is.trimodal(vaf)) { # else, cluster the vaf into two and take one cluster
         kmeans_result <- kmeans(vaf, centers = 3)
         cluster_number = which.max(kmeans_result$centers)
-        tcn_alt[i] = round(mean(SNV_temp[[alt]][kmeans_result$cluster == cluster_number]))
-        tcn_ref[i] = round(mean(SNV_temp[[ref]][kmeans_result$cluster == cluster_number]))
+        tcn_alt[i] = mean(SNV_temp[[alt]][kmeans_result$cluster == cluster_number])
+        tcn_ref[i] = mean(SNV_temp[[ref]][kmeans_result$cluster == cluster_number])
       } else if (is.bimodal(vaf)) {
         kmeans_result <- kmeans(vaf, centers = 2)
         cluster_number = which.max(kmeans_result$centers)
-        tcn_alt[i] = round(mean(SNV_temp[[alt]][kmeans_result$cluster == cluster_number]))
-        tcn_ref[i] = round(mean(SNV_temp[[ref]][kmeans_result$cluster == cluster_number]))
+        tcn_alt[i] = mean(SNV_temp[[alt]][kmeans_result$cluster == cluster_number])
+        tcn_ref[i] = mean(SNV_temp[[ref]][kmeans_result$cluster == cluster_number])
       } else {
         tcn_alt[i] = -1
         tcn_ref[i] = -1
@@ -401,7 +405,7 @@ importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh =
 
   if (any(output_data$n==0)) {
     # print("Total read counts of 0 encoutered. Replaced 0 with mean total read count.")
-    output_data$n[output_data$n==0] <- round(mean(output_data$n))
+    output_data$n[output_data$n==0] <- round(mean(output_data$n[output_data$n!=0]))
   }
 
   output_data$S = ncol(output_data$y)
@@ -454,9 +458,17 @@ importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thre
   
   output_data$icn <- as.matrix(data[c("mutation", "sample", "tumor_integer_copy_number")] %>% pivot_wider(names_from = sample, values_from = tumor_integer_copy_number, values_fill = 2))
   rownames(output_data$icn) <- output_data$icn[,'mutation']
-  output_data$icn <- as.numeric(output_data$icn[,2])
-  
-  output_data$cncf <- as.matrix(data[c("mutation", "sample", "cncf")] %>% pivot_wider(names_from = sample, values_from = cncf, values_fill = 1))
+  output_data$icn <- output_data$icn[,2:ncol(output_data$icn)]
+  output_data$icn <- matrix(as.numeric(output_data$icn), ncol=ncol(output_data$y))
+  output_data$icn <- apply(output_data$icn, 1, function(x) {
+    if (all(x == 2)) {
+      return(2)
+    } else {
+      return(mean(x[x != 2]))
+    }
+  })
+
+  output_data$cncf <- as.matrix(data[c("mutation", "sample", "cncf")] %>% pivot_wider(names_from = sample, values_from = cncf, values_fill = 0))
   rownames(output_data$cncf) <- output_data$cncf[,'mutation']
   output_data$cncf <- output_data$cncf[,-1,drop=FALSE]
   rowname = rownames(output_data$cncf)
@@ -473,7 +485,15 @@ importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thre
   if ("major_integer_copy_number" %in% colnames(data)) {
     output_data$mtp <- as.matrix(data[c("mutation", "sample", "major_integer_copy_number")] %>% pivot_wider(names_from = sample, values_from = major_integer_copy_number, values_fill = 1))
     rownames(output_data$mtp) <- output_data$mtp[,'mutation']
-    output_data$mtp <- as.numeric(output_data$mtp[,2])
+    output_data$mtp <- output_data$mtp[,2:ncol(output_data$mtp)]
+    output_data$mtp <- matrix(as.numeric(output_data$mtp), ncol=ncol(output_data$y))
+    output_data$mtp <- apply(output_data$mtp, 1, function(x) {
+      if (all(x == 1)) {
+        return(1)
+      } else {
+        return(mean(x[x != 1]))
+      }
+    })
   } else {
     output_data$mtp <- estimateMultiplicityMatrix(output_data)[,1]
   }

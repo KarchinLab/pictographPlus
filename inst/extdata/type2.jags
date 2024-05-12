@@ -9,8 +9,7 @@ model {
 	
 	for (i in 1:I) {
 		for (s in 1:S) {
-			
-			tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + ploidy * (1 - cncf[i,s])
+      tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + ploidy * (1 - cncf[i,s])
       tcn.cna.est[i,s] <- icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s])
       
 			vaf.snv[i,s] <- (mcf[z[i], s] + (m[i]-1) * cncf[i,s]) / tcn.snv.est[i,s]
@@ -23,7 +22,7 @@ model {
 
 	for (i in 1:I) {
 		for (s in 1:S) {
-			tcn[i,s] ~ dnorm(icn[i] * cncf[i, s] + ploidy * (1 - cncf[i, s]), epsilon)
+			tcn[i,s] ~ dnorm(icn[i] * cncf[i, s] + ploidy * (1 - cncf[i, s]), epsilon)T(0,)
 		}
 	}
 	
@@ -37,7 +36,9 @@ model {
 	  #lambda[i] ~ dbin(0.5, 1)
 	  #m[i] <- lambda[i]*mtp[i] + (1-lambda[i])*(icn[i]-mtp[i])
 	  
-	  m[i] <- ifelse(m1[i] == 1, 1, ifelse(m1[i] == 2, mtp[i], icn[i]-mtp[i]))
+	  m2[i] <- ifelse(m1[i] == 1, 1, ifelse(m1[i] == 2, mtp[i], icn[i]-mtp[i]))
+	  m[i] <- ifelse(is_cn[i] == 0, m2[i], max(icn[i]-mtp[i], mtp[i]))
+	  #m[i] <- ifelse(m1[i] == 1, 1, ifelse(m1[i] == 2, mtp[i], icn[i]-mtp[i]))
 	}
 	
 	alpha <- rep(1, K)

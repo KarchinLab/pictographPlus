@@ -28,7 +28,7 @@ Pictograph2 takes input data in multiple formats for flexible user inputs:
 
 1) A single csv file that contains SSM and CNA information. 
 
-* The first option is to provide a single csv file that contains at least columns named "sample", "mutation", "total_reads", "alt_reads", "tumor_integer_copy_number", and "cncf". Example input files can be found under "inst/extdata/examples". See files that start with example1.
+* The first option is to provide a single csv file that contains at least columns named "sample", "mutation", "total_reads", "alt_reads", "tumor_integer_copy_number", and "cncf". Example input files can be found under "inst/extdata/examples". Set cncf to 0 if a mutation has no copy number alteration. See files that start with example1.
 
 * NOTE: using this option will generate trees with SSMs only, CNA will not be assigned to clusters but only used for VAF correction. If you want to treat CNA as separate events, using the next two input formats.
 

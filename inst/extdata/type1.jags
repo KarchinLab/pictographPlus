@@ -13,14 +13,14 @@ model {
 			vaf.snv[i,s] <- mcf[z[i], s] / ploidy
 			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn.est[i,s]
 			vaf.temp[i,s] <- ifelse(is_cn[i]==0, vaf.snv[i,s], vaf.cna[i,s])
-			vaf.temp1[i,s] <- ifelse(vaf.temp[i,s] <= 0, 0.001, vaf.temp[i,s])
-			vaf[i,s] <- ifelse(vaf.temp1[i,s] >= 1, 0.999, vaf.temp1[i,s])
+			vaf.temp1[i,s] <- ifelse(vaf.temp[i,s] < 0, 0, vaf.temp[i,s])
+			vaf[i,s] <- ifelse(vaf.temp1[i,s] > 1, 1, vaf.temp1[i,s])
 		}
 	}
 	
 	for (i in 1:I) {
 		for (s in 1:S) {
-			tcn[i,s] ~ dnorm(icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s]), epsilon)
+			tcn[i,s] ~ dnorm(icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s]), epsilon)T(0,)
 		}
 	 }
 	
@@ -36,13 +36,18 @@ model {
 	  m1[i] ~ dpois(1)
 	  m2[i] <- min(m1[i], icn[i])
 	  
-	  lambda[i] ~ dbin(0.5, 1)
-	  m3[i] <- lambda[i]*m2[i] + (1-lambda[i])*(icn[i]-m2[i])
-	  m[i] <- ifelse(is_cn[i]==0, 1, m3[i])
+	  #lambda[i] ~ dbin(0.5, 1)
+	  #m3[i] <- lambda[i]*m2[i] + (1-lambda[i])*(icn[i]-m2[i])
+	  m[i] <- ifelse(is_cn[i]==0, 1, max(m2[i], icn[i]-m2[i]))
+	  #m[i] <- ifelse(is_cn[i]==0, 1, m2[i])
 	}
 	
 	alpha <- rep(1, K)
 	pi[1:K] ~ ddirch(alpha[1:K])
+	
+	for (s in 1:S) {
+		mcf[1:K, s] <- ifelse(s == sample_to_sort, sort(mcf_unsorted[1:K, s]), mcf_unsorted[1:K, s])
+	}
 	
 	for (k in 1:K) {
 		for (s in 1:S) {
@@ -54,9 +59,4 @@ model {
 			mcf_unsorted[k,s] <- ifelse(z.eta[k,s] == 1, mcf1[k,s], 0)
 		}
 	}
-	
-	for (s in 1:S) {
-		mcf[1:K, s] <- ifelse(s == sample_to_sort, sort(mcf_unsorted[1:K, s]), mcf_unsorted[1:K, s])
-	}
-	
 }
