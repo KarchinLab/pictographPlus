@@ -402,29 +402,32 @@ plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data) 
   
   for (i in seq_len(length(which(scores == max(scores))))) {
     idx = which(scores == max(scores))[i]
+    
     best_tree <- all_spanning_trees[[idx]]
-    write.table(best_tree, file=paste(outputDir, "/tree", i, ".csv", sep=""), quote = FALSE, sep = ",", row.names = F)
-
-    png(paste(outputDir, "/tree", i, ".png", sep=""))
-    # plot tree
-    plotTree(best_tree, palette = viridis::viridis)
-    # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
-    dev.off()
-
-    cc <- best_tree %>% filter(parent=="root") %>% select(child)
-    purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
-    colnames(purity) <- colnames(data$y)
-    write.table(purity, file=paste(outputDir, "/tree_", i, "_purity.csv", sep=""), quote = FALSE, sep = ",", row.names = F)
-
-    subclone_props <- calcSubcloneProportions(mcf_mat, best_tree)
-    rownames(subclone_props) = mcfTable$Cluster
-    colnames(subclone_props) = colnames(data$y)
-
-    write.csv(subclone_props, file=paste(outputDir, "/tree_", i, "_subclone_proportion.csv", sep=""), quote = FALSE)
-
-    png(paste(outputDir, "/tree_", i, "_subclone_proportion.png", sep=""))
-    print(plotSubclonePie(subclone_props, sample_names=colnames(input_data$y)))
-    dev.off()
+    if (nrow(best_tree) >1 ) {
+      write.table(best_tree, file=paste(outputDir, "/tree", i, ".csv", sep=""), quote = FALSE, sep = ",", row.names = F)
+  
+      png(paste(outputDir, "/tree", i, ".png", sep=""))
+      # plot tree
+      plotTree(best_tree, palette = viridis::viridis)
+      # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
+      dev.off()
+  
+      cc <- best_tree %>% filter(parent=="root") %>% select(child)
+      purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
+      colnames(purity) <- colnames(data$y)
+      write.table(purity, file=paste(outputDir, "/tree_", i, "_purity.csv", sep=""), quote = FALSE, sep = ",", row.names = F)
+  
+      subclone_props <- calcSubcloneProportions(mcf_mat, best_tree)
+      rownames(subclone_props) = mcfTable$Cluster
+      colnames(subclone_props) = colnames(data$y)
+  
+      write.csv(subclone_props, file=paste(outputDir, "/tree_", i, "_subclone_proportion.csv", sep=""), quote = FALSE)
+  
+      png(paste(outputDir, "/tree_", i, "_subclone_proportion.png", sep=""))
+      print(plotSubclonePie(subclone_props, sample_names=colnames(input_data$y)))
+      dev.off()
+    }
   }
 }
 
