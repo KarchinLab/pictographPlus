@@ -9,9 +9,9 @@ model {
 	
 	for (i in 1:I) {
 		for (s in 1:S) {
-			
-			tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + ploidy * (1 - cncf[i,s]) + 0.01
-      tcn.cna.est[i,s] <- icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s]) + 0.01
+      
+      tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + ploidy * (1 - cncf[i,s])
+      tcn.cna.est[i,s] <- icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s])
       
 			vaf.snv[i,s] <- (mcf[z[i], s] + (m[i]-1) * cncf[i,s]) / tcn.snv.est[i,s]
 			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn.cna.est[i,s]
@@ -39,7 +39,7 @@ model {
 	  
 	  #m[i] <- ifelse(m1[i] == 1, 1, ifelse(m1[i] == 2, mtp[i], icn[i]-mtp[i]))
 	  m2[i] <- ifelse(m1[i] == 1, 1, ifelse(m1[i] == 2, mtp[i], icn[i]-mtp[i]))
-	  m[i] <- ifelse(is_cn[i]==0, m2[i], mtp[i])
+	  m[i] <- ifelse(is_cn[i]==0, m2[i], max(icn[i]-mtp[i], mtp[i]))
 	}
 	
   for (s in 1:S) {
