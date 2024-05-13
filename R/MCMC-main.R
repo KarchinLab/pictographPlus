@@ -342,10 +342,13 @@ mcmcMain <- function(mutation_file,
   write.table(best_tree, file=paste(outputDir, "tree.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   # plot best and ensemble tree
-  if (nrow(best_tree) >1 ) {
+  if (nrow(best_tree) >1) {
     png(paste(outputDir, "tree.png", sep="/"))
     plotTree(best_tree, palette = viridis::viridis)
     dev.off()
+  }
+  
+  if (length(which(scores == max(scores))) > 1) {
     png(paste(outputDir, "tree_ensemble.png", sep="/"))
     plotEnsembleTree(all_spanning_trees[[which(scores == max(scores))]], palette = viridis::viridis)
     dev.off()
