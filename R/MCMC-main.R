@@ -332,6 +332,7 @@ mcmcMain <- function(mutation_file,
   }
   # scores <- calcTreeScores(chains$mcf_chain, all_spanning_trees, purity=data$purity)
   scores <- calculateTreeScoreMutations(chains$mcf_chain, data, icnTable, cncfTable, multiplicityTable, clusterAssingmentTable, data$purity, all_spanning_trees)
+  scores <- assign("scores", scores, envir = .GlobalEnv)
   
   # plot all possible trees
   plotAllTrees(outputDir, scores, all_spanning_trees, mcfTable, data)
