@@ -350,7 +350,7 @@ mcmcMain <- function(mutation_file,
   
   if (length(which(scores == max(scores))) > 1) {
     png(paste(outputDir, "tree_ensemble.png", sep="/"))
-    plotEnsembleTree(all_spanning_trees[[which(scores == max(scores))]], palette = viridis::viridis)
+    plotEnsembleTree(all_spanning_trees[which(scores == max(scores))], palette = viridis::viridis)
     dev.off()
   }
   
