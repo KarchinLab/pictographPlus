@@ -9,7 +9,7 @@ model {
 	
 	for (i in 1:I) {
 		for (s in 1:S) {
-		  tcn.est[i,s] <- icn[q[i]] * mcf[z[q[i]], s] + ploidy * (1 - mcf[z[q[i]], s])
+		  tcn.est[i,s] <- icn[q[i]] * mcf[z[q[i]], s] + ploidy * (1 - mcf[z[q[i]], s]) + 0.01
 		  
 			vaf.snv[i,s] <- ( mcf[z[i], s] + (m[i] - 1) * mcf[z[q[i]],s] ) / tcn.est[i,s]
 			vaf.cna[i,s] <- ( mcf[z[i], s] * m[i] + 1 - mcf[z[i], s] ) / tcn.est[i,s]

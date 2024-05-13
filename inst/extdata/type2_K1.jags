@@ -9,9 +9,8 @@ model {
 	
 	for (i in 1:I) {
 		for (s in 1:S) {
-      
-      tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + ploidy * (1 - cncf[i,s])
-      tcn.cna.est[i,s] <- icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s])
+		  tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + ploidy * (1 - cncf[i,s]) + 0.01
+      tcn.cna.est[i,s] <- icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s]) + 0.01
       
 			vaf.snv[i,s] <- (mcf[z[i], s] + (m[i]-1) * cncf[i,s]) / tcn.snv.est[i,s]
 			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn.cna.est[i,s]
