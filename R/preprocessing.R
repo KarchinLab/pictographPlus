@@ -154,10 +154,10 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, nam
     # NOTE: TO DO; Not working yet thus only incuding cna in certain range, but not LOH
     data <- check_sample_LOH(data, outputDir, SNV_file, tcn_normal_range=tcn_normal_range, pval=pval) 
     data <- data[data$to_keep==1,] # keep rows is to_keep is 1
+    
   } else {
     stop("Please provide either a baf column in the copy number file or supply a SNV file with heterozygous SNV counts")
   }
-  
   
   data$tcn[data$tcn==2] <- 2.01 # make tcn=2 -> 2.01 to avoid confusion during sample presence
   
@@ -191,6 +191,8 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, nam
   output_data <- add_missing_column(name_order, output_data, 2)
   
   if ("baf" %in% colnames(data)) {
+    
+    
     baf = as.matrix(data[c("sample", "CNA", "baf")] %>% pivot_wider(names_from = sample, values_from = baf, values_fill = 0.5))
     rownames(baf) <- baf[,'CNA']
     baf <- baf[,-1, drop=FALSE]
