@@ -74,11 +74,14 @@ importFiles <- function(mutation_file,
         q[i] <- ifelse(length(which(overlap[i,] == 1)) > 0, as.numeric(names(which(overlap[i,] == 1))[1]),i)
       }
       mutation_data$q <- q
+      
+      mutation_data$cnnull <- FALSE
     }
     
   } else {
     mutation_data = importMutationFileOnly(mutation_file, alt_reads_thresh, vaf_thresh)
     mutation_data$is_cn <- c(rep(0, nrow(mutation_data$y)))
+    mutation_data$cnnull <- TRUE
   }
   return(mutation_data)
 }

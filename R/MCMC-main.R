@@ -77,7 +77,7 @@ mcmcMain <- function(mutation_file,
   data <- assign("data", data, envir = .GlobalEnv)
   
   # use model 2 if only mutation file is provided
-  if (is.null(copy_number_file) | data$cnnull) { 
+  if (data$cnnull) { 
     
     if (sample_presence) {
       message("Using sample presence; SSM only")
