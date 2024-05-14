@@ -43,7 +43,7 @@ mcmcMain <- function(mutation_file,
                      vaf_thresh = 0, # placeholder
                      cnv_max_dist=2000, # placeholder
                      cnv_max_percent=0.30, # placeholder
-                     tcn_normal_range=c(1.8, 2.2), # placeholder
+                     tcn_normal_range=c(1.7, 2.3), # placeholder
                      smooth_cnv=F, # placeholder
                      autosome=T # placeholder
                      ) {
