@@ -325,7 +325,7 @@ mcmcMain <- function(mutation_file,
     }
   }
 
-  if (is.null(copy_number_file)) {
+  if (data$cnnull) {
     cncfTable <- data$cncf
   } else {
     cncfTable <- findCncf(data, input_data, chains)
@@ -522,8 +522,14 @@ allThreshes <- function() {
   threshes[[10]] <- c(0.2,0.3)
   threshes[[11]] <- c(0.3,0.2)
   threshes[[12]] <- c(0.3,0.3)
-  threshes[[13]] <- c(0.4,0.4)
-  threshes[[13]] <- c(0.5,0.5)
+  threshes[[13]] <- c(0.2,0.4)
+  threshes[[13]] <- c(0.2,0.5)
+  threshes[[13]] <- c(0.3,0.4)
+  threshes[[13]] <- c(0.3,0.5)
+  threshes[[13]] <- c(0.2,0.6)
+  threshes[[13]] <- c(0.3,0.6)
+  threshes[[13]] <- c(0.4,0.6)
+  threshes[[13]] <- c(0.5,0.6)
   threshes[[13]] <- c(0.6,0.6)
   threshes
 }
