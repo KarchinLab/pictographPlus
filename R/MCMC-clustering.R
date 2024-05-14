@@ -131,7 +131,7 @@ runMutSetMCMC <- function(temp_box,
     sc_tb <- tibble(K_tested = K_tested,
                      silhouette = sc_vec)
     sc_best_chains <- samps_list[[which.max(sc_vec)]]
-    res_list <- list(all_chains = samps_list,
+    res_list <- list(all_chains = filtered_samps_list,
                      silhouette = sc_tb,
                      BIC = bic_tb,
                      BIC_best_chains = BIC_best_chains,
