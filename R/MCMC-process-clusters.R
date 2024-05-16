@@ -243,7 +243,7 @@ writeClusterAssignmentsTable <- function(z_chain, mcf_chain=NULL, cncf=NULL, Mut
 collectBestKChains <- function(all_set_results, chosen_K = NULL) {
   # best_set_chains <- lapply(all_set_results, function(x) x$all_chains[[length(x$all_chains)]])
   if (is.null(chosen_K)) {
-    best_set_chains <- lapply(all_set_results, function(x) x$best_chains)
+    best_set_chains <- lapply(all_set_results, function(x) x$silhouette_best_chains)
   } else {
     best_set_chains <- mapply(function(set_res, choose_K) set_res$all_chains[[choose_K]],
                               set_res = all_set_results,
