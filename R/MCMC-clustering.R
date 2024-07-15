@@ -2,6 +2,7 @@
 #' 
 #' @export
 runMCMCForAllBoxes <- function(sep_list,
+                               is_sv=FALSE,
                                sample_presence=FALSE,
                                ploidy=2,
                                max_K = 5,
@@ -18,8 +19,11 @@ runMCMCForAllBoxes <- function(sep_list,
   if (!sample_presence) {
     all_set_results <- vector("list", 1)
     names(all_set_results) <- paste0(rep("1", ncol(sep_list$y)), collapse = "")
-    params = c("z", "mcf", "icn", "m", "ystar")
-    
+    if(model_type=="sv"){
+      params = c("z", "mcf", "ystar")
+    }else{
+      params = c("z", "mcf", "icn", "m", "ystar")
+    }
     temp_box <- sep_list
     temp_box$pattern <- paste0(rep("1", ncol(sep_list$y)), collapse = "")
     temp_max_K <- min(max_K, floor(nrow(temp_box$y)/min_mutation_per_cluster))
@@ -44,7 +48,11 @@ runMCMCForAllBoxes <- function(sep_list,
   } else {
     all_set_results <- vector("list", length(sep_list))
     names(all_set_results) <- names(sep_list)
-    params = c("z", "mcf", "icn", "m", "ystar")
+    if(model_type=="sv"){
+      params = c("z", "mcf", "ystar")
+    }else{
+      params = c("z", "mcf", "icn", "m", "ystar")
+    }
     
     for (i in seq_len(length(sep_list))) {
       temp_box <- sep_list[[i]]
@@ -151,7 +159,8 @@ runMutSetMCMC <- function(temp_box,
   return(res_list)
 }
 
-runMCMCForABox <- function(box, 
+runMCMCForABox <- function(box,
+                           is_sv,
                            ploidy=2,
                            n.iter = 10000, 
                            n.burn = 1000, 
@@ -165,6 +174,7 @@ runMCMCForABox <- function(box,
                            sample_presence=FALSE) {
 
   # select columns if the presence pattern is 1
+  
   box_input_data <- getBoxInputData(box, ploidy, model_type)
   
   extdir <- system.file("extdata", package="pictograph2")
@@ -181,6 +191,9 @@ runMCMCForABox <- function(box,
   } else if (model_type == "type3") {
     jags.file <- file.path(extdir, "type3.jags")
     jags.file.K1 <- file.path(extdir, "type3_K1.jags")
+  } else if (model_type == "sv") {
+    jags.file <- file.path(extdir, "sv.jags")
+    jags.file.K1 <- file.path(extdir, "sv_K1.jags")
   }
   
   samps_K1 <- runMCMC(box_input_data, 
@@ -266,6 +279,14 @@ getBoxInputData <- function(box, ploidy=2, model_type) {
                            is_cn = box$is_cn,
                            q = box$q,
                            purity=box$purity,
+                           ploidy=ploidy)
+  }else if (model_type == "sv"){
+    box_input_data <- list(I = nrow(box$y),
+                           S = length(sample_list),
+                           y = round(box$y[,sample_list,drop=FALSE]),
+                           n = round(box$n[,sample_list,drop=FALSE]),
+                           tcn = box$tcn[,sample_list,drop=FALSE],
+                           icn = box$icn[,sample_list,drop=FALSE],
                            ploidy=ploidy)
   }
   # set tcn to 2 if 0

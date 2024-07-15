@@ -22,7 +22,10 @@
 #' @param inits additional parameters by JAGS.
 #' @param cluster_diff_thresh threshold to merge two clusters.
 #' @export
-mcmcMain <- function(mutation_file,
+mcmcMain <- function(is_list=FALSE,
+                     list_input,
+                     is_sv=FALSE,
+                     mutation_file,
                      copy_number_file=NULL,
                      SNV_file=NULL,
                      outputDir=NULL,
@@ -47,227 +50,292 @@ mcmcMain <- function(mutation_file,
                      smooth_cnv=F, # placeholder
                      autosome=T # placeholder
                      ) {
-  
-  data <- importFiles(mutation_file, 
-                      copy_number_file, 
-                      outputDir, 
-                      SNV_file=SNV_file, 
-                      alt_reads_thresh=alt_reads_thresh, 
-                      vaf_thresh=vaf_thresh, 
-                      cnv_max_dist=cnv_max_dist, 
-                      cnv_max_percent=cnv_max_percent, 
-                      tcn_normal_range=tcn_normal_range, 
-                      smooth_cnv=smooth_cnv, 
-                      autosome=autosome, 
-                      pval=pval)
-  
+  if(is_list){
+    data <- list_input
+  }else{
+    data <- importFiles(mutation_file, 
+                        copy_number_file, 
+                        outputDir, 
+                        SNV_file=SNV_file, 
+                        alt_reads_thresh=alt_reads_thresh, 
+                        vaf_thresh=vaf_thresh, 
+                        cnv_max_dist=cnv_max_dist, 
+                        cnv_max_percent=cnv_max_percent, 
+                        tcn_normal_range=tcn_normal_range, 
+                        smooth_cnv=smooth_cnv, 
+                        autosome=autosome, 
+                        pval=pval)
+  }
   # use working directory to save outputs if outputDir is not provided
   if (is.null(outputDir)) {
     outputDir = getwd()
   }
   
   # save upset plot if more than one sample
-  if (ncol(data$y) > 1) {
-    data_matrix <- ifelse(data$y[data$is_cn==0,]>0, 1, 0)
-    png(paste(outputDir, "upsetR.png", sep="/"), res=100)
-    print(upset(as.data.frame(data_matrix), text.scale = c(1.5, 1.5, 1.5, 1.5, 1.5, 1.5), keep.order = T, sets = rev(colnames(data_matrix))))
-    dev.off()
+  if(model_type=="sv"){
+    ## TO DO: update sv version 
+  }else{
+    if (ncol(data$y) > 1) {
+      data_matrix <- ifelse(data$y[data$is_cn==0,]>0, 1, 0)
+      png(paste(outputDir, "upsetR.png", sep="/"), res=100)
+      print(upset(as.data.frame(data_matrix), text.scale = c(1.5, 1.5, 1.5, 1.5, 1.5, 1.5), keep.order = T, sets = rev(colnames(data_matrix))))
+      dev.off()
+    }
   }
-  
   data <- assign("data", data, envir = .GlobalEnv)
   
-  # use model 2 if only mutation file is provided
-  if (is.null(copy_number_file)) { 
-    
+  ############### sv ###############
+  if(model_type=="sv"){
     if (sample_presence) {
-      message("Using sample presence; SSM only")
+      message("Using sample presence for SVs")
       input_data <- list(y=data$y,
                          n=data$n,
                          tcn=data$tcn,
-                         is_cn=data$is_cn,
-                         mtp=data$mtp,
                          icn=data$icn,
-                         cncf=data$cncf,
-                         MutID=data$MutID,
-                         purity=data$purity)
+                         z=data$z,
+                         MutID=data$MutID)
       
       input_data <- assign("input_data", input_data, envir = .GlobalEnv)
       
       # separate mutations by sample presence
-      sep_list <- separateMutationsBySamplePresence(input_data)
+      separatebypresence <- function(dat){
+        alt_read <- as.data.frame(dat$y)
+        cols = colnames(alt_read)
+        tmp <- alt_read%>%
+          mutate_all(~(ifelse(.==0, "0","1")))%>%
+          unite("presence",all_of(cols),sep="", remove = FALSE) %>%
+          mutate(id = row_number())
+        make_list <- function(tmp, dat, type){
+          subset <- tmp %>%
+            filter(presence == type)
+          ids <- subset$id
+          out <- list(y=dat$y[ids,drop=FALSE],
+                      n=dat$n[ids,drop=FALSE],
+                      icn=dat$icn[ids,drop=FALSE],
+                      tcn=dat$tcn[ids,drop=FALSE],
+                      z=dat$z[ids,drop=FALSE],
+                      MutID=dat$MutID[ids,drop=FALSE],
+                      presence=type)
+          return(out)
+        }
+        output <- lapply(unique(tmp$presence), function(x) make_list(tmp,dat,x))
+        names(output) <- unique(tmp$presence)
+        return(output)
+      }
+      sep_list <- separatebypresence(input_data)
       
       # For each presence set, run clustering MCMC, calculate silhouette and BIC and choose best K
-      all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+      all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=TRUE, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                             cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
-                                            n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
+                                            n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "sv")
     } else {
       message("Not using sample presence; SSM only")
       input_data <- list(y=data$y,
-                   n=data$n,
-                   tcn=data$tcn,
-                   is_cn=data$is_cn,
-                   mtp=data$mtp,
-                   icn=data$icn,
-                   cncf=data$cncf,
-                   MutID=data$MutID,
-                   purity=data$purity)
-
-      input_data <- assign("input_data", input_data, envir = .GlobalEnv)
-      
-      all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                            cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
-                                            n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
-    }
-  } else {
-    # using two step modeling
-    if (dual_model) {
-      if (sample_presence) {
-        
-        message("Using sample presence; SSM and CNA")
-        ##############################################################################
-        #              MCMC 1: SSMs (CN-neutral region) and all CNAs                 #
-        ##############################################################################
-        # get index of SNVs in CN-neutral region (no LOH) or CNA events
-        index = which(rowSums(data$tcn)==0 | data$is_cn==1)
-        
-        # update input_data
-        input_data <- list(y=data$y[index,,drop=FALSE],
-                           n=data$n[index,,drop=FALSE],
-                           tcn=data$tcn[index,,drop=FALSE],
-                           is_cn=data$is_cn[index],
-                           MutID=data$MutID[index],
-                           purity=data$purity)
-        
-        # separate mutations by sample presence
-        sep_list <- separateMutationsBySamplePresence(input_data)
-        
-        # For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
-        all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
-                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
-        
-        
-        # pick K
-        set_k_choices <- writeSetKTable(all_set_results)
-        
-        # collect best chains
-        if (score == "silhouette") {
-          best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$silhouette_K)
-        } else {
-          best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$BIC_K)
-        }
-        
-        chains <- mergeSetChains(best_set_chains, input_data)
-        
-        # 7. find integer copy number and multiplicity
-        data$mtp <- findM(data, input_data, chains)
-        data$icn <- findIcn(data, input_data, chains)
-        data$cncf <- findCncf(data, input_data, chains)
-        
-        ##############################################################################
-        #              MCMC 2: all SSMs and all CNAs                 #
-        ##############################################################################
-        # collect data for the second model
-        input_data <- list(y=data$y,
-                           n=data$n,
-                           tcn=data$tcn,
-                           is_cn=data$is_cn,
-                           mtp=data$mtp,
-                           icn=data$icn,
-                           cncf=data$cncf,
-                           MutID=data$MutID,
-                           purity=data$purity)
-        
-        input_data <- assign("input_data", input_data, envir = .GlobalEnv)
-        
-        # separate mutations by sample presence
-        sep_list <- separateMutationsBySamplePresence(input_data)
-        
-        # For each presence set, run clustering MCMC
-        all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
-                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
-        
-      } else {
-        
-        warning("Not using sample presence; SSM and CNA; NOT TESTED YET")
-        ##############################################################################
-        #              MCMC 1: SSMs (CN-neutral region) and all CNAs                 #
-        ##############################################################################
-        # get index of SNVs in CN-neutral region (no LOH) or CNA events
-        index = which(rowSums(data$tcn)==0 | data$is_cn==1)
-        # update input_data
-        input_data <- list(y=data$y[index,,drop=FALSE],
-                           n=data$n[index,,drop=FALSE],
-                           tcn=data$tcn[index,,drop=FALSE],
-                           is_cn=data$is_cn[index],
-                           MutID=data$MutID[index],
-                           purity=data$purity)
-        
-        # For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
-        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
-                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
-        # pick K
-        set_k_choices <- writeSetKTable(all_set_results)
-        
-        # collect best chains
-        if (score == "silhouette") {
-          best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$silhouette_K)
-        } else {
-          best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$BIC_K)
-        }
-        chains <- mergeSetChains(best_set_chains, input_data)
-        
-        # find integer copy number and multiplicity
-        data$mtp <- findM(data, input_data, chains)
-        data$icn <- findIcn(data, input_data, chains)
-        data$cncf <- findCncf(data, input_data, chains)
-        
-        ##############################################################################
-        #              MCMC 2: all SSMs and all CNAs                 #
-        ##############################################################################
-        
-        # collect data for the second chain
-        input_data <- list(y=data$y,
-                           n=data$n,
-                           tcn=data$tcn,
-                           is_cn=data$is_cn,
-                           mtp=data$mtp,
-                           icn=data$icn,
-                           cncf=data$cncf,
-                           MutID=data$MutID,
-                           purity=data$purity)
-        
-        input_data <- assign("input_data", input_data, envir = .GlobalEnv)
-
-        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
-                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
-        
-      }
-      
-    } else {
-      message("Not using sample presence; Using single model for both SSM and CNA")
-      ##############################################################################
-      #             MCMC chain for all; no sample presence                         #
-      ##############################################################################
-      input_data <- list(y=data$y,
                          n=data$n,
                          tcn=data$tcn,
-                         is_cn=data$is_cn,
-                         q=data$q,
-                         MutID=data$MutID,
-                         purity=data$purity)
+                         icn=data$icn,
+                         z=data$z,
+                         MutID=data$MutID)
       
       input_data <- assign("input_data", input_data, envir = .GlobalEnv)
       
       all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=FALSE, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                            cluster_diff_thresh = cluster_diff_thresh, inits = inits,
-                                            n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type3")
+                                            cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                            n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "sv")
+    }
+    #################### sv end ##################
+  }else{
+    if (is.null(copy_number_file)) { 
+      
+      if (sample_presence) {
+        message("Using sample presence; SSM only")
+        input_data <- list(y=data$y,
+                           n=data$n,
+                           tcn=data$tcn,
+                           is_cn=data$is_cn,
+                           mtp=data$mtp,
+                           icn=data$icn,
+                           cncf=data$cncf,
+                           MutID=data$MutID,
+                           purity=data$purity)
+        
+        input_data <- assign("input_data", input_data, envir = .GlobalEnv)
+        
+        # separate mutations by sample presence
+        sep_list <- separateMutationsBySamplePresence(input_data)
+        
+        # For each presence set, run clustering MCMC, calculate silhouette and BIC and choose best K
+        all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
+      } else {
+        message("Not using sample presence; SSM only")
+        input_data <- list(y=data$y,
+                           n=data$n,
+                           tcn=data$tcn,
+                           is_cn=data$is_cn,
+                           mtp=data$mtp,
+                           icn=data$icn,
+                           cncf=data$cncf,
+                           MutID=data$MutID,
+                           purity=data$purity)
+        
+        input_data <- assign("input_data", input_data, envir = .GlobalEnv)
+        
+        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
+      }
+    } else {
+      # using two step modeling
+      if (dual_model) {
+        if (sample_presence) {
+          
+          message("Using sample presence; SSM and CNA")
+          ##############################################################################
+          #              MCMC 1: SSMs (CN-neutral region) and all CNAs                 #
+          ##############################################################################
+          # get index of SNVs in CN-neutral region (no LOH) or CNA events
+          index = which(rowSums(data$tcn)==0 | data$is_cn==1)
+          
+          # update input_data
+          input_data <- list(y=data$y[index,,drop=FALSE],
+                             n=data$n[index,,drop=FALSE],
+                             tcn=data$tcn[index,,drop=FALSE],
+                             is_cn=data$is_cn[index],
+                             MutID=data$MutID[index],
+                             purity=data$purity)
+          
+          # separate mutations by sample presence
+          sep_list <- separateMutationsBySamplePresence(input_data)
+          
+          # For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
+          all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                                cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                                n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
+          
+          
+          # pick K
+          set_k_choices <- writeSetKTable(all_set_results)
+          
+          # collect best chains
+          if (score == "silhouette") {
+            best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$silhouette_K)
+          } else {
+            best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$BIC_K)
+          }
+          
+          chains <- mergeSetChains(best_set_chains, input_data)
+          
+          # 7. find integer copy number and multiplicity
+          data$mtp <- findM(data, input_data, chains)
+          data$icn <- findIcn(data, input_data, chains)
+          data$cncf <- findCncf(data, input_data, chains)
+          
+          ##############################################################################
+          #              MCMC 2: all SSMs and all CNAs                 #
+          ##############################################################################
+          # collect data for the second model
+          input_data <- list(y=data$y,
+                             n=data$n,
+                             tcn=data$tcn,
+                             is_cn=data$is_cn,
+                             mtp=data$mtp,
+                             icn=data$icn,
+                             cncf=data$cncf,
+                             MutID=data$MutID,
+                             purity=data$purity)
+          
+          input_data <- assign("input_data", input_data, envir = .GlobalEnv)
+          
+          # separate mutations by sample presence
+          sep_list <- separateMutationsBySamplePresence(input_data)
+          
+          # For each presence set, run clustering MCMC
+          all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                                cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                                n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
+          
+        } else {
+          
+          warning("Not using sample presence; SSM and CNA; NOT TESTED YET")
+          ##############################################################################
+          #              MCMC 1: SSMs (CN-neutral region) and all CNAs                 #
+          ##############################################################################
+          # get index of SNVs in CN-neutral region (no LOH) or CNA events
+          index = which(rowSums(data$tcn)==0 | data$is_cn==1)
+          # update input_data
+          input_data <- list(y=data$y[index,,drop=FALSE],
+                             n=data$n[index,,drop=FALSE],
+                             tcn=data$tcn[index,,drop=FALSE],
+                             is_cn=data$is_cn[index],
+                             MutID=data$MutID[index],
+                             purity=data$purity)
+          
+          # For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
+          all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                                cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                                n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
+          # pick K
+          set_k_choices <- writeSetKTable(all_set_results)
+          
+          # collect best chains
+          if (score == "silhouette") {
+            best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$silhouette_K)
+          } else {
+            best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$BIC_K)
+          }
+          chains <- mergeSetChains(best_set_chains, input_data)
+          
+          # find integer copy number and multiplicity
+          data$mtp <- findM(data, input_data, chains)
+          data$icn <- findIcn(data, input_data, chains)
+          data$cncf <- findCncf(data, input_data, chains)
+          
+          ##############################################################################
+          #              MCMC 2: all SSMs and all CNAs                 #
+          ##############################################################################
+          
+          # collect data for the second chain
+          input_data <- list(y=data$y,
+                             n=data$n,
+                             tcn=data$tcn,
+                             is_cn=data$is_cn,
+                             mtp=data$mtp,
+                             icn=data$icn,
+                             cncf=data$cncf,
+                             MutID=data$MutID,
+                             purity=data$purity)
+          
+          input_data <- assign("input_data", input_data, envir = .GlobalEnv)
+          
+          all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                                cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                                n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
+          
+        }
+        
+      } else {
+        message("Not using sample presence; Using single model for both SSM and CNA")
+        ##############################################################################
+        #             MCMC chain for all; no sample presence                         #
+        ##############################################################################
+        input_data <- list(y=data$y,
+                           n=data$n,
+                           tcn=data$tcn,
+                           is_cn=data$is_cn,
+                           q=data$q,
+                           MutID=data$MutID,
+                           purity=data$purity)
+        
+        input_data <- assign("input_data", input_data, envir = .GlobalEnv)
+        
+        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=FALSE, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits,
+                                              n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type3")
+      }
     }
   }
-  
   all_set_results <- assign("all_set_results", all_set_results, envir = .GlobalEnv)
   
   # pick K: silhouette or BIC
@@ -280,7 +348,7 @@ mcmcMain <- function(mutation_file,
   } else {
     best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$BIC_K)
   }
-  chains <- mergeSetChains(best_set_chains, input_data)
+  chains <- mergeSetChains(best_set_chains, input_data, model_type)
   
   # plot MCMC tracing 
   png(paste(outputDir, "mcf.png", sep="/"))
@@ -305,16 +373,18 @@ mcmcMain <- function(mutation_file,
   clusterAssingmentTable = writeClusterAssignmentsTable(chains$z_chain, Mut_ID = input_data$MutID)
   
   # record estimated icn and multiplicity information
-  icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
-  write.table(icnTable, file=paste(outputDir, "icn_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-  
-  multiplicityTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
-  write.table(multiplicityTable, file=paste(outputDir, "multiplicity_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-  
-  icnTableCN <- icnTable[data$is_cn==1,]
-  multiplicityTableCN <- multiplicityTable[data$is_cn==1,]
-  icnTableCN$Multiplicity <- multiplicityTableCN$Multiplicity
-  write.table(icnTableCN, file=paste(outputDir, "CN_results.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  if(model_type!="sv"){
+    icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
+    write.table(icnTable, file=paste(outputDir, "icn_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    
+    multiplicityTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
+    write.table(multiplicityTable, file=paste(outputDir, "multiplicity_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    
+    icnTableCN <- icnTable[data$is_cn==1,]
+    multiplicityTableCN <- multiplicityTable[data$is_cn==1,]
+    icnTableCN$Multiplicity <- multiplicityTableCN$Multiplicity
+    write.table(icnTableCN, file=paste(outputDir, "CN_results.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  }
   
   # generate trees using different set of thresholds until at least one tree is available
   threshes <- allThreshes()
@@ -325,10 +395,12 @@ mcmcMain <- function(mutation_file,
     }
   }
 
-  if (is.null(copy_number_file)) {
-    cncfTable <- data$cncf
-  } else {
-    cncfTable <- findCncf(data, input_data, chains)
+  if(model_type!="sv"){
+    if (is.null(copy_number_file)) {
+      cncfTable <- data$cncf
+    } else {
+      cncfTable <- findCncf(data, input_data, chains)
+    }
   }
   # scores <- calcTreeScores(chains$mcf_chain, all_spanning_trees, purity=data$purity)
   scores <- calculateTreeScoreMutations(chains$mcf_chain, data, icnTable, cncfTable, multiplicityTable, clusterAssingmentTable, data$purity, all_spanning_trees)

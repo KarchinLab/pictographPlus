@@ -259,9 +259,14 @@ collectBestKChains <- function(all_set_results, chosen_K = NULL) {
 #' @import dplyr
 #' @param best_set_chains List of lists of MCMC chains (mcf_chain, z_chain, ystar_chain) for each mutation set
 #' @param indata List of input data objects (same as provided to clusterSep)
-mergeSetChains <- function(best_set_chains, indata) {
+mergeSetChains <- function(best_set_chains, indata, model_type) {
   best_K_vals <- unname(sapply(best_set_chains, function(x) max(x$z_chain$value)))
-  sep_list <- separateMutationsBySamplePresence(indata)
+  
+    if(model_type=="sv"){
+      sep_list <- separatebypresence(input_data)
+    }else{
+      sep_list <- separateMutationsBySamplePresence(indata)
+    }
   
   # first set doesn't need to change cluster labels
   mcf_chain <- best_set_chains[[1]]$mcf_chain

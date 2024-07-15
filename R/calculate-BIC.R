@@ -19,6 +19,7 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
   
   ww <- ww[,which(strsplit(pattern, split="")[[1]]=="1"),drop=FALSE]
   
+  if(model_type!="sv"){
   mm <- writeMultiplicityTable(chains$m_chain)%>%
     mutate(Mut_ID = as.numeric(gsub("Mut","",Mut_ID)))%>%
     arrange(Mut_ID)%>%
@@ -28,6 +29,8 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
   mm <- replicate(input.data$S, mm[, 1])
   
   is_cn <- replicate(input.data$S, input.data$is_cn)
+  }
+  
   if (model_type=="type1") {
     vaf <- ifelse(is_cn==0, ww/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
     vaf <- ifelse(vaf<=0, 0.001, vaf)    
@@ -42,6 +45,12 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
 
   if (model_type=="type3") {
     vaf <- ifelse(is_cn==0, (ww + (mm-1) * ww[input.data$q,,drop=FALSE])/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
+    vaf <- ifelse(vaf<=0, 0.001, vaf)
+    vaf <- ifelse(vaf>=1, 0.999, vaf)
+  }
+  
+  if (model_type=="sv") {
+    vaf <- ww/input.data$tcn
     vaf <- ifelse(vaf<=0, 0.001, vaf)
     vaf <- ifelse(vaf>=1, 0.999, vaf)
   }
@@ -84,15 +93,16 @@ calcChainSilhouette <- function(chains, input.data, pattern, model_type) {
   
   ww <- ww[,which(strsplit(pattern, split="")[[1]]=="1"),drop=FALSE]
   
-  mm <- writeMultiplicityTable(chains$m_chain)%>%
-    mutate(Mut_ID = as.numeric(gsub("Mut","",Mut_ID)))%>%
-    arrange(Mut_ID)%>%
-    select(c("Multiplicity")) %>%
-    as.matrix()
-  mm <- replicate(input.data$S, mm[, 1])
-  
-  is_cn <- replicate(input.data$S, input.data$is_cn)
-  
+  if(model_type!="sv"){
+    mm <- writeMultiplicityTable(chains$m_chain)%>%
+      mutate(Mut_ID = as.numeric(gsub("Mut","",Mut_ID)))%>%
+      arrange(Mut_ID)%>%
+      select(c("Multiplicity")) %>%
+      as.matrix()
+    mm <- replicate(input.data$S, mm[, 1])
+    
+    is_cn <- replicate(input.data$S, input.data$is_cn)
+  }
   if (model_type=="type1") {
     mcf <- ifelse(is_cn==0, vaf * input.data$tcn, (input.data$tcn * vaf - 1) / (mm - 1))
     mcf <- ifelse(mcf<0, ww, mcf)    
@@ -107,6 +117,12 @@ calcChainSilhouette <- function(chains, input.data, pattern, model_type) {
   
   if (model_type=="type3") {
     mcf <- ifelse(is_cn==0, input.data$tcn * vaf - (mm-1) * ww[input.data$q,,drop=FALSE], (input.data$tcn * vaf - 1) / (mm - 1))
+    mcf <- ifelse(mcf<0, ww, mcf)    
+    mcf <- ifelse(mcf>1, ww, mcf)
+  }
+  
+  if (model_type=="sv") {
+    mcf <- vaf * input.data$tcn
     mcf <- ifelse(mcf<0, ww, mcf)    
     mcf <- ifelse(mcf>1, ww, mcf)
   }
