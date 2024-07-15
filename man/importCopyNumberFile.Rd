@@ -9,6 +9,7 @@ importCopyNumberFile(
   outputDir,
   SNV_file = NULL,
   stat_file = NULL,
+  name_order = NULL,
   cnv_max_dist = 2000,
   cnv_max_percent = 0.3,
   tcn_normal_range = c(1.8, 2.2),

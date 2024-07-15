@@ -4,7 +4,7 @@
 \alias{calcTreeScores}
 \title{Calculate SCHISM fitness scores for trees}
 \usage{
-calcTreeScores(mcf_chain, trees, mc.cores = 1)
+calcTreeScores(mcf_chain, trees, purity, mc.cores = 1)
 }
 \arguments{
 \item{trees}{list of tibbles, where each tibble contains edges of a tree with columns edge, parent, child}

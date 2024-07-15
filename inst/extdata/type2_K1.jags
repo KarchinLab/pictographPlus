@@ -9,21 +9,21 @@ model {
 	
 	for (i in 1:I) {
 		for (s in 1:S) {
-			
-			tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + ploidy * (1 - cncf[i,s])
+      
+      tcn.snv.est[i,s] <- icn[i] * cncf[i,s] + ploidy * (1 - cncf[i,s])
       tcn.cna.est[i,s] <- icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s])
       
 			vaf.snv[i,s] <- (mcf[z[i], s] + (m[i]-1) * cncf[i,s]) / tcn.snv.est[i,s]
 			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn.cna.est[i,s]
 			vaf.temp[i,s] <- ifelse(is_cn[i]==0, vaf.snv[i,s], vaf.cna[i,s])
-			vaf.temp1[i,s] <- ifelse(vaf.temp[i,s] <= 0, 0.001, vaf.temp[i,s])
-			vaf[i,s] <- ifelse(vaf.temp1[i,s] >= 1, 0.999, vaf.temp1[i,s])
+			vaf.temp1[i,s] <- ifelse(vaf.temp[i,s] < 0, 0, vaf.temp[i,s])
+			vaf[i,s] <- ifelse(vaf.temp1[i,s] > 1, 1, vaf.temp1[i,s])
 		}
 	}
 
 	for (i in 1:I) {
 		for (s in 1:S) {
-			tcn[i,s] ~ dnorm(icn[i] * cncf[i, s] + ploidy * (1 - cncf[i, s]), epsilon)
+			tcn[i,s] ~ dnorm(icn[i] * cncf[i, s] + ploidy * (1 - cncf[i, s]), epsilon)T(0,)
 		}
 	}
 	
@@ -37,16 +37,18 @@ model {
 	  #lambda[i] ~ dbin(0.5, 1)
 	  #m[i] <- lambda[i]*mtp[i] + (1-lambda[i])*(icn[i]-mtp[i])
 	  
-	  m[i] <- ifelse(m1[i] == 1, 1, ifelse(m1[i] == 2, mtp[i], icn[i]-mtp[i]))
+	  #m[i] <- ifelse(m1[i] == 1, 1, ifelse(m1[i] == 2, mtp[i], icn[i]-mtp[i]))
+	  m2[i] <- ifelse(m1[i] == 1, 1, ifelse(m1[i] == 2, mtp[i], icn[i]-mtp[i]))
+	  m[i] <- ifelse(is_cn[i]==0, m2[i], max(icn[i]-mtp[i], mtp[i]))
 	}
 	
   for (s in 1:S) {
 			
-			z.eta[1,s] ~ dcat(c(eta, 1-eta))
+			eta[1,s] ~ dbeta(5,2)
+			z.eta[1,s] ~ dcat(c(eta[1,s], 1-eta[1,s]))
 
-			mcf1[1,s] ~ dbeta(1,1)T(0.005, )
+			mcf1[1,s] ~ dbeta(1,1)T(0.01, purity[s])
 			mcf[1,s] <- ifelse(z.eta[1,s] == 1, mcf1[1,s], 0)
 	}
-	
-  eta ~ dbeta(5,2)
+
 }

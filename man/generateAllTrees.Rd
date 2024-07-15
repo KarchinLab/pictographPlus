@@ -4,7 +4,12 @@
 \alias{generateAllTrees}
 \title{Enumerate all spanning trees using modified Gabow-Myers wrapper}
 \usage{
-generateAllTrees(mcf, lineage_precedence_thresh = 0.1, sum_filter_thresh = 0.2)
+generateAllTrees(
+  mcf,
+  purity,
+  lineage_precedence_thresh = 0.1,
+  sum_filter_thresh = 0.2
+)
 }
 \arguments{
 \item{lineage_precedence_thresh}{maximum allowed violation of lineage precedence (default = 0.1)}

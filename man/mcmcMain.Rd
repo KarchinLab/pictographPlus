@@ -2,20 +2,19 @@
 % Please edit documentation in R/MCMC-main.R
 \name{mcmcMain}
 \alias{mcmcMain}
-\title{run MCMC with added subclonal copy number}
+\title{run PICTograph2 in an automated pipeline}
 \usage{
 mcmcMain(
   mutation_file,
   copy_number_file = NULL,
-  outputDir = NULL,
   SNV_file = NULL,
-  stat_file = NULL,
-  cytoband_file = NULL,
-  sample_presence = FALSE,
+  outputDir = NULL,
+  sample_presence = TRUE,
   dual_model = TRUE,
+  score = "silhouette",
   ploidy = 2,
   pval = 0.05,
-  max_K = 5,
+  max_K = 10,
   min_mutation_per_cluster = 5,
   n.iter = 5000,
   n.burn = 1000,
@@ -32,6 +31,40 @@ mcmcMain(
   autosome = T
 )
 }
+\arguments{
+\item{mutation_file}{a csv file that include information for SSMs.}
+
+\item{copy_number_file}{a csv file that include information for CNA.}
+
+\item{SNV_file}{a csv file that include information for germline heterozygous SNVs.}
+
+\item{outputDir}{output directory for saving all files.}
+
+\item{sample_presence}{whether to use sample presence to separate the mutations. Not applicable if dual_model is set to FALSE and a copy number file is provided.}
+
+\item{score}{scoring function to estimate the number of clusters. silhouette or BIC.}
+
+\item{max_K}{user defined maximum number of clusters.}
+
+\item{min_mutation_per_cluster}{minumum number of mutations in each cluster.}
+
+\item{n.iter}{number of iterations by JAGS.}
+
+\item{n.burn}{number of burns by JAGS.}
+
+\item{thin}{number of thin by JAGS.}
+
+\item{mc.cores}{number of cores to use for parallel computing; not applicable to windows.}
+
+\item{inits}{additional parameters by JAGS.}
+
+\item{cluster_diff_thresh}{threshold to merge two clusters.}
+}
 \description{
-run MCMC with added subclonal copy number
+run MCMC chains to  infer the clonal evolution of tumors from single or multi-region sequencing data. 
+This function automatically runs a pipeline of the tool. It models uncertainty of mutation cellular 
+fraction (MCF) in small somatic mutations (SSMs) and copy number alterations (CNAs), assigning SSMs 
+and CNAs to subclones using a Bayesian hierarchical model, and reconstruct tumor evolutionary trees 
+that are constrained based on principles of lineage precedence, sum condition, and optionally by 
+sample-presence.
 }

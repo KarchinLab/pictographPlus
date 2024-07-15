@@ -290,8 +290,6 @@ randAdmat <- function(am.long, max.num.root.children) {
     node.pool <- node.pool[node.pool != temp.to]
   }
   
-  
-  
   am.long <- reversedEdges(am.long) %>%
     mutate(reversed_connected=reversedConnection(.),
            bi_directional=NA,
@@ -375,52 +373,6 @@ addEdge <- function(am, new_edge) {
   return(am)
 }
 
-# initializeGraph <- function(mcf, max.num.root.children=1, zero.thresh=0.01){
-#   # clusters <- seq_len(nrow(mcf))
-#   # nsamp <- ncol(mcf)
-#   # samples <- seq_len(nsamp)
-#   # nclust <- length(clusters)
-#   # mcf.long <- tibble(cluster_id=as.character(rep(clusters, nsamp)),
-#   #                    sample_id=as.character(rep(samples, each=nclust)),
-#   #                    mean=as.numeric(mcf))    
-#   am.long <- constrainedEdges(mcf, zero.thresh=zero.thresh)
-#   am.long2 <- randAdmatUnchecked(am.long, max.num.root.children)
-#   while (!validGraph(am.long2)) {
-#     am.long2 <- randAdmatUnchecked(am.long, max.num.root.children)
-#   }
-#   return(am.long2)
-# }
-# 
-# initializeGraphFromPost <- function(post_am, max.num.root.children=1, thresh=0.1) {
-#   constrained_am <- post_am %>%
-#     group_by(child) %>%
-#     mutate(max_post_for_child = max(posterior_prob)) %>%
-#     ungroup() %>%
-#     mutate(possible_edge = (max_post_for_child-posterior_prob) <= thresh) %>%
-#     mutate(connected = 0) %>%
-#     select(edge, parent, child, possible_edge, connected)
-#   am <- randAdmatUnchecked(constrained_am, max.num.root.children)
-#   while (!validGraph(am)) {
-#     am <- randAdmatUnchecked(constrained_am, max.num.root.children)
-#   }
-#   return(am)
-# }
-# 
-# initializeGraphFromPost2 <- function(post_am, max.num.root.children=1) {
-#   K <- length(unique(post_am$child))
-#   thresh <- (1/K)/2
-#   constrained_am <- post_am %>%
-#     mutate(possible_edge = posterior_prob >= thresh) %>%
-#     mutate(connected = 0) %>%
-#     select(edge, parent, child, possible_edge, connected)
-#   am <- randAdmatUnchecked(constrained_am, max.num.root.children)
-#   while (!validGraph(am)) {
-#     am <- randAdmatUnchecked(constrained_am, max.num.root.children)
-#   }
-#   return(am)
-# }
-
-
 toWide <- function(am.long){
   am.long$child <- as.numeric(am.long$child)
   am.long %>% select(parent, child, connected) %>%
@@ -462,12 +414,8 @@ sampleNewEdge <- function(a, max.num.root.children, mc.cores=1){
   is_valid <- unlist(parallel::mclapply(possible_moves_list, function(x) isMoveValid(a, x, max.num.root.children),
                                         mc.cores = mc.cores))
   move_set <- possible_moves_list[is_valid]
-  #ix <- sample(seq_len(length(move_set)), 1)
   ix <- tryCatch(sample(seq_len(length(move_set)), 1), error=function(e) NULL)
   if(is.null(ix)) {
-    #print("no moves :(")
-    #print(a, n=100)
-    #saveRDS(list(am = a, move_set), "/mnt/disk005/data/projects/pictograph/scripts/method-comparison/pictograph/log-sample-error/test.rds")
     return(a)
   } else {
     astar <- addEdge(a, move_set[[ix]])
@@ -551,111 +499,6 @@ prepPostAmForGraphing <- function(post_am) {
   return(admat)
 }
 
-
-# plotPosteriorAmLongSim <- function(post_am, filter1 = TRUE, filter1.threshold = 0.1,
-#                                    filter2 = TRUE, filter2.threshold = 0.1) {
-#   # filter1 filters columns (am wide format) for edges with posterior prob > (max(column) - filter1.threshold)
-#   admat <- prepPostAmForGraphing(post_am)
-#   
-#   # filter edges of low freq
-#   admat <- filterAdmat(admat, filter1 = filter1, filter1.threshold = filter1.threshold,
-#                        filter2 = filter2, filter2.threshold = filter2.threshold)
-#   
-#   ig <- igraph::graph_from_adjacency_matrix(admat, mode = "directed", weighted = TRUE,
-#                                             diag = FALSE, add.row = TRUE) 
-#   
-#   igraph::E(ig)$lty <- ifelse(igraph::E(ig)$weight < 0.25, 2, 1)
-#   
-#   # make edge black if only 1 edge to vertex
-#   e <- igraph::ends(ig, igraph::E(ig))
-#   numTo <- table(e[,2])
-#   edgeColors <- sapply(e[,2], function(x) ifelse(x %in% names(which(numTo==1)), "black", "darkgrey"))
-#   igraph::E(ig)$color <- edgeColors
-#   
-#   igraph::V(ig)$label.cex <- 1
-#   
-#   par(mar=c(0,0,0,0)+.1)
-#   igraph::plot.igraph(ig, layout = igraph::layout_as_tree(ig),
-#                       vertex.color = "white", vertex.label.family = "Helvetica",
-#                       vertex.size = 30,
-#                       edge.arrow.size = 0.6, edge.arrow.width = 2,
-#                       edge.width = igraph::E(ig)$weight*5,
-#                       asp = 0)
-# }
-# 
-# plotPosteriorAmLong2 <- function(post_am, cluster_key_genes_tb,
-#                                  filter1 = TRUE, filter1.threshold = 0.1,
-#                                  filter2 = TRUE, filter2.threshold = 0.1) {
-#   # filter1 filters columns (am wide format) for edges with posterior prob > (max(column) - filter1.threshold)
-#   admat <- prepPostAmForGraphing(post_am)
-#   
-#   # filter edges of low freq
-#   admat <- filterAdmat(admat, filter1 = filter1, filter1.threshold = filter1.threshold,
-#                        filter2 = filter2, filter2.threshold = filter2.threshold)
-#   
-#   ig <- igraph::graph_from_adjacency_matrix(admat, mode = "directed", weighted = TRUE,
-#                                             diag = FALSE, add.row = TRUE) 
-#   
-#   igraph::E(ig)$lty <- ifelse(igraph::E(ig)$weight < 0.25, 2, 1)
-#   
-#   # make edge black if only 1 edge to vertex
-#   e <- igraph::ends(ig, igraph::E(ig))
-#   numTo <- table(e[,2])
-#   edgeColors <- sapply(e[,2], function(x) ifelse(x %in% names(which(numTo==1)), "black", "darkgrey"))
-#   igraph::E(ig)$color <- edgeColors
-#   
-#   igraph::V(ig)$label.cex <- 0.5
-#   vertex_colors <- c("white", ifelse(cluster_key_genes_tb$contains_key_gene, "lightblue", "white"))
-#   igraph::V(ig)$color <- vertex_colors
-#   # highlight single sample vertices
-#   igraph::V(ig)$frame.color <- c("black", ifelse(cluster_key_genes_tb$single_sample, "#E69F00", "black"))
-#   
-#   par(mar=c(0,0,0,0)+.1)
-#   igraph::plot.igraph(ig, layout = igraph::layout_as_tree(ig),
-#                       #vertex.color = "white", 
-#                       vertex.label.family = "Helvetica",
-#                       edge.arrow.size = 0.2, edge.arrow.width = 2,
-#                       edge.width = igraph::E(ig)$weight*3)
-# }
-# 
-# plotPosteriorAmLong3 <- function(post_am, cluster_key_genes_tb,
-#                                  filter1 = TRUE, filter1.threshold = 0.1,
-#                                  filter2 = TRUE, filter2.threshold = 0.1) {
-#   # don't plot edges with low freq (<0.25)
-#   # filter1 filters columns (am wide format) for edges with posterior prob > (max(column) - filter1.threshold)
-#   admat <- prepPostAmForGraphing(post_am)
-#   
-#   # filter edges of low freq
-#   admat <- filterAdmat(admat, filter1 = filter1, filter1.threshold = filter1.threshold,
-#                        filter2 = filter2, filter2.threshold = filter2.threshold)
-#   
-#   # filter out edges < 0.2 prob
-#   admat[admat < 0.2] <- 0
-#   ig <- igraph::graph_from_adjacency_matrix(admat, mode = "directed", weighted = TRUE,
-#                                             diag = FALSE, add.row = TRUE) 
-#   # edges < 0.25 prob
-#   igraph::E(ig)$lty <- ifelse(igraph::E(ig)$weight < 0.25, 2, 1)
-#   
-#   # make edge black if only 1 edge to vertex
-#   e <- igraph::ends(ig, igraph::E(ig))
-#   numTo <- table(e[,2])
-#   edgeColors <- sapply(e[,2], function(x) ifelse(x %in% names(which(numTo==1)), "black", "darkgrey"))
-#   igraph::E(ig)$color <- edgeColors
-#   
-#   igraph::V(ig)$label.cex <- 0.5
-#   vertex_colors <- c("white", ifelse(cluster_key_genes_tb$contains_key_gene, "lightblue", "white"))
-#   igraph::V(ig)$color <- vertex_colors
-#   # highlight single sample vertices
-#   igraph::V(ig)$frame.color <- c("black", ifelse(cluster_key_genes_tb$single_sample, "#E69F00", "black"))
-#   
-#   par(mar=c(0,0,0,0)+.1)
-#   igraph::plot.igraph(ig, layout = igraph::layout_as_tree(ig),
-#                       #vertex.color = "white", 
-#                       vertex.label.family = "Helvetica",
-#                       edge.arrow.size = 0.2, edge.arrow.width = 2,
-#                       edge.width = igraph::E(ig)$weight*3)
-# }
-
 labelMAPEdgesFromPostAM <- function(post_am) {
   post_am %>%
     group_by(child) %>%
@@ -680,15 +523,6 @@ edgeTibbleToAmLong <- function(edge_tb, root = 0) {
   }
   return(am_long)
 }
-
-# getParents <- function(am_long, node, prev_parents = c()) {
-#   temp_parent <- filter(am_long, connected == 1, child == node)$parent
-#   if (temp_parent == "root") {
-#     return(c(prev_parents, "root"))
-#   } else {
-#     return(getParents(am_long, temp_parent, c(prev_parents, temp_parent)))
-#   }
-# }
 
 getBTColumn <- function(am_long, node) {
   BT_column <- rep(0, length(unique(am_long$child)))
@@ -718,7 +552,7 @@ summarizeWChain <- function(w.chain) {
   return(mcf_stats)
 }
 
-create.cpov <- function(mcf_stats, alpha=0.05, zero.thresh=0.01, mcf_matrix = NULL, restriction.val = 1) {
+create.cpov <- function(mcf_stats, alpha=0.05, zero.thresh=0.001, mcf_matrix = NULL, restriction.val = 1) {
   cpov <- NA
   MCF <- NA
   
@@ -765,6 +599,9 @@ create.cpov <- function(mcf_stats, alpha=0.05, zero.thresh=0.01, mcf_matrix = NU
                             choose(S, k) / (2^S))
         }
       }
+      
+      pval <- ifelse(is.na(pval), 0, pval)
+      pval <- ifelse(is.nan(pval), 0, pval)
       ##
       ## edge seems to be based on this ad-hoc statistic, not
       ## the probability of the tree
@@ -812,7 +649,7 @@ getChildren <- function(am.long, node) {
   return(edges$child)
 }
 
-calcMassCost <- function(am, mcf_matrix, am_format="long") {
+calcMassCost <- function(am, mcf_matrix, purity, am_format="long") {
   num_samples <- ncol(mcf_matrix)
   
   if (am_format == "long") {
@@ -824,9 +661,10 @@ calcMassCost <- function(am, mcf_matrix, am_format="long") {
     for (i in seq_len(length(parent_nodes))) {
       parent_node <- parent_nodes[i]
       
-      # root CCF is 1
+      # root MCF is purity instead of 1
       if (parent_node == "root") {
-        parent_w <- rep(1, num_samples)
+        # parent_w <- rep(1, num_samples) # 1 replaced by purity
+        parent_w <- purity
       } else {
         parent_w <- mcf_matrix[as.numeric(parent_node), ,drop=FALSE]
       }
@@ -893,7 +731,7 @@ edgesToAmLong <- function(edges) {
   return(admat)
 }
 
-calcTreeFitness <- function(admat, cpov, mcf_matrix, am_format = "long", weight_mass = 1, weight_topology = 1, scaling_coeff=5) {
+calcTreeFitness <- function(admat, cpov, mcf_matrix, purity, am_format = "long", weight_mass = 1, weight_topology = 1, scaling_coeff=5) {
   # if only edges are given, change into long format
   if (am_format == "edges") {
     admat <- edgesToAmLong(admat)
@@ -901,7 +739,7 @@ calcTreeFitness <- function(admat, cpov, mcf_matrix, am_format = "long", weight_
   }
   
   TC <- calcTopologyCost(admat, cpov, am_format)
-  MC <- calcMassCost(admat, mcf_matrix, am_format)
+  MC <- calcMassCost(admat, mcf_matrix, purity, am_format)
   Z <- weight_topology * TC + weight_mass * MC
   fitness <- exp(-scaling_coeff * Z)
   fitness
@@ -943,14 +781,106 @@ satisfiesCCFSumProperties <- function(am_long, mcf_matrix, threshold = 0.2) {
 #' @export
 #' @param w_chain MCMC chain of CCF values, which is the first item in the list returned by \code{clusterSep}
 #' @param trees list of tibbles, where each tibble contains edges of a tree with columns edge, parent, child
-calcTreeScores <- function(mcf_chain, trees, mc.cores = 1) {
-  mcf_stats <- summarizeWChain(mcf_chain)
+calcTreeScores <- function(mcf_chain, trees, purity, mc.cores = 1) {
+  # calculate mean and sd of mcf for each cluster in each sample
+  mcf_stats <- summarizeWChain(mcf_chain) 
+  
+  # create cpov matrix
+  # first: using sample presence to create a binary matrix; 0 is i can be a ancestor of j; 1 if not
+  # second: for i,j pair that pass the sample presence test, calc stats of the difference between mcf of all 
+  # samples; return binary matrix
+  # problem: is the stats calculation in create.cpov correct? only using cluster so is actually POV instead 
+  # of CPOV
   cpov <- create.cpov(mcf_stats)
   mcf_mat <- estimateMCFs(mcf_chain)
+  
+  # first calculate topology cost: sum of the cpov matrix over all edges
+  # potential problem: mcf[i]=0.4->mcf[j]=0.6 has same weight as mcf[i]=0.5->mcf[j]=0.6
+  # second calculate mass cost: take the max mass violation among all samples; is there a better strategy?
+  # fitness is exp(-5*(topology cost + mass cost))
   schism_scores <- unlist(parallel:::mclapply(trees, 
-                                              function(x) calcTreeFitness(x, cpov, mcf_mat, am_format = "edges"),
+                                              function(x) calcTreeFitness(x, cpov, mcf_mat, purity, am_format = "edges"),
                                               mc.cores = mc.cores))
   return(schism_scores)
+}
+
+#' Calculate SCHISM fitness scores for trees
+#' 
+#' @export
+calculateTreeScoreMutations <- function(mcf_chain, data, icnTable, cncfTable, multiplicityTable, clusterAssingmentTable, purity, trees, restriction.val = 1, mc.cores = 8) {
+  
+  mcfMutations1 <- (data$y * (icnTable$icn*cncfTable+2-2*cncfTable) - data$n * (multiplicityTable$Multiplicity-1)*cncfTable) / data$n
+  mcfMutations1[mcfMutations1>1] <-1
+  mcfMutations1[mcfMutations1<0] <-0
+  mcfMutations2 <- (data$n - 2 * data$y) / (data$y * icnTable$icn - 2 * data$y - data$n*multiplicityTable$Multiplicity + data$n)
+  mcfMutations2[mcfMutations2>1] <-1
+  mcfMutations2[mcfMutations2<0] <-0
+  
+  mcfMutations <- matrix(0, nrow = nrow(mcfMutations1), ncol = ncol(mcfMutations1))
+  mcfMutations[data$is_cn == 1, ] <- mcfMutations2[data$is_cn == 1, ]
+  mcfMutations[data$is_cn == 0, ] <- mcfMutations1[data$is_cn == 0, ]
+  mcfMutations[is.nan(mcfMutations)] <- 0
+  
+  colnames(mcfMutations) <- seq_len(ncol(mcfMutations))
+  
+  mutation_chain <- as_tibble(mcfMutations) %>% rownames_to_column("Row") %>%
+    pivot_longer(
+      cols = -Row,
+      names_to = "Column",
+      values_to = "value"
+    ) %>% mutate(Row = as.integer(Row))
+
+  mutation_chain <- clusterAssingmentTable %>% 
+    mutate(row = row_number()) %>% 
+    inner_join(mutation_chain, by = c("row" = "Row")) %>% 
+    mutate(Parameter = paste("mcf[", row, ",", gsub("V", "", Column), "]", sep = "")) %>% 
+    select(Parameter, value, Cluster)
+  
+  mutation_stats <- mutation_chain %>% 
+    group_by(Cluster) %>% 
+    summarize(sd=sd(value),mean=mean(value))
+  
+  mutation_stats <- mutation_chain %>% 
+    left_join(mutation_stats, by="Cluster") %>%
+    select(Parameter, sd, value) %>%
+    mutate(mean = value) %>%
+    select(Parameter, sd, mean)
+  
+  # create pov for mutaiton pairs
+  pov <- create.cpov(mutation_stats)
+  pov <- pov[2:nrow(pov),]
+  
+  cpov <- initializeAdjacencyMatrix(mcf_stats = summarizeWChain(mcf_chain))
+  cpov[is.na(cpov)] <- restriction.val
+  
+  for (r in 2:nrow(cpov)) {
+    for (c in 1:ncol(cpov)) {
+      if (cpov[r,c] == restriction.val) next
+      from <- r-1 # 'from' cluster node
+      to <- c # 'to' cluster node
+      fromMutations <- which(clusterAssingmentTable$Cluster==from)
+      toMutations <- which(clusterAssingmentTable$Cluster==to)
+      
+      totPov <- 0
+      for (fromIdx in fromMutations) {
+        for (toIdx in toMutations) {
+          totPov = totPov + pov[fromIdx, toIdx]
+        }
+      }
+      totPov = totPov / (length(fromMutations)*length(toMutations))
+      cpov[r,c] = totPov
+    }
+  }
+  # scores <- calcTreeScores(chains$mcf_chain, all_spanning_trees, purity)
+  mcf_mat <- estimateMCFs(mcf_chain)
+  
+  # first calculate topology cost: sum of the cpov matrix over all edges
+  # potential problem: mcf[i]=0.4->mcf[j]=0.6 has same weight as mcf[i]=0.5->mcf[j]=0.6
+  # second calculate mass cost: take the max mass violation among all samples; is there a better strategy?
+  # fitness is exp(-5*(topology cost + mass cost))
+  schism_scores <- unlist(parallel:::mclapply(trees, 
+                                              function(x) calcTreeFitness(x, cpov, mcf_mat, purity, am_format = "edges"),
+                                              mc.cores = mc.cores))
 }
 
 rand.admat <- function(admat) {

@@ -7,10 +7,9 @@
 importFiles(
   mutation_file,
   copy_number_file = NULL,
-  outputDir = NULL,
   SNV_file = NULL,
+  outputDir = NULL,
   stat_file = NULL,
-  cytoband_file = NULL,
   alt_reads_thresh = 0,
   vaf_thresh = 0,
   cnv_max_dist = 2000,

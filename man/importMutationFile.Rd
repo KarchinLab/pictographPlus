@@ -2,42 +2,10 @@
 % Please edit documentation in R/preprocessing.R
 \name{importMutationFile}
 \alias{importMutationFile}
-\title{#' get copy number cytoband and genes information
-importCopyNumberInfo <- function(copy_number_file) {
-  drivers = c()
-  genes = c()
-  cytoband = c()
-  
-  data <- read_csv(copy_number_file, show_col_types = FALSE)
-  data$CNA = paste(data$chrom, data$start, data$end, sep = '-')
-  
-  for (i in 1:nrow(data)) {
-    cytoband[data[i,]$CNA] <- data[i,]$cytoband
-    genes[data[i,]$CNA] <- data[i,]$genes
-    drivers[data[i,]$CNA] <- data[i,]$drivers
-  }
-  return(list(cytoband=cytoband, drivers=drivers, genes=genes))
-}
-import mutation file}
+\title{import mutation file}
 \usage{
 importMutationFile(mutation_file, alt_reads_thresh = 0, vaf_thresh = 0)
 }
 \description{
-#' get copy number cytoband and genes information
-importCopyNumberInfo <- function(copy_number_file) {
-  drivers = c()
-  genes = c()
-  cytoband = c()
-  
-  data <- read_csv(copy_number_file, show_col_types = FALSE)
-  data$CNA = paste(data$chrom, data$start, data$end, sep = '-')
-  
-  for (i in 1:nrow(data)) {
-    cytoband[data[i,]$CNA] <- data[i,]$cytoband
-    genes[data[i,]$CNA] <- data[i,]$genes
-    drivers[data[i,]$CNA] <- data[i,]$drivers
-  }
-  return(list(cytoband=cytoband, drivers=drivers, genes=genes))
-}
 import mutation file
 }

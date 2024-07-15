@@ -1,0 +1,171 @@
+---
+title: "PICTograph2"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{PICTograph}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, include = FALSE}
+# library(pictograph2)
+# library(dplyr)
+
+setwd("~/JHU/scripts/R/pictograph2")
+library(devtools)
+load_all()
+library(UpSetR)
+
+```
+
+## 1. Introduction
+
+This tutorial walks through how to run PICTograph2 on toy examples. PICTograph2 infers the clonal evolution of tumors from single or multi-region sequencing data. The tool models uncertainty of mutation cellular fraction (MCF) in small somatic mutations (SSMs) and copy number alterations (CNAs), assigning SSMs and CNAs to subclones using a Bayesian hierarchical model, and reconstruct tumor evolutionary trees that are constrained based on principles of lineage precedence, sum condition, and optionally by sample-presence. The inputs to PICTograph2 are variant ("alt allele") read counts of SSMs, sequencing depth at the SSM loci, and the somatic CNA of the tumor genome. Tumor purity and the number of mutant alleles (multiplicity) are optional parameters. If multiple tumor samples are considered, an option is available to restrict the number of possible evolutionary trees by partitioning mutations according to sample presence. PICTograph2 summarizes the posterior distributions of the mutation cluster assignments and the MCFs for each cluster by the mode. The estimates of cluster MCFs are then used to determine the most probable trees. Multiple trees that share the same score can be summarized as an ensemble tree, where edges are weighted by their concordance among constituent trees in the ensemble.
+
+## 2. Input data
+
+Pictograph2 takes input data in multiple formats for flexible user inputs:
+
+1) A single csv file that contains SSM and CNA information
+2) Two csv files, one for SSM and one for CNA
+3) Three csv files, one for ssm, one for CNA, and one for germline heterozygous single nucleotide variants (SNV)
+
+2.1. The first option is to provide a single csv file that contains at least columns named "sample", "mutation", "total_reads", "alt_reads", "tumor_integer_copy_number", and "cncf".  If a mutation has no copy number alteration, set cncf to 0.
+
+```{r}
+head(read.csv(system.file('extdata/examples/example1_snv.csv', package = 'pictograph2')))
+```
+
+Users can also provide an optional column "major_integer_copy_number" that provides the information of the integer copy number of the major allele. If "major_integer_copy_number" is not provided, it will be estimated using an internal function built in the package.
+
+```{r}
+head(read.csv(system.file('extdata/examples/example2_snv.csv', package = 'pictograph2')))
+```
+
+Another optional column is "purity" column that provides the information of normal contamination of a sample. Putiry of 0.8 wil be used if not provided.
+
+```{r}
+head(read.csv(system.file('extdata/examples/example2_snv_with_purity.csv', package = 'pictograph2')))
+```
+
+2.2. The second option is to provide the SSM read counts and copy number alterations (CNA) in two separate files. In this case, the SSM file should contain columns "sample", "mutation", "total_reads", "alt_reads", "chrom", "start", and "end". The "purity" column with be optional. 
+
+```{r}
+head(read.csv(system.file('extdata/examples/example3_snv.csv', package = 'pictograph2')))
+```
+
+The CNA file should contain columns "sample", "chrom", "start", "end", "tcn" and "baf".
+
+```{r}
+head(read.csv(system.file('extdata/examples/example3_cna.csv', package = 'pictograph2')))
+```
+
+2.3. In the absence of the baf column, users should provide an additional file that contains the count of the heterozygous germline SNVs that has the information about the "chroms", the "position" of the germline heterozygous SNV, "ref" and "alt" allele, and the reference and altenative reads counts in germline (normal) sample as well as all other samples. Note: the sample name should matched the sample name used in the SSM and CNA file.
+
+```{r}
+head(read.csv(system.file('extdata/examples/example4_snv.csv', package = 'pictograph2')))
+```
+
+```{r}
+head(read.csv(system.file('extdata/examples/example4_cna.csv', package = 'pictograph2')))
+```
+
+```{r}
+head(read.csv(system.file('extdata/examples/example4_SNP.csv', package = 'pictograph2')))
+```
+
+## 3. mcmcMain
+
+Run an automated pipeline of the tool using the function mcmcMain. The only required user input is the "mutation_file", along with the "copy_number_file" and "SNV_file" if using format 2 or 3 mentioned above. Users can specify the destination of output files using "outputDir" option. If the outputDir is not specified, output files will be stored in the current working directory.
+
+```{r input_data}
+# mcmcMain(mutation_file=system.file('extdata/examples/example1_snv.csv', package = 'pictograph2'),
+#          copy_number_file=NULL,
+#          SNV_file=NULL,
+#          outputDir=system.file('extdata/examples/output', package = 'pictograph2'))
+```
+## 4. Parameters
+
+Description of the available parameters can be found using: 
+
+```{r}
+help(mcmcMain)
+```
+
+
+## 5. Output files
+
+mcf.csv: estimated MCF for each cluster in each sample
+
+clusterAssign.csv: cluster assignment of each SSM/CNA to each cluster
+
+CN_results.csv: estimation of the integer and major copy number of CNAs; will be empty if the input file is a single csv file (i.e. no separate CNA information)
+
+tree.csv: the tree with the highest score; all trees with tied highest score is available under all_trees directory
+
+subclone_proportion.csv: estimated proportion of each cluster in each sample
+
+purity.csv: estimated purity for each sample, based on the tree structure
+
+tree_ensemble.png: the image of the ensemble tree of all trees with the same highest score
+
+tree.png: the image of a tree with the best score 
+
+upsetR.png: the mutation profiles between samples; only available if number of samples is bigger than 1.
+
+violin.png: a violin plot of the MCF
+
+mcf.png: the MCF chain trace from JAGS
+
+## 6. Models
+
+Two JAGS models are implemented within the package. Let's first go over the notations.
+
+#### Model variables
+$I$ : number of mutations (SSMs and CNAs, if applicable)
+
+$S$ : number of samples
+
+$y$: variant read counts
+
+$n$: total read counts
+
+$tcn$: (fractional) total copy number
+
+$icn$: integer copy number
+
+$M$: major allele copy number
+
+$cncf$: copy number cellular fraction
+
+$m$: multiplicity for mutation
+
+$h$: indicator of whether a mutation is a CNA; $h_i = 1$ if mutation $i$ is a copy number alteration varaint (i.e. from the copy number file)
+
+$K$ : latent number of clusters
+
+$Z$ : latent cluster assignment of mutations
+
+$mcf$: cluster mutation cellular fraction
+
+#### Model 1: estimates $icn$, $m$, and $cncf$ using SSMs in copy-neutral region and CNAs
+
+```{r, echo=FALSE, out.width="70%"}
+knitr::include_graphics(system.file('extdata/model1.png', package = 'pictograph2'))
+```
+
+#### Model 2: use the  $icn$, $m$, and $cncf$ estimated from model 1 and estimate all parameters in all mutations
+
+```{r, echo=FALSE, out.width="70%"}
+knitr::include_graphics(system.file('extdata/model2.png', package = 'pictograph2'))
+```
+
+#### If only a single SSM file is provided as input, model 2 will be used
+

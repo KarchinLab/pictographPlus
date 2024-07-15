@@ -2,7 +2,7 @@
 % Please edit documentation in R/MCMC-process-clusters.R
 \name{estimateMCFs}
 \alias{estimateMCFs}
-\title{Determine the most probable cluster CCF values by taking the mode of the posterior distributions}
+\title{Determine the most probable cluster MCF values by taking the mean of the posterior distributions}
 \usage{
 estimateMCFs(mcf_chain)
 }
@@ -13,5 +13,5 @@ estimateMCFs(mcf_chain)
 matrix of estimated cluster CCFs
 }
 \description{
-Determine the most probable cluster CCF values by taking the mode of the posterior distributions
+Determine the most probable cluster MCF values by taking the mean of the posterior distributions
 }

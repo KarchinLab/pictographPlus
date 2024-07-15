@@ -1,4 +1,5 @@
-#' run MCMC for all mutations by sample presence
+#' run MCMC using JAGS
+#' 
 #' @export
 runMCMCForAllBoxes <- function(sep_list,
                                sample_presence=FALSE,
@@ -10,7 +11,7 @@ runMCMCForAllBoxes <- function(sep_list,
                                n.burn = 1000, 
                                thin = 10,
                                mc.cores = 4, 
-                               model_type = "type3", 
+                               model_type = "type2", 
                                inits = list(".RNG.name" = "base::Wichmann-Hill",
                                             ".RNG.seed" = 123)){
   
@@ -35,7 +36,8 @@ runMCMCForAllBoxes <- function(sep_list,
                                      model_type = model_type,
                                      params = params,
                                      min_mutation_per_cluster = min_mutation_per_cluster, 
-                                     cluster_diff_thresh = cluster_diff_thresh)
+                                     cluster_diff_thresh = cluster_diff_thresh,
+                                     sample_presence=sample_presence)
     
     all_set_results[[1]] <- temp_samps_list
     
@@ -45,8 +47,6 @@ runMCMCForAllBoxes <- function(sep_list,
     params = c("z", "mcf", "icn", "m", "ystar")
     
     for (i in seq_len(length(sep_list))) {
-      # i = 2
-      # print(i)
       temp_box <- sep_list[[i]]
       # Max number of clusters cannot be more than number of mutations/min_mutation_per_cluster
       temp_max_K <- min(max_K, floor(length(temp_box$mutation_indices)/min_mutation_per_cluster))
@@ -62,7 +62,8 @@ runMCMCForAllBoxes <- function(sep_list,
                                        model_type = model_type,
                                        params = params,
                                        min_mutation_per_cluster = min_mutation_per_cluster, 
-                                       cluster_diff_thresh = cluster_diff_thresh)
+                                       cluster_diff_thresh = cluster_diff_thresh,
+                                       sample_presence=sample_presence)
       
       all_set_results[[i]] <- temp_samps_list
     }
@@ -79,14 +80,12 @@ runMutSetMCMC <- function(temp_box,
                           inits = list(".RNG.name" = "base::Wichmann-Hill",
                                        ".RNG.seed" = 123),
                           temp_max_K = 5,
-                          model_type = "type1",
+                          model_type = "type2",
                           params = c("z", "mcf", "icn", "m", "ystar"),
                           min_mutation_per_cluster = 1,
-                          cluster_diff_thresh=0.05) {
-  # warning("beta prior not used or updated in runMCMC")
-  # Run MCMC
+                          cluster_diff_thresh=0.05,
+                          sample_presence=FALSE) {
 
-  # WORKING PROGRESS
   temp_samps_list <- runMCMCForABox(temp_box,
                                     ploidy=ploidy,
                                     n.iter = n.iter, 
@@ -96,7 +95,8 @@ runMutSetMCMC <- function(temp_box,
                                     inits = inits,
                                     params = params,
                                     max_K = temp_max_K,
-                                    model_type = model_type)
+                                    model_type = model_type,
+                                    sample_presence=sample_presence)
   
   # Format chains
   if (length(temp_samps_list) == 1) {
@@ -107,33 +107,47 @@ runMutSetMCMC <- function(temp_box,
                                      mc.cores = mc.cores)
   }
   
-  # check whether 1) number of mutations per cluster is at least min_mutation_per_cluster 2) difference between any two cluster less than cluster_diff_thresh 
+  # check whether: 
+  # 1) number of mutations per cluster is at least min_mutation_per_cluster 
+  # 2) difference between any two cluster less than cluster_diff_thresh 
   filtered_samps_list <- filterK(samps_list, min_mutation_per_cluster = min_mutation_per_cluster,
                                  cluster_diff_thresh = cluster_diff_thresh)
   
-  # filtered_samps_list <- samps_list
-  # Calculate BIC
+  # Calculate BIC and silhouette
   K_tested <- seq_len(length(filtered_samps_list))
   if (temp_max_K > 1) {
     box_indata <- getBoxInputData(temp_box, ploidy, model_type)
+    
     bic_vec <- unname(unlist(parallel::mclapply(filtered_samps_list,
-                                                function(chains) calcChainBIC(chains=chains, input.data=box_indata, pattern=temp_box$pattern, model_type),
-                                                mc.cores = 2)))
+                                                  function(chains) calcChainBIC(chains=chains, input.data=box_indata, pattern=temp_box$pattern, model_type),
+                                                  mc.cores = mc.cores)))
     bic_tb <- tibble(K_tested = K_tested,
                      BIC = bic_vec)
-    best_chains <- samps_list[[which.min(bic_vec)]]
+    BIC_best_chains <- samps_list[[which.min(bic_vec)]]
+    sc_vec <- unname(unlist(parallel::mclapply(filtered_samps_list,
+                                                function(chains) calcChainSilhouette(chains=chains, input.data=box_indata, pattern=temp_box$pattern, model_type),
+                                                mc.cores = mc.cores)))
+    
+    sc_tb <- tibble(K_tested = K_tested,
+                     silhouette = sc_vec)
+    sc_best_chains <- samps_list[[which.max(sc_vec)]]
     res_list <- list(all_chains = samps_list,
+                     silhouette = sc_tb,
                      BIC = bic_tb,
-                     best_chains = best_chains,
-                     best_K = which.min(bic_vec))
+                     BIC_best_chains = BIC_best_chains,
+                     sc_best_chains = sc_best_chains,
+                     BIC_best_K = which.min(bic_vec),
+                     silhouette_best_K = which.max(sc_vec))
   } else {
     # only 1 variant, so must be 1 cluster and don't need to check BIC
     res_list <- list(all_chains = filtered_samps_list,
+                     silhouette = NA,
                      BIC = NA,
-                     best_chains = filtered_samps_list[[1]],
-                     best_K = 1)
+                     BIC_best_chains = filtered_samps_list[[1]],
+                     sc_best_chains = filtered_samps_list[[1]],
+                     BIC_best_K = 1,
+                     silhouette_best_K = 1)
   }
-  # res_list <- list(all_chains = filtered_samps_list)
   return(res_list)
 }
 
@@ -147,18 +161,16 @@ runMCMCForABox <- function(box,
                                         ".RNG.seed" = 123),
                            params = c("z", "mcf", "icn", "m", "ystar"),
                            max_K = 5, 
-                           model_type = "type1") {
+                           model_type = "type2",
+                           sample_presence=FALSE) {
 
   # select columns if the presence pattern is 1
-  # box <- temp_box
   box_input_data <- getBoxInputData(box, ploidy, model_type)
   
   extdir <- system.file("extdata", package="pictograph2")
   
   # choose sample in which mutations are present
   sample_to_sort <- which(colSums(box_input_data$y) > 0)[1]
-  
-  # box_input_data$sample_to_sort <- sample_to_sort
   
   if (model_type == "type1") {
     jags.file <- file.path(extdir, "type1.jags")
@@ -171,9 +183,6 @@ runMCMCForABox <- function(box,
     jags.file.K1 <- file.path(extdir, "type3_K1.jags")
   }
   
-  # 
-  # jags.file.K1 <- file.path(extdir, "spike_and_slab_K1.jags")
-  # jags.file <- file.path(extdir, "spike_and_slab.jags")
   samps_K1 <- runMCMC(box_input_data, 
                       1, 
                       jags.file.K1,
@@ -187,7 +196,7 @@ runMCMCForABox <- function(box,
     colnames(samps_K1[[1]])[which(colnames(samps_K1[[1]]) == "mcf")] <- "mcf[1,1]"
   }
   
-  if (model_type != "type3") {
+  if (sample_presence) {
     samps_K1 <- reverseDrop(samps_K1, box$pattern, n.iter)
   }
 
@@ -202,12 +211,11 @@ runMCMCForABox <- function(box,
                                                       n.burn=n.burn),
                                   mc.cores=mc.cores)
     
-    if (model_type != "type3") {
+    if (sample_presence) {
       for (i in seq_len(length(samps_2))) {
         samps_2[[i]] <- reverseDrop(samps_2[[i]], box$pattern, n.iter)
       }
     }
-    
     samps_list <- c(list(samps_K1), samps_2)
     names(samps_list) <- paste0("K", 1:max_K)
     return(samps_list)
@@ -228,7 +236,6 @@ getBoxInputData <- function(box, ploidy=2, model_type) {
       sample_list <- append(sample_list, j)
     }
   }
-  # print(temp_box)
   if (model_type == "type1") {
     box_input_data <- list(I = nrow(box$y),
                            S = length(sample_list),
@@ -236,6 +243,7 @@ getBoxInputData <- function(box, ploidy=2, model_type) {
                            n = box$n[,sample_list,drop=FALSE],
                            tcn = box$tcn[,sample_list,drop=FALSE],
                            is_cn = box$is_cn,
+                           purity=box$purity,
                            ploidy=ploidy)
   } else if (model_type == "type2") {
     box_input_data <- list(I = nrow(box$y),
@@ -247,6 +255,7 @@ getBoxInputData <- function(box, ploidy=2, model_type) {
                            mtp = box$mtp,
                            cncf = box$cncf[,sample_list,drop=FALSE],
                            icn = box$icn,
+                           purity=box$purity,
                            ploidy=ploidy)
   } else if (model_type == "type3") {
     box_input_data <- list(I = nrow(box$y),
@@ -256,9 +265,9 @@ getBoxInputData <- function(box, ploidy=2, model_type) {
                            tcn = box$tcn[,sample_list,drop=FALSE],
                            is_cn = box$is_cn,
                            q = box$q,
+                           purity=box$purity,
                            ploidy=ploidy)
   }
-  
   # set tcn to 2 if 0
   box_input_data$tcn[box_input_data$tcn==0] <- 2
   return(box_input_data)
@@ -274,7 +283,6 @@ runMCMC <- function(box_input_data,
                     n.chains=1,
                     n.adapt=1000, 
                     n.burn=1000) {
-  # if (K > 1) data$K <- K
   if (K > 1) box_input_data$K <- K
   jags.m <- jags.model(jags.file,
                        box_input_data,
@@ -299,7 +307,6 @@ reverseDrop <- function(samps, pattern, n.iter) {
   ystar_list = vector()
   # replace current sample id by true sample id from pattern
   for (i in seq_len(length(colnames(samps[[1]])))) {
-    # print(colnames(samps[[1]])[i])
     if (startsWith(colnames(samps[[1]])[i], "mcf")) {
       para <- str_extract_all(colnames(samps[[1]])[i], "[0-9]+")[[1]]
       colnames(samps[[1]])[i] <- paste("mcf[", para[1], ",", sample_list[strtoi(para[2])], "]", sep = "")
@@ -362,14 +369,14 @@ filterK <- function(samps_list, min_mutation_per_cluster=1, cluster_diff_thresh=
       mcfTable = writeClusterMCFsTable(mcf_chain)
       # check whether mcf for any cluster is less than cluster_diff_thresh in all samples
       for (j1 in seq_len(k)) {
-        if (all(mcfTable[j1,] < cluster_diff_thresh)) {
+        if (all(mcfTable[j1,2:ncol(mcfTable)] < cluster_diff_thresh)) {
           toBreak = T
         }
       }
       # check whether mcf difference between any two clusters less than cluster_diff_thresh in all samples
       for (j1 in seq_len(k-1)) {
         for (j2 in seq(j1+1, k)) {
-          diff = abs(mcfTable[j1,] - mcfTable[j2,])
+          diff = abs(mcfTable[j1,2:ncol(mcfTable)] - mcfTable[j2,2:ncol(mcfTable)])
           if (all(diff < cluster_diff_thresh)) {
             toBreak = T
           }

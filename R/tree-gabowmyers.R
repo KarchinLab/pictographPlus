@@ -4,13 +4,13 @@
 #' @param w matrix of CCF values (rows = clusters, columns = samples)
 #' @param lineage_precedence_thresh maximum allowed violation of lineage precedence (default = 0.1)
 #' @param sum_filter_thresh thresh maximum allowed violation of Sum Condition (default = 0.2)
-generateAllTrees <- function(mcf, lineage_precedence_thresh=0.1, sum_filter_thresh=0.2) {
+generateAllTrees <- function(mcf, purity, lineage_precedence_thresh=0.1, sum_filter_thresh=0.2) {
   mcf_mat <- estimateMCFs(mcf)
   mcf_mat <- assign("mcf_mat", mcf_mat, envir = .GlobalEnv)
   graph_G_pre <- prepareGraph(mcf_mat, lineage_precedence_thresh)
   graph_G <- filterEdgesBasedOnCCFs(graph_G_pre, mcf_mat, thresh = lineage_precedence_thresh)
   graph_G <- assign("graph_G", graph_G, envir = .GlobalEnv)
-  enumerateSpanningTreesModified(graph_G, mcf_mat, sum_filter_thresh = sum_filter_thresh)
+  enumerateSpanningTreesModified(graph_G, mcf_mat, purity, sum_filter_thresh = sum_filter_thresh)
 }
 
 #' Create tibble of possible edges from CCF values based on w_mat only
@@ -77,7 +77,7 @@ checkEdge <- function(edge, mcf, thresh = 0.2) {
 #' @param graph_G tibble of possible edges with columns edge, parent, child
 #' @param w matrix of CCF values (rows = clusters, columns = samples)
 #' @param sum_filter_thresh thresh maximum allowed violation of Sum Condition (default = 0.2)
-enumerateSpanningTreesModified <- function(graph_G, mcf, sum_filter_thresh=0.2) {
+enumerateSpanningTreesModified <- function(graph_G, mcf, purity, sum_filter_thresh=0.2) {
   # all_spanning_trees must be set as an empty list, global variable, before function is called
   # graph_G must be set as global variable before function is called
   all_spanning_trees <- assign("all_spanning_trees", list(), envir = .GlobalEnv)
@@ -86,14 +86,14 @@ enumerateSpanningTreesModified <- function(graph_G, mcf, sum_filter_thresh=0.2) 
   all_vertices <- verticesInGraph(graph_G)
   tree_T <- tibble(parent = character(), child = character())
   
-  growModified(tree_T, all_vertices, mcf, sum_filter_thresh)
+  growModified(tree_T, all_vertices, mcf, purity, sum_filter_thresh)
 }
 
 verticesInGraph <- function(tb) {
   unique(c(tb$parent, tb$child))
 }
 
-growModified <- function(tree_T, all_vertices, w, sum_thresh=0.2) {
+growModified <- function(tree_T, all_vertices, w, purity, sum_thresh=0.2) {
   
   if (length(verticesInGraph(tree_T)) == length(all_vertices) & nrow(tree_T) == (length(all_vertices)-1)) {
     assign("all_spanning_trees", c(all_spanning_trees, list(tree_T)), envir = .GlobalEnv)
@@ -110,7 +110,7 @@ growModified <- function(tree_T, all_vertices, w, sum_thresh=0.2) {
       tree_T <- rbind(tree_T, edge_e)
       
       # check if adding this node does not violate the constraint
-      if (satisfiesSumCondition(tree_T, w, sum_thresh)) {
+      if (satisfiesSumCondition(tree_T, w, purity, sum_thresh)) {
         # update F
         ## push each edge (v,w), w not in T onto F
         in_T <- verticesInGraph(tree_T)
@@ -124,7 +124,7 @@ growModified <- function(tree_T, all_vertices, w, sum_thresh=0.2) {
         assign("F_tb", filter(F_tb, !edge %in% removed_edges$edge), envir = .GlobalEnv)
         
         # recurse
-        growModified(tree_T, all_vertices, w, sum_thresh)
+        growModified(tree_T, all_vertices, w, purity, sum_thresh)
         
         # restore F
         # pop each edge (v,w), w not in T, from F
@@ -162,7 +162,7 @@ growModified <- function(tree_T, all_vertices, w, sum_thresh=0.2) {
   }
 }
 
-satisfiesSumCondition <- function(edges, w, thresh = 0.2) {
+satisfiesSumCondition <- function(edges, w, purity, thresh = 0.2) {
   # returns TRUE if sum condition is not violated with given threshold (default 0.2)
   
   edges$parent <- as.character(edges$parent)
@@ -171,7 +171,8 @@ satisfiesSumCondition <- function(edges, w, thresh = 0.2) {
   for (p in all_parents) {
     # get parent CCF
     if (p == "root") {
-      parent_ccf <- rep(1, ncol(w))
+      # parent_ccf <- rep(1, ncol(w))
+      parent_ccf <- purity
     } else {
       parent_ccf <- w[as.numeric(p), ]
     }

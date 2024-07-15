@@ -17,5 +17,7 @@ Imports:
   LaplacesDemon (>= 16.1.6),
   igraph (>= 2.0.1),
   viridis (>= 0.6.5),
-  ggmcmc (>= 1.5.1)
+  ggmcmc (>= 1.5.1),
+  UpSetR (>= 1.4.0),
+  cluster (>= 2.1.6)
 RoxygenNote: 7.3.1

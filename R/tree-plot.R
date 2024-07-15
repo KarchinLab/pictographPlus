@@ -33,8 +33,9 @@ plotPosteriorAmLong <- function(post_am, v_color, filter1 = TRUE, filter1.thresh
   igraph::V(ig)$color <- as.list(v_color %>% arrange(match(v_sorted, names(V(ig)))) %>% select(colors))$colors
   
   par(mar=c(0,0,0,0)+.1)
+  
   igraph::plot.igraph(ig, layout = igraph::layout_as_tree(ig),
-                      vertex.label.family = "Helvetica", vertex.size=34,
+                      vertex.label.family = "Helvetica", vertex.size=20,
                       edge.arrow.size = 0.5, edge.arrow.width = 2,
                       edge.width = igraph::E(ig)$weight*3)
 }

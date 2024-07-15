@@ -29,7 +29,6 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
   
   is_cn <- replicate(input.data$S, input.data$is_cn)
   if (model_type=="type1") {
-    # vaf <- ww / 2
     vaf <- ifelse(is_cn==0, ww/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
     vaf <- ifelse(vaf<=0, 0.001, vaf)    
     vaf <- ifelse(vaf>=1, 0.999, vaf)
@@ -55,6 +54,73 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
   return(BIC)
 }
 
+#' @import magrittr
+calcChainSilhouette <- function(chains, input.data, pattern, model_type) {
+  
+  vaf <- input.data$y / input.data$n
+  
+  zz <- writeClusterAssignmentsTable(chains$z_chain) %>%
+    mutate(Mut_ID = as.numeric(gsub("Mut","",Mut_ID))) %>%
+    arrange(Mut_ID)%>%
+    select(c("Cluster")) %>%
+    as.matrix()
+  zz <- zz[,1]
+  
+  mcf1 <- chains$mcf_chain%>%
+    mutate(value = round(value,5),
+           Cluster = as.numeric(gsub("mcf\\[(.*),.*","\\1", Parameter)),
+           Sample = as.numeric(gsub(".*,(.*)\\]","\\1", Parameter)))%>%
+    group_by(Cluster,Sample)%>%
+    reframe(mcf = mean(value))%>%
+    ungroup()%>%
+    spread(key = Sample, value = mcf)
+  
+  ww <- writeClusterAssignmentsTable(chains$z_chain)%>%
+    mutate(Mut_ID = as.numeric(gsub("Mut","",Mut_ID)))%>%
+    arrange(Mut_ID)%>%
+    left_join(mcf1, by = "Cluster")%>%
+    select(-c("Mut_ID","Cluster"))%>%
+    as.matrix()
+  
+  ww <- ww[,which(strsplit(pattern, split="")[[1]]=="1"),drop=FALSE]
+  
+  mm <- writeMultiplicityTable(chains$m_chain)%>%
+    mutate(Mut_ID = as.numeric(gsub("Mut","",Mut_ID)))%>%
+    arrange(Mut_ID)%>%
+    select(c("Multiplicity")) %>%
+    as.matrix()
+  mm <- replicate(input.data$S, mm[, 1])
+  
+  is_cn <- replicate(input.data$S, input.data$is_cn)
+  
+  if (model_type=="type1") {
+    mcf <- ifelse(is_cn==0, vaf * input.data$tcn, (input.data$tcn * vaf - 1) / (mm - 1))
+    mcf <- ifelse(mcf<0, ww, mcf)    
+    mcf <- ifelse(mcf>1, ww, mcf)
+  }
+  
+  if (model_type=="type2") {
+    mcf <- ifelse(is_cn==0, input.data$tcn * vaf - (mm-1) * input.data$cncf, (input.data$tcn * vaf - 1) / (mm - 1))
+    mcf <- ifelse(mcf<0, ww, mcf)    
+    mcf <- ifelse(mcf>1, ww, mcf)
+  }
+  
+  if (model_type=="type3") {
+    mcf <- ifelse(is_cn==0, input.data$tcn * vaf - (mm-1) * ww[input.data$q,,drop=FALSE], (input.data$tcn * vaf - 1) / (mm - 1))
+    mcf <- ifelse(mcf<0, ww, mcf)    
+    mcf <- ifelse(mcf>1, ww, mcf)
+  }
+  
+  sil_widths <- silhouette(zz, dist(mcf))
+  if (length(sil_widths)==1) {
+    mean_silhouette_score <- 0
+  } else {
+    mean_silhouette_score <- mean(sil_widths[, "sil_width"])
+  }
+  
+  return(mean_silhouette_score)
+}
+
 #' Make table listing possible choices of K (minimum BIC and elbow of BIC plot) for each mutation set
 #' 
 #' @export
@@ -62,34 +128,29 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
 #' @param all_set_results List of MCMC results for each mutation set; returned by \code{clusterSep}
 #' @param sample_names (Optional) Vector of sample IDs, same order as provided as input data (e.g. indata$Sample_ID)
 writeSetKTable <- function(all_set_results, sample_names = NULL) {
-  min_bic_k <- sapply(all_set_results, function(x) x$best_K)
-  elbow_k <- sapply(all_set_results, function(x) ifelse(is.logical(x$BIC), 1, findElbow(x$BIC$BIC)))
-  knee_k <- sapply(all_set_results, function(x) ifelse(is.logical(x$BIC), 1, findKnee(x$BIC$BIC)))
-  min_bic_k_tb <- tibble(set_name_bin = names(all_set_results),
-                         min_BIC = min_bic_k,
-                         elbow = elbow_k,
-                         knee = knee_k)
   
-  if (!is.null(sample_names)) {
+min_bic_k <- sapply(all_set_results, function(x) x$BIC_best_K)
+    elbow_k <- sapply(all_set_results, function(x) ifelse(is.logical(x$BIC), 1, findElbow(x$BIC$BIC)))
+    knee_k <- sapply(all_set_results, function(x) ifelse(is.logical(x$BIC), 1, findKnee(x$BIC$BIC)))
+    min_bic_k_tb <- tibble(set_name_bin = names(all_set_results),
+                           min_BIC = min_bic_k,
+                           elbow = elbow_k,
+                           knee = knee_k)
+    
+    if (!is.null(sample_names)) {
+      min_bic_k_tb <- min_bic_k_tb %>%
+        mutate(set_name_full = sapply(min_bic_k_tb$set_name_bin, 
+                                      function(x) getSetName(x, sample_names, collapse_string = ","))) %>%
+        select(set_name_bin, set_name_full, min_BIC, elbow, knee)
+    }
+    
     min_bic_k_tb <- min_bic_k_tb %>%
-      mutate(set_name_full = sapply(min_bic_k_tb$set_name_bin, 
-                                    function(x) getSetName(x, sample_names, collapse_string = ","))) %>%
-      select(set_name_bin, set_name_full, min_BIC, elbow, knee)
-  }
-  
-  # write chosen K if elbow, knee, and minimum BIC all agree 
-  chosen_K <- rep(NA, length(all_set_results))
-  for (i in seq_len(length(all_set_results))) {
-    chosen_K[i] <- ifelse(length(unique(c(min_bic_k_tb$min_BIC[i],min_bic_k_tb$elbow[i],min_bic_k_tb$knee[i])))==3,
-                          min_bic_k_tb$min_BIC[i],
-                          getmode(c(min_bic_k_tb$min_BIC[i],min_bic_k_tb$elbow[i],min_bic_k_tb$knee[i])))
-    # TO-DO
-    # chosen_K[i] <-  min_bic_k_tb$min_BIC[i]
-  }
-  
-  min_bic_k_tb <- min_bic_k_tb %>%
-    mutate(chosen_K = chosen_K)
-  
+      mutate(BIC_K = round((min_BIC + elbow + knee) / 3))
+    
+    silhouette_k <- sapply(all_set_results, function(x) x$silhouette_best_K)
+    min_bic_k_tb <- min_bic_k_tb %>%
+      mutate(silhouette_K = silhouette_k)
+
   return(min_bic_k_tb)
 }
 

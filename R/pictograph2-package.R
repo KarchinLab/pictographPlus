@@ -16,6 +16,8 @@
 #' @import viridis
 #' @import igraph
 #' @import stringr
+#' @import UpSetR
+#' @import cluster
 #' @name pictograph2-package
 #' @aliases pictograph2
 NULL
