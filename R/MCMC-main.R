@@ -84,7 +84,7 @@ mcmcMain <- function(is_list=FALSE,
   }
   data <- assign("data", data, envir = .GlobalEnv)
   
-  ############### sv ###############
+  ############### sv ###############.   This is lester
   if(model_type=="sv"){
     if (sample_presence) {
       message("Using sample presence for SVs")
