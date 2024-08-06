@@ -228,18 +228,20 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, nam
     rownames(baf) = rowname
     colnames(baf) = colname
     
-    tcn_tot <- matrix(5000, nrow(output_data), ncol(output_data))
+    baf <- add_missing_column(name_order, baf, 0.5)
+    
+    tcn_tot <- matrix(3000, nrow(output_data), ncol(output_data))
     rownames(tcn_tot) <- rownames(output_data)
     colnames(tcn_tot) <- colnames(output_data)
     
-    tcn_tot <- add_missing_column(name_order, tcn_tot, 5000)
+    tcn_tot <- add_missing_column(name_order, tcn_tot, 3000)
     
     tcn_alt <- matrix(round(tcn_tot * baf), nrow(output_data),ncol(output_data))
     tcn_alt <- pmax(tcn_alt, tcn_tot - tcn_alt)
     rownames(tcn_alt) <- rownames(output_data)
     colnames(tcn_alt) <- colnames(output_data)
     
-    tcn_alt <- add_missing_column(name_order, tcn_alt, 2500)
+    # tcn_alt <- add_missing_column(name_order, tcn_alt, 1000)
     
   } else if (!is.null(SNV_file)) {
     tcn_ref <- list()
@@ -435,7 +437,7 @@ importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh =
   if (any(output_data$n==0)) {
     # print("Total read counts of 0 encoutered. Replaced 0 with mean total read count.")
     # output_data$n[output_data$n==0] <- round(mean(output_data$n[output_data$n!=0]))
-    output_data$n[output_data$n==0] <- 1000
+    output_data$n[output_data$n==0] <- 2000
   }
 
   output_data$S = ncol(output_data$y)
@@ -483,7 +485,7 @@ importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thre
   
   if (any(output_data$n==0)) {
     print("Total read counts of 0 encoutered. Replaced 0 with mean total read count.")
-    output_data$n[output_data$n==0] <- 1000
+    output_data$n[output_data$n==0] <- 2000
   }
   
   output_data$icn <- as.matrix(data[c("mutation", "sample", "tumor_integer_copy_number")] %>% pivot_wider(names_from = sample, values_from = tumor_integer_copy_number, values_fill = 2))
