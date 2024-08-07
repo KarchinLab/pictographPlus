@@ -66,6 +66,8 @@ importFiles <- function(mutation_file,
       
       mutation_data$overlap = resolveOverlap(mutation_data)
       mutation_data$tcn <- mutation_data$overlap %*% mutation_data$tcn
+      # mutation_data$tcn[mutation_data$tcn==0] <- 2.0
+      
       overlap <- mutation_data$overlap
       colnames(overlap) <- sapply(colnames(mutation_data$overlap), function(col) {which(rownames(mutation_data$overlap)==col)})
       
