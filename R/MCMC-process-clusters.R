@@ -93,8 +93,10 @@ estimateMultiplicity <- function(m_chain) {
 #' @param m_chain MCMC chain of mutation cluster assignment values
 #' @param Mut_ID Vector of mutation IDs, same order as provided as input data (e.g. indata$Mut_ID)
 #' @return A tibble listing mutation IDs and their cluster assignments
-writeMultiplicityTable <- function(m_chain, Mut_ID = NULL) {
-  map_m <- estimateMultiplicity(m_chain) 
+writeMultiplicityTable <- function(m_chain, icn_chain, Mut_ID = NULL) {
+  # map_m <- estimateMultiplicity(m_chain)
+  map_icn <- estimateICN(icn_chain)
+  map_m <- bind_cols(m_chain, icn_chain %>% rename(Ite=Iteration, Ch=Chain, Para=Parameter, val=value)) %>% left_join(map_icn %>% rename(Parameter1=Parameter, value1=value), by=join_by('Para'=='Parameter1')) %>% filter(val==value1) %>% group_by(Parameter) %>% count(value, sort=T) %>% slice_max(n, with_ties = F) %>% ungroup() %>% select(Parameter, value) 
   if (is.null(Mut_ID)) {
     Mut_ID <- paste0("Mut", 1:nrow(map_m))
   }
