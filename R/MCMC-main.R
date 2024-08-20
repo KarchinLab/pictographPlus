@@ -281,7 +281,7 @@ mcmcMain <- function(mutation_file,
     best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$min_BIC)
   }
   chains <- mergeSetChains(best_set_chains, input_data)
-  
+  chains <- assign("chains", chains, envir = .GlobalEnv)
   # plot MCMC tracing 
   png(paste(outputDir, "mcf.png", sep="/"))
   print(
@@ -308,7 +308,7 @@ mcmcMain <- function(mutation_file,
   icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
   write.table(icnTable, file=paste(outputDir, "icn_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
-  multiplicityTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
+  multiplicityTable <- writeMultiplicityTable(chains$m_chain, chains$icn_chain, Mut_ID = input_data$MutID)
   write.table(multiplicityTable, file=paste(outputDir, "multiplicity_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   icnTableCN <- icnTable[data$is_cn==1,]
@@ -437,7 +437,7 @@ plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data) 
 
 #' find multiplicity for each mutation
 findM <- function(data, input_data, chains) {
-  mTable <- writeMultiplicityTable(chains$m_chain, Mut_ID = input_data$MutID)
+  mTable <- writeMultiplicityTable(chains$m_chain, chains$icn_chain, Mut_ID = input_data$MutID)
   mTable <- mTable %>% 
     mutate(order_idx = match(mTable$Mut_ID, input_data$MutID)) %>% 
     arrange(order_idx) %>% 
