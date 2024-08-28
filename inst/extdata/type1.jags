@@ -9,12 +9,12 @@ model {
 	
 	for (i in 1:I) {
 		for (s in 1:S) {
-		  tcn.est[i,s] <- icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s]) + 0.01
+		  tcn.est[i,s] <- icn[i] * mcf[z[i], s] + ploidy * (1 - mcf[z[i], s])
 			vaf.snv[i,s] <- mcf[z[i], s] / ploidy
-			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn.est[i,s]
+			vaf.cna[i,s] <- (mcf[z[i], s] * m[i] + 1 - mcf[z[i], s]) / tcn[i,s]
 			vaf.temp[i,s] <- ifelse(is_cn[i]==0, vaf.snv[i,s], vaf.cna[i,s])
 			vaf.temp1[i,s] <- ifelse(vaf.temp[i,s] < 0, 0, vaf.temp[i,s])
-			vaf[i,s] <- ifelse(vaf.temp1[i,s] > 1, 1, vaf.temp1[i,s])
+			vaf[i,s] <- ifelse(vaf.temp1[i,s] > 1, 0.99, vaf.temp1[i,s])
 		}
 	}
 	
@@ -24,7 +24,7 @@ model {
 		}
 	 }
 	
-	epsilon ~ dnorm(0,1)T(0,)
+	epsilon ~ dnorm(0,0.5)T(0,)
 	#epsilon <- abs(epsilon1)
 	
 	for (i in 1:I) {
@@ -55,7 +55,7 @@ model {
 			eta[k,s] ~ dbeta(5,2)
 			z.eta[k,s] ~ dcat(c(eta[k,s], 1-eta[k,s]))
 
-			mcf1[k,s] ~ dbeta(1,1)T(0.05, purity[s])
+			mcf1[k,s] ~ dbeta(1,1)T(0.01, purity[s])
 			mcf_unsorted[k,s] <- ifelse(z.eta[k,s] == 1, mcf1[k,s], 0)
 		}
 	}
