@@ -232,11 +232,11 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, nam
     
     baf <- add_missing_column(name_order, baf, 0.5)
     
-    tcn_tot <- matrix(3000, nrow(output_data), ncol(output_data))
+    tcn_tot <- matrix(2000, nrow(output_data), ncol(output_data))
     rownames(tcn_tot) <- rownames(output_data)
     colnames(tcn_tot) <- colnames(output_data)
     
-    tcn_tot <- add_missing_column(name_order, tcn_tot, 3000)
+    tcn_tot <- add_missing_column(name_order, tcn_tot, 2000)
     
     tcn_alt <- matrix(round(tcn_tot * baf), nrow(output_data),ncol(output_data))
     tcn_alt <- pmax(tcn_alt, tcn_tot - tcn_alt)
@@ -275,8 +275,8 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, nam
     tcn_tot <- add_missing_column(name_order, tcn_tot, tot_mean)
     tcn_alt <- add_missing_column(name_order, tcn_alt, alt_mean)
     
-    tcn_tot <- round(tcn_tot)
-    tcn_alt <- round(tcn_alt)
+    tcn_tot <- round(tcn_tot) * 10
+    tcn_alt <- round(tcn_alt) * 10
   }
   
   return_data <- list()
