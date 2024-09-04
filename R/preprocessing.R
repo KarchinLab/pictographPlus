@@ -328,7 +328,7 @@ check_sample_LOH <- function(data, outputDir, SNV_file, tcn_normal_range=c(1.5, 
     SNV_temp <- SNV_data %>% filter(chroms==data[i,]$chrom & position>=data[i,]$start & position<=data[i,]$end)
     sample <- data[i,]$sample
     
-    if (nrow(SNV_temp) > 2) {
+    if (nrow(SNV_temp) > 20) {
       vaf_germline <- SNV_temp$germline_alt / (SNV_temp$germline_alt + SNV_temp$germline_ref)
       germline_test <- dip.test(vaf_germline)
       alt = paste(sample, "alt", sep="_")
