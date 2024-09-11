@@ -243,7 +243,7 @@ getBoxInputData <- function(box, ploidy=2, model_type) {
                            n = box$n[,sample_list,drop=FALSE],
                            tcn = box$tcn[,sample_list,drop=FALSE],
                            is_cn = box$is_cn,
-                           purity=box$purity,
+                           purity=box$purity[sample_list],
                            ploidy=ploidy)
   } else if (model_type == "type2") {
     box_input_data <- list(I = nrow(box$y),
@@ -255,7 +255,7 @@ getBoxInputData <- function(box, ploidy=2, model_type) {
                            mtp = box$mtp,
                            cncf = box$cncf[,sample_list,drop=FALSE],
                            icn = box$icn,
-                           purity=box$purity,
+                           purity=box$purity[sample_list],
                            ploidy=ploidy)
   } else if (model_type == "type3") {
     box_input_data <- list(I = nrow(box$y),
@@ -265,7 +265,7 @@ getBoxInputData <- function(box, ploidy=2, model_type) {
                            tcn = box$tcn[,sample_list,drop=FALSE],
                            is_cn = box$is_cn,
                            q = box$q,
-                           purity=box$purity,
+                           purity=box$purity[sample_list],
                            ploidy=ploidy)
   }
   # set tcn to 2 if 0

@@ -39,6 +39,7 @@ mcmcMain <- function(mutation_file,
                      thin=10, 
                      mc.cores=8, 
                      inits=list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123),
+                     threshes=NULL,
                      alt_reads_thresh = 0, # placeholder
                      vaf_thresh = 0, # placeholder
                      cnv_max_dist=2000, # placeholder
@@ -317,7 +318,9 @@ mcmcMain <- function(mutation_file,
   write.table(icnTableCN, file=paste(outputDir, "CN_results.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   # generate trees using different set of thresholds until at least one tree is available
-  threshes <- allThreshes()
+  if (is.null(threshes)){
+    threshes <- allThreshes()
+  }
   for (thresh in threshes) {
     generateAllTrees(chains$mcf_chain, data$purity, lineage_precedence_thresh = thresh[1], sum_filter_thresh = thresh[2])
     if (length(all_spanning_trees) > 0) {
@@ -511,18 +514,18 @@ findCncf <- function(data, input_data, chains) {
 allThreshes <- function() {
   threshes <- list() 
   threshes[[1]] <- c(0,0)
-  threshes[[2]] <- c(0,0.2)
-  threshes[[3]] <- c(0,0.4)
-  threshes[[4]] <- c(0.1,0.2)
-  threshes[[5]] <- c(0.1,0.4)
-  threshes[[6]] <- c(0.2,0.3)
-  threshes[[7]] <- c(0.2,0.6)
-  threshes[[8]] <- c(0.3,0.3)
-  threshes[[9]] <- c(0.3,0.6)
-  threshes[[10]] <- c(0.3,0.9)
-  threshes[[11]] <- c(0.4,0.6)
-  threshes[[12]] <- c(0.4,0.9)
-  threshes[[13]] <- c(0.5,0.9)
-  threshes[[14]] <- c(0.6,1)
+  threshes[[2]] <- c(0.025,0.025)
+  threshes[[3]] <- c(0.05,0.05)
+  threshes[[4]] <- c(0.075,0.075)
+  threshes[[5]] <- c(0.1,0.1)
+  threshes[[6]] <- c(0.15,0.15)
+  threshes[[7]] <- c(0.2,0.2)
+  threshes[[8]] <- c(0.25,0.25)
+  threshes[[9]] <- c(0.3,0.3)
+  threshes[[10]] <- c(0.4,0.5)
+  threshes[[11]] <- c(0.5,0.6)
+  threshes[[12]] <- c(0.6,0.7)
+  threshes[[13]] <- c(0.7,0.8)
+  threshes[[14]] <- c(0.8,1)
   threshes
 }
