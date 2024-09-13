@@ -52,3 +52,4 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+inst/extdata/examples/~$example1_snv_with_purity.csv
