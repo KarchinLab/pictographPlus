@@ -245,6 +245,12 @@ getBoxInputData <- function(box, ploidy=2, model_type) {
                            is_cn = box$is_cn,
                            purity=box$purity[sample_list],
                            ploidy=ploidy)
+    
+    if (length(box_input_data$is_cn) < 2 * sum(box_input_data$is_cn)) {
+      box_input_data$y[box_input_data$is_cn==0,] <- 10 * box_input_data$y[box_input_data$is_cn==0,]
+      box_input_data$n[box_input_data$is_cn==0,] <- 10 * box_input_data$n[box_input_data$is_cn==0,]
+    }
+    
   } else if (model_type == "type2") {
     box_input_data <- list(I = nrow(box$y),
                            S = length(sample_list),
