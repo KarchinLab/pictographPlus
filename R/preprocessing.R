@@ -85,6 +85,9 @@ importFiles <- function(mutation_file,
     mutation_data$is_cn <- c(rep(0, nrow(mutation_data$y)))
     mutation_data$cnnull <- TRUE
   }
+  
+  mutation_data$y[mutation_data$is_cn==1,] <- pmax(mutation_data$y[mutation_data$is_cn==1,], mutation_data$n[mutation_data$is_cn==1,]-mutation_data$y[mutation_data$is_cn==1,])
+  
   return(mutation_data)
 }
 
