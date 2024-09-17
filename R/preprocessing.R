@@ -365,12 +365,13 @@ check_sample_LOH <- function(data, outputDir, SNV_file, tcn_normal_range=c(1.5, 
           if (data[i,]$tcn > tcn_normal_range[1] & data[i,]$tcn < tcn_normal_range[2]) { # check tcn within normal range
             if (tumor_test$p.value < pval/nrow(data)) {
               # NOTE: TO DO
-              warning("check_sample_LOH diptest seems not working; not detecting LOH; more testing needed")
-              # to_keep_index <- c(to_keep_index, 1)
-              to_keep_index <- c(to_keep_index, 0)
+              # warning("check_sample_LOH diptest seems not working; not detecting LOH; more testing needed")
+              to_keep_index <- c(to_keep_index, 1)
+              # to_keep_index <- c(to_keep_index, 0)
               plot(density(vaf), xlim=c(0,1), main = paste(data[i,]$sample, "\n", data[i,]$chrom, ":", data[i,]$start, "-", data[i,]$end, "\n tcn: ", data[i,]$tcn, ", pval: ", tumor_test$p.value, sep=""))
 
             } else { # disregard if only one peak
+              # plot(density(vaf), xlim=c(0,1), main = paste(data[i,]$sample, "\n", data[i,]$chrom, ":", data[i,]$start, "-", data[i,]$end, "\n tcn: ", data[i,]$tcn, ", pval: ", tumor_test$p.value, sep=""))
               to_keep_index <- c(to_keep_index, 0)
             }
           } else { # keep CNA because tcn not in normal range
