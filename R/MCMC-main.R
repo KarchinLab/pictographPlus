@@ -205,8 +205,10 @@ mcmcMain <- function(mutation_file,
                            MutID=data$MutID[index],
                            purity=data$purity)
         
+        sep_list <- separateMutationsBySamplePresence(input_data)
+        
         # For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
-        all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
+        all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=TRUE, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
                                               cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                               n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
         # pick K
