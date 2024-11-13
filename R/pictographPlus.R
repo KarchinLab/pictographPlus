@@ -1,3 +1,4 @@
+#' @import GSVA, pheatmap, limma
 #' @export
 #' 
 runPICTographPlus <- function(
@@ -67,4 +68,71 @@ runPICTographPlus <- function(
                 proportionFile = proportionFile,
                 purityFile = purityFile,
                 outputDir = outputDir)
+  
+  # read expression data
+  X_optimal <- read.csv(paste0(outputDir, "/clonal_expression.csv"))
+  rownames(X_optimal) <- X_optimal[,1]
+  X_optimal <- X_optimal[,-1]
+  # X_optimal <- X_optimal[1,]
+  X <- mapply(as.matrix(X_optimal), FUN=as.numeric)
+  X <- matrix(X, ncol=ncol(X_optimal))
+  rownames(X) <- rownames(X_optimal)
+  colnames(X) <- colnames(X_optimal)
+  X <- t(X)
+  
+  # GSEA gene set
+  lines <- readLines("./inst/extdata/h.all.v2024.1.Hs.symbols.gmt.txt") 
+  
+  gene_list <- list()
+  
+  for (line in lines) {
+    elements <- strsplit(line, "\t")[[1]]
+    gene_set_name <- elements[1]
+    genes <- elements[-c(1,2)]
+    gene_list[[gene_set_name]] <- genes
+  }
+  
+  # run GSVA
+  
+  gsvaPar <- gsvaParam(X, gene_list)
+  gsvaPar <- ssgseaParam(X, gene_list)
+  gsva.es <- gsva(gsvaPar)
+  
+  pheatmap(gsva.es,
+           main = "Single Sample GSEA Scores",
+           cluster_rows = TRUE,
+           cluster_cols = TRUE,
+           scale = "none",
+           color = colorRampPalette(c("blue", "white", "red"))(100))
+  
+  
+  # differetial GSEA
+  data <- t(X_optimal)
+  normal_sample <- data[, "0", drop = FALSE]
+  disease_samples <- data[, colnames(data) != "0"]
+  gene_sets <- getGmt("./inst/extdata/h.all.v2024.1.Hs.symbols.gmt.txt", geneIdType=SymbolIdentifier())
+
+  combined_samples <- cbind(normal_sample, disease_samples)
+  
+  # Perform ssGSEA
+  gsea_results <- gsva(gsvaParam(combined_samples, gene_sets))
+  
+  group <- factor(c("Normal", rep("Disease", ncol(disease_samples))))
+  design <- model.matrix(~ group)
+  
+  # Fit the linear model
+  fit <- lmFit(gsea_results, design)
+  fit <- eBayes(fit)
+  
+  # Get the top differentially enriched gene sets
+  results <- topTable(fit, coef = "groupDisease", adjust = "BH", number = Inf)
+  
+  
 }
+
+
+
+
+
+
+
