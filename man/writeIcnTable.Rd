@@ -2,12 +2,12 @@
 % Please edit documentation in R/MCMC-process-clusters.R
 \name{writeIcnTable}
 \alias{writeIcnTable}
-\title{Determine most probable mutation cluster assignments by taking those with highest posterior probability.}
+\title{Determine most probable integer copy number by taking those with highest posterior probability.}
 \usage{
 writeIcnTable(icn_chain, Mut_ID = NULL)
 }
 \arguments{
-\item{icn_chain}{MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}}
+\item{icn_chain}{MCMC chain of integer copy number}
 
 \item{Mut_ID}{Vector of mutation IDs, same order as provided as input data (e.g. indata$Mut_ID)}
 }
@@ -15,5 +15,5 @@ writeIcnTable(icn_chain, Mut_ID = NULL)
 A tibble listing mutation IDs and their cluster assignments
 }
 \description{
-Determine most probable mutation cluster assignments by taking those with highest posterior probability.
+Determine most probable integer copy number by taking those with highest posterior probability.
 }

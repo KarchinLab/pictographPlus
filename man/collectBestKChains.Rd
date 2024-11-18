@@ -7,7 +7,7 @@
 collectBestKChains(all_set_results, chosen_K = NULL)
 }
 \arguments{
-\item{all_set_results}{List of MCMC results for each mutation set; returned by \code{clusterSep}}
+\item{all_set_results}{List of MCMC results for each mutation set}
 
 \item{chosen_K}{(Optional) Vector of K to choose for each mutation set, in the same order as all_set_results. If left blank, function will select best K automatically selected by \code{clusterSep}}
 }

@@ -7,7 +7,7 @@
 estimateMultiplicity(m_chain)
 }
 \arguments{
-\item{z_chain}{MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}}
+\item{m_chain}{MCMC chain of multiplicity assignment values}
 }
 \description{
 Determine most probable mutation cluster assignments by taking those with highest posterior probability

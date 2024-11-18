@@ -22,7 +22,7 @@
 #' @param inits additional parameters by JAGS.
 #' @param cluster_diff_thresh threshold to merge two clusters.
 #' @export
-mcmcMain <- function(mutation_file,
+runPictograph <- function(mutation_file,
                      copy_number_file=NULL,
                      SNV_file=NULL,
                      outputDir=NULL,

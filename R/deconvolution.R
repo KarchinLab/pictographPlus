@@ -1,12 +1,12 @@
 #' @import igraph
 #' @export
 #' 
-deconvolution <- function(rna_file,
+runDeconvolution <- function(rna_file,
                           treeFile,
                           proportionFile,
                           purityFile,
-                          outputDir
-                          ){
+                          outputDir,
+                          lambda=0.2){
   
   # rnaFile <- "~/Karchin Lab Dropbox/Jillian Lai/U01-Wood-Fertig/analysis/htan-mcl-pre-cancer-pancreas/semaan_analysis/pictographPlus/MCL111_001_expression.csv"
   # treeFile <- "~/Karchin Lab Dropbox/Jillian Lai/U01-Wood-Fertig/analysis/htan-mcl-pre-cancer-pancreas/pictograph2_latest/MCL111_001/tree.csv"
@@ -54,20 +54,97 @@ deconvolution <- function(rna_file,
   edge_list <- as.matrix(do.call(rbind, edges))  # Convert to matrix if not already
   edge_list <- apply(edge_list, 2, as.integer) 
   edge_list <- edge_list + 1
-  G <- graph_from_edgelist(edge_list, directed = FALSE)
-  laplacian_mat <- laplacian_matrix(G)
-  laplacian_mat[1,] <- 0
-  laplacian_mat[,1] <- 0
-  L <- as.matrix(laplacian_mat)
+  if (is.null(ncol(edge_list))) {
+    L <- matrix(0, nrow = 2, ncol = 2)
+  } else {
+    G <- graph_from_edgelist(edge_list, directed = FALSE)
+    laplacian_mat <- laplacian_matrix(G)
+    laplacian_mat[1,] <- 0
+    laplacian_mat[,1] <- 0
+    L <- as.matrix(laplacian_mat)
+  }
+  
   Y <- as.matrix(t(rnaData))  # Transpose the data frame
   pi <- as.matrix(t(proportionDF))
   
-  # m <- nrow(Y)
-  # n <- ncol(Y)
-  # k <- ncol(pi)
-  
-  X_optimal <- optimize_X(Y, pi, L, 0.2)
+  X_optimal <- optimize_X(Y, pi, L, lambda)
   write.csv(X_optimal, file = paste0(outputDir, "/clonal_expression.csv"))
+  
+  # if (GSEA) {
+  #   GSEA_analysis(X_optimal, outputDir, GSEA_file=GSEA_file)
+  # }
+  
+}
+
+
+#' @export
+#' @import GSVA, pheatmap, limma, GSEABase
+runGSEA <- function(X_optimal,
+                    outputDir,
+                    GSEA_file=NULL) {
+  # read expression data
+  # X_optimal <- read.csv(paste0(outputDir, "/clonal_expression.csv"))
+  rownames(X_optimal) <- X_optimal[,1]
+  X_optimal <- X_optimal[,-1]
+  # X_optimal <- X_optimal[1,]
+  X <- mapply(as.matrix(X_optimal), FUN=as.numeric)
+  X <- matrix(X, ncol=ncol(X_optimal))
+  rownames(X) <- rownames(X_optimal)
+  colnames(X) <- colnames(X_optimal)
+  X <- t(X)
+  
+  # GSEA gene set
+  if (is.null(GSEA_file)) {
+    GSEA_file = system.file("extdata", "h.all.v2024.1.Hs.symbols.gmt.txt", package="pictographPlus")
+  }
+  
+  lines <- readLines(GSEA_file) 
+  
+  gene_list <- list()
+  
+  for (line in lines) {
+    elements <- strsplit(line, "\t")[[1]]
+    gene_set_name <- elements[1]
+    genes <- elements[-c(1,2)]
+    gene_list[[gene_set_name]] <- genes
+  }
+  
+  # run GSVA
+  # gsvaPar <- gsvaParam(X, gene_list)
+  gsvaPar <- ssgseaParam(X, gene_list)
+  gsva.es <- gsva(gsvaPar)
+  
+  write.csv(gsva.es, file = paste0(outputDir, "/gsea_results.csv"))
+  
+  png(paste0(outputDir, "/gsea_heatmap.png"), width = 1200, height = 1000, res = 150)
+  pheatmap(gsva.es,
+           main = "Single Sample GSEA Scores",
+           cluster_rows = TRUE,
+           cluster_cols = TRUE,
+           scale = "none",
+           color = colorRampPalette(c("blue", "white", "red"))(100))
+  dev.off()
+  
+  # # differetial GSEA
+  # data <- t(X_optimal)
+  # normal_sample <- data[, "0", drop = FALSE]
+  # disease_samples <- data[, colnames(data) != "0"]
+  # gene_sets <- getGmt(GSEA_file, geneIdType=SymbolIdentifier())
+  # 
+  # combined_samples <- cbind(normal_sample, disease_samples)
+  # 
+  # # Perform ssGSEA
+  # gsea_results <- gsva(gsvaParam(combined_samples, gene_sets))
+  # 
+  # group <- factor(c("Normal", rep("Disease", ncol(disease_samples))))
+  # design <- model.matrix(~ group)
+  # 
+  # # Fit the linear model
+  # fit <- lmFit(gsea_results, design)
+  # fit <- eBayes(fit)
+  # 
+  # # Get the top differentially enriched gene sets
+  # results <- topTable(fit, coef = "groupDisease", adjust = "BH", number = Inf)
   
 }
 
@@ -115,4 +192,5 @@ optimize_X <- function(Y, pi, L, lambda_=0.1, X_init = NULL, learning_rate = 0.0
     return(X_new)
   }
   return(round(X_new))
+  
 }

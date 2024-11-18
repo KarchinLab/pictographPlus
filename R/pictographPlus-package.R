@@ -18,6 +18,10 @@
 #' @import stringr
 #' @import UpSetR
 #' @import cluster
+#' @import GSVA
+#' @import pheatmap
+#' @import limma
+#' @import GSEABase
 #' @name pictographPlus-package
 #' @aliases pictographPlus
 NULL

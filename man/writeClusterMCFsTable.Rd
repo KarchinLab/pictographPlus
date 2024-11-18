@@ -2,18 +2,18 @@
 % Please edit documentation in R/MCMC-process-clusters.R
 \name{writeClusterMCFsTable}
 \alias{writeClusterMCFsTable}
-\title{Determine the most probable cluster CCF values by taking the mode of the posterior distributions}
+\title{Determine the most probable cluster MCF values by taking the mode of the posterior distributions}
 \usage{
 writeClusterMCFsTable(mcf_chain, Sample_ID = NULL)
 }
 \arguments{
-\item{mcf_chain}{MCMC chain of CCF values, which is the first item in the list returned by \code{clusterSep}}
+\item{mcf_chain}{MCMC chain of MCF values}
 
 \item{Sample_ID}{Vector of sample IDs, same order as provided as input data (e.g. indata$Sample_ID)}
 }
 \value{
-A tibble of estimated cluster CCFs in each sample
+A tibble of estimated cluster MCFs in each sample
 }
 \description{
-Determine the most probable cluster CCF values by taking the mode of the posterior distributions
+Determine the most probable cluster MCF values by taking the mode of the posterior distributions
 }

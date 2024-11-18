@@ -3,10 +3,13 @@
 #' 
 runPICTographPlus <- function(
     mutation_file,
+    rna_file,
+    outputDir=NULL,
     copy_number_file=NULL,
     SNV_file=NULL,
-    rna_file=NULL,
-    outputDir=NULL,
+    lambda=0.2,
+    GSEA = TRUE,
+    GSEA_file = NULL,
     sample_presence=TRUE,
     dual_model=TRUE, # placeholder; dual_model=FALSE still require testing
     score="silhouette", # either BIC or silhouette
@@ -31,7 +34,7 @@ runPICTographPlus <- function(
     autosome=T # placeholder
 ) {
   
-  mcmcMain(mutation_file,
+  runPictograph(mutation_file,
            copy_number_file=copy_number_file,
            SNV_file=SNV_file,
            outputDir=outputDir,
@@ -63,71 +66,19 @@ runPICTographPlus <- function(
   proportionFile = paste(outputDir, "subclone_proportion.csv", sep="/")
   purityFile = paste(outputDir, "purity.csv", sep="/")
   
-  deconvolution(rna_file = rna_file,
+  runDeconvolution(rna_file = rna_file,
                 treeFile = treeFile,
                 proportionFile = proportionFile,
                 purityFile = purityFile,
-                outputDir = outputDir)
+                outputDir = outputDir,
+                lambda=lambda)
   
-  # read expression data
-  X_optimal <- read.csv(paste0(outputDir, "/clonal_expression.csv"))
-  rownames(X_optimal) <- X_optimal[,1]
-  X_optimal <- X_optimal[,-1]
-  # X_optimal <- X_optimal[1,]
-  X <- mapply(as.matrix(X_optimal), FUN=as.numeric)
-  X <- matrix(X, ncol=ncol(X_optimal))
-  rownames(X) <- rownames(X_optimal)
-  colnames(X) <- colnames(X_optimal)
-  X <- t(X)
   
-  # GSEA gene set
-  lines <- readLines("./inst/extdata/h.all.v2024.1.Hs.symbols.gmt.txt") 
-  
-  gene_list <- list()
-  
-  for (line in lines) {
-    elements <- strsplit(line, "\t")[[1]]
-    gene_set_name <- elements[1]
-    genes <- elements[-c(1,2)]
-    gene_list[[gene_set_name]] <- genes
+  if (GSEA) {
+    X_optimal <- read.csv(paste0(outputDir, "/clonal_expression.csv"))
+    runGSEA(X_optimal, outputDir, GSEA_file=GSEA_file)
   }
-  
-  # run GSVA
-  
-  gsvaPar <- gsvaParam(X, gene_list)
-  gsvaPar <- ssgseaParam(X, gene_list)
-  gsva.es <- gsva(gsvaPar)
-  
-  pheatmap(gsva.es,
-           main = "Single Sample GSEA Scores",
-           cluster_rows = TRUE,
-           cluster_cols = TRUE,
-           scale = "none",
-           color = colorRampPalette(c("blue", "white", "red"))(100))
-  
-  
-  # differetial GSEA
-  data <- t(X_optimal)
-  normal_sample <- data[, "0", drop = FALSE]
-  disease_samples <- data[, colnames(data) != "0"]
-  gene_sets <- getGmt("./inst/extdata/h.all.v2024.1.Hs.symbols.gmt.txt", geneIdType=SymbolIdentifier())
 
-  combined_samples <- cbind(normal_sample, disease_samples)
-  
-  # Perform ssGSEA
-  gsea_results <- gsva(gsvaParam(combined_samples, gene_sets))
-  
-  group <- factor(c("Normal", rep("Disease", ncol(disease_samples))))
-  design <- model.matrix(~ group)
-  
-  # Fit the linear model
-  fit <- lmFit(gsea_results, design)
-  fit <- eBayes(fit)
-  
-  # Get the top differentially enriched gene sets
-  results <- topTable(fit, coef = "groupDisease", adjust = "BH", number = Inf)
-  
-  
 }
 
 

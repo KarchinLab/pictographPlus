@@ -167,7 +167,7 @@ runMCMCForABox <- function(box,
   # select columns if the presence pattern is 1
   box_input_data <- getBoxInputData(box, ploidy, model_type)
   
-  extdir <- system.file("extdata", package="pictograph2")
+  extdir <- system.file("extdata", package="pictographPlus")
   
   # choose sample in which mutations are present
   sample_to_sort <- which(colSums(box_input_data$y) > 0)[1]

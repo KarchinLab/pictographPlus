@@ -8,15 +8,14 @@ importCopyNumberFile(
   copy_number_file,
   outputDir,
   SNV_file = NULL,
-  stat_file = NULL,
+  LOH = FALSE,
   name_order = NULL,
   cnv_max_dist = 2000,
   cnv_max_percent = 0.3,
   tcn_normal_range = c(1.8, 2.2),
   smooth_cnv = F,
   autosome = T,
-  pval = 0.05,
-  mc.cores = 8
+  pval = 0.05
 )
 }
 \arguments{

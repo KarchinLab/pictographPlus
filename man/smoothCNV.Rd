@@ -2,12 +2,11 @@
 % Please edit documentation in R/preprocessing.R
 \name{smoothCNV}
 \alias{smoothCNV}
-\title{merge segments with similar coordinates
-the maximum allowed distance between the start or end position of two segments is the max(cnv_max_dist, min(length of two segments)*cnv_max_percent)}
+\title{merge segments with similar coordinates}
 \usage{
 smoothCNV(data, cnv_max_dist = 2000, cnv_max_percent = 0.3)
 }
 \description{
-merge segments with similar coordinates
-the maximum allowed distance between the start or end position of two segments is the max(cnv_max_dist, min(length of two segments)*cnv_max_percent)
+the maximum allowed distance between the start or end position of two segments 
+is the max(cnv_max_dist, min(length of two segments)*cnv_max_percent)
 }

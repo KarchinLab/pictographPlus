@@ -7,10 +7,10 @@
 estimateMCFs(mcf_chain)
 }
 \arguments{
-\item{mcf_chain}{MCMC chain of CCF values, which is the first item in the list returned by \code{clusterSep}}
+\item{mcf_chain}{MCMC chain of mCF values}
 }
 \value{
-matrix of estimated cluster CCFs
+matrix of estimated cluster MCFs
 }
 \description{
 Determine the most probable cluster MCF values by taking the mean of the posterior distributions

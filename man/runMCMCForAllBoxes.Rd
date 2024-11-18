@@ -2,7 +2,7 @@
 % Please edit documentation in R/MCMC-clustering.R
 \name{runMCMCForAllBoxes}
 \alias{runMCMCForAllBoxes}
-\title{run MCMC for all mutations by sample presence}
+\title{run MCMC using JAGS}
 \usage{
 runMCMCForAllBoxes(
   sep_list,
@@ -15,10 +15,10 @@ runMCMCForAllBoxes(
   n.burn = 1000,
   thin = 10,
   mc.cores = 4,
-  model_type = "type3",
+  model_type = "type2",
   inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 123)
 )
 }
 \description{
-run MCMC for all mutations by sample presence
+run MCMC using JAGS
 }

@@ -2,13 +2,13 @@
 % Please edit documentation in R/MCMC-process-clusters.R
 \name{estimateICN}
 \alias{estimateICN}
-\title{Determine most probable mutation cluster assignments by taking those with highest posterior probability}
+\title{Determine most probable integer assignments by taking those with highest posterior probability}
 \usage{
 estimateICN(icn_chain)
 }
 \arguments{
-\item{icn_chain}{MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}}
+\item{icn_chain}{MCMC chain of integer copy number assignment values}
 }
 \description{
-Determine most probable mutation cluster assignments by taking those with highest posterior probability
+Determine most probable integer assignments by taking those with highest posterior probability
 }

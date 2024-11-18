@@ -2,14 +2,14 @@
 % Please edit documentation in R/preprocessing.R
 \name{importFiles}
 \alias{importFiles}
-\title{read input data file and store in PICTOGRAPH input format}
+\title{read input data file and store in required format}
 \usage{
 importFiles(
   mutation_file,
   copy_number_file = NULL,
   SNV_file = NULL,
   outputDir = NULL,
-  stat_file = NULL,
+  LOH = FALSE,
   alt_reads_thresh = 0,
   vaf_thresh = 0,
   cnv_max_dist = 2000,
@@ -17,15 +17,18 @@ importFiles(
   tcn_normal_range = c(1.8, 2.2),
   smooth_cnv = F,
   autosome = T,
-  mc.cores = 8,
   pval = 0.05
 )
 }
 \arguments{
-\item{mutation_file}{mutation data file that contains columns "sample", "mutation", "chrom", "start", "end", total_reads", and "alt_reads";}
+\item{mutation_file}{mutation data file; see inst/extdata/examples/*_snv.csv for examples}
 
-\item{copy_number_file}{copy number file that contains columns "sample", "chrom", "start", "end", "tcn"}
+\item{copy_number_file}{copy number file; see inst/extdata/examples/*_cna.csv for examples}
+
+\item{SNV_file}{SNV file for germline heterozygous SNVs; see inst/extdata/examples/*_SNP.csv for examples}
+
+\item{outputDir}{output directory for saving output data}
 }
 \description{
-read input data file and store in PICTOGRAPH input format
+read input data file and store in required format
 }

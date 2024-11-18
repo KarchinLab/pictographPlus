@@ -1,11 +1,10 @@
 Package: pictographPlus
 Type: Package
 Title: Tumor evolution reconstruction using MCMC
-Version: 0.2.0
+Version: 1.0.0
 Author: Jiaying Lai
 Maintainer: The package maintainer <jlai33@jh.edu>
-Description: This package is used to perform tumor evolution reconstruction using genomic data. 
-In addition, the tool can also estimate clone-level RNA expression from bulk-RNA data.
+Description: This package is used to perform tumor evolution reconstruction using genomic data. In addition, the tool can also estimate clone-level RNA expression from bulk-RNA data.
 License: MIT
 Encoding: UTF-8
 LazyData: true
@@ -19,5 +18,9 @@ Imports:
   viridis (>= 0.6.5),
   ggmcmc (>= 1.5.1),
   UpSetR (>= 1.4.0),
-  cluster (>= 2.1.4)
-RoxygenNote: 7.3.1
+  cluster (>= 2.1.4),
+  GSVA (>= 2.0.0),
+  pheatmap (>= 1.0.12),
+  limma (>= 3.62.1),
+  GSEABase (>= 1.68.0)
+RoxygenNote: 7.3.2

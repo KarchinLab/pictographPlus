@@ -12,7 +12,7 @@ writeClusterAssignmentsTable(
 )
 }
 \arguments{
-\item{z_chain}{MCMC chain of mutation cluster assignment values, which is the second item in the list returned by \code{clusterSep}}
+\item{z_chain}{MCMC chain of mutation cluster assignment values}
 
 \item{Mut_ID}{Vector of mutation IDs, same order as provided as input data (e.g. indata$Mut_ID)}
 }
