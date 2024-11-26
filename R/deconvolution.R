@@ -30,6 +30,212 @@ runDeconvolution <- function(rna_file,
   proportionDF <- proportionDF[, colnames(rnaData)]
   proportionDF <- proportionDF[order(rownames(proportionDF)), ]
   
+  # edges <- list()
+  # con <- file(treeFile, "r")
+  # on.exit(close(con))
+  # readLines(con, n = 1)
+  # 
+  # while(TRUE) {
+  #   line <- readLines(con, n = 1)
+  #   if (length(line) == 0) break  # Exit loop if no more lines
+  #   line <- strsplit(line, ",")[[1]]
+  #   
+  #   # Add edges based on conditions
+  #   if (line[2] == "root") {
+  #     edges <- append(edges, list(c(0, as.integer(line[3]))))
+  #   } else if (line[3] == "root") {
+  #     edges <- append(edges, list(c(as.integer(line[2]), 0)))
+  #   } else {
+  #     edges <- append(edges, list(c(as.integer(line[2]), as.integer(line[3]))))
+  #   }
+  # }
+  # 
+  # # Create a graph and add edges
+  # edge_list <- as.matrix(do.call(rbind, edges))  # Convert to matrix if not already
+  # edge_list <- apply(edge_list, 2, as.integer) 
+  
+  edge_list <- read_tree(treeFile)
+  edge_list <- edge_list + 1
+  
+  if (is.null(ncol(edge_list))) {
+    L <- matrix(0, nrow = 2, ncol = 2)
+  } else {
+    G <- graph_from_edgelist(edge_list, directed = FALSE)
+    laplacian_mat <- laplacian_matrix(G)
+    laplacian_mat[1,] <- 0
+    laplacian_mat[,1] <- 0
+    L <- as.matrix(laplacian_mat)
+  }
+  
+  Y <- as.matrix(t(rnaData))  # Transpose the data frame
+  pi <- as.matrix(t(proportionDF))
+  
+  X_optimal <- optimize_X(Y, pi, L, lambda)
+  write.csv(X_optimal, file = paste0(outputDir, "/clonal_expression.csv"))
+  
+  # if (GSEA) {
+  #   GSEA_analysis(X_optimal, outputDir, GSEA_file=GSEA_file)
+  # }
+  return(X_optimal)
+  
+}
+
+
+#' @export
+#' @import GSVA, pheatmap, limma, GSEABase, ggplot2, ggrepel
+runGSEA <- function(X_optimal,
+                    outputDir,
+                    treeFile,
+                    GSEA_file=NULL,
+                    top_K=5,
+                    n_permutations=1000) {
+  
+  GSEA_dir = paste0(outputDir, "/GSEA")
+  suppressWarnings(dir.create(GSEA_dir))
+  
+  X <- mapply(as.matrix(X_optimal), FUN=as.numeric)
+  X <- matrix(X, ncol=ncol(X_optimal))
+  rownames(X) <- rownames(X_optimal)
+  colnames(X) <- colnames(X_optimal)
+  X <- t(X)
+  
+  # GSEA gene set
+  if (is.null(GSEA_file)) {
+    GSEA_file = system.file("extdata", "h.all.v2024.1.Hs.symbols.gmt.txt", package="pictographPlus")
+  }
+  
+  gene_list <- read_GSEA_file(GSEA_file)
+  
+  # run ssGSEA for each clone
+  gsvaPar <- ssgseaParam(X, gene_list)
+  gsva.es <- gsva(gsvaPar)
+  
+  # permutation test to generate p values
+  perm_results <- matrix(0, nrow = nrow(gsva.es), ncol = ncol(gsva.es))
+  # n_permutations <- 10000
+  
+  for (i in 1:n_permutations) {
+    # Permute gene labels
+    permuted_data <- X[sample(nrow(X)),,drop=FALSE]
+    rownames(permuted_data) <- rownames(X)
+    
+    # Perform ssGSEA on permuted data
+    permPar <- ssgseaParam(permuted_data, gene_list)
+    perm_ssgsea <- suppressMessages(gsva(permPar))
+    
+    # Store results
+    perm_results <- perm_results + ((gsva.es > 0 & gsva.es <= perm_ssgsea) | (gsva.es < 0 & gsva.es >= perm_ssgsea))
+  }
+  
+  p_values <- perm_results / n_permutations
+
+  p_values_corrected <- matrix(p.adjust(as.vector(p_values), method = "fdr"),
+                               nrow = nrow(p_values), 
+                               ncol = ncol(p_values))
+  colnames(p_values_corrected) = colnames(p_values)
+  rownames(p_values_corrected) = rownames(p_values)
+  
+  # plotting for clone level GSEA
+  samples <- colnames(gsva.es)
+  
+  plots <- lapply(samples, function(sample_name) {
+    data_full <- prepare_barplot_data(gsva.es, p_values_corrected, sample_name)
+    
+    write.csv(data_full, file = paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA.csv"))
+    
+    data_top <- filter_top_pathways(data_full, n=top_K)
+    
+    # Top pathways barplot
+    horizontal_top_plot <- ggplot(data_top, aes(x = Log10Pval, y = reorder(Pathway, Enrichment), fill = Enrichment)) +
+      geom_bar(stat = "identity") +
+      geom_vline(xintercept = -log10(0.05), color = "green", linetype = "dashed", size = 1) +
+      scale_fill_gradientn(colors = c("blue", "red"), name = "NES", oob = scales::squish) +
+      labs(x = "-log10(p-adj)", y = "Pathway", title = paste("Top Enrichment Pathways for Clone ", sample_name)) +
+      theme(axis.text.y = element_text(size = 16), 
+            axis.text.x = element_text(size = 14),
+            axis.title.x = element_text(size = 18),           # X-axis title size
+            axis.title.y = element_text(size = 18),           # Y-axis title size
+            plot.title = element_text(size = 20) # Title size and style
+      )
+    
+    # Save the horizontal barplot for top pathways to a file
+    output_file_top <- paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA_top", ".png") # Replace with desired file name
+    ggsave(output_file_top, plot = horizontal_top_plot, width = 13, height = 12)
+    
+    # volcano plot
+    volcano_plot <- volcanoplot(data_full)
+  })
+  
+  edge_list <- read_tree(treeFile)
+  edge_list <- apply(edge_list, 2, as.character)
+  
+  # gsea_results_list <- list()
+  
+  if (is.null(ncol(edge_list))) {
+    
+    sample1 = edge_list[1]
+    sample2 = edge_list[2]
+    
+    gsea_results_list[[1]] <- GSEA_diff(X, sample1, sample2, gene_list, GSEA_dir, n_permutations, top_K)
+    # gsea_results <- GSEA_diff(X, sample1, sample2, gene_list, n_permutations)
+    
+  } else {
+    for (i in 1:nrow(edge_list)) {
+      
+      sample1 = edge_list[i, 1]
+      sample2 = edge_list[i, 2]
+      
+      gsea_results_list[[i]] <- GSEA_diff(X, sample1, sample2, gene_list, GSEA_dir, n_permutations, top_K)
+      # gsea_results <- GSEA_diff(X, sample1, sample2, gene_list, n_permutations)
+      
+    }
+  }
+  
+  # length(gsea_results_list)
+  
+}
+
+
+GSEA_diff <- function(expr_matrix, sample1, sample2, gene_list, GSEA_dir, n_permutations=10000, n=5) {
+  log2_diff <- log2((expr_matrix[, sample2] + 1) / (expr_matrix[, sample1] + 1))
+  
+  ranked_genes <- sort(log2_diff, decreasing = TRUE)
+  
+  gsea_results <- fgsea(pathways = gene_list,
+                        stats = ranked_genes,
+                        nperm = n_permutations) 
+  
+  gsea_results$Log10padj <- -log10(gsea_results$padj)
+  
+  top_up <- gsea_results %>% arrange(desc(NES)) %>% slice_head(n = n)
+  top_down <- gsea_results %>% arrange(NES) %>% slice_head(n = n)
+  gsea_top <- bind_rows(top_up, top_down)
+  
+  horizontal_top_plot <- ggplot(gsea_top, aes(x = Log10padj, y = reorder(pathway, NES), fill = NES)) +
+    geom_bar(stat = "identity") +
+    geom_vline(xintercept = -log10(0.05), color = "green", linetype = "dashed", size = 1) +
+    scale_fill_gradientn(colors = c("blue", "red"), name = "NES", oob = scales::squish) +
+    labs(x = "-log10(p-adj)", y = "Pathway", title = paste("Top Differential Pathways between Clone ", sample2, " and Clone ", sample1)) +
+    theme(axis.text.y = element_text(size = 16), 
+          axis.text.x = element_text(size = 14),
+          axis.title.x = element_text(size = 18),           # X-axis title size
+          axis.title.y = element_text(size = 18),           # Y-axis title size
+          plot.title = element_text(size = 20) # Title size and style
+    )
+  
+  # Save the horizontal barplot for top pathways to a file
+  output_file_top <- paste0(GSEA_dir,"/clone", sample2, "_", sample1, "_GSEA_diff", ".png") # Replace with desired file name
+  ggsave(output_file_top, plot = horizontal_top_plot, width = 13, height = 12)
+  
+  leadingEdge <- gsea_results$leadingEdge
+  gsea_results$leadingEdge <- NULL
+  write.csv(as.data.frame(gsea_results), file = paste0(GSEA_dir,"/clone", sample2, "_", sample1, "_GSEA_diff.csv"))
+  gsea_results$leadingEdge <- leadingEdge
+  
+  return(gsea_results)
+}
+
+read_tree <- function(treeFile) {
   edges <- list()
   con <- file(treeFile, "r")
   on.exit(close(con))
@@ -52,52 +258,69 @@ runDeconvolution <- function(rna_file,
   
   # Create a graph and add edges
   edge_list <- as.matrix(do.call(rbind, edges))  # Convert to matrix if not already
-  edge_list <- apply(edge_list, 2, as.integer) 
-  edge_list <- edge_list + 1
-  if (is.null(ncol(edge_list))) {
-    L <- matrix(0, nrow = 2, ncol = 2)
-  } else {
-    G <- graph_from_edgelist(edge_list, directed = FALSE)
-    laplacian_mat <- laplacian_matrix(G)
-    laplacian_mat[1,] <- 0
-    laplacian_mat[,1] <- 0
-    L <- as.matrix(laplacian_mat)
-  }
+  edge_list <- apply(edge_list, 2, as.integer)
   
-  Y <- as.matrix(t(rnaData))  # Transpose the data frame
-  pi <- as.matrix(t(proportionDF))
-  
-  X_optimal <- optimize_X(Y, pi, L, lambda)
-  write.csv(X_optimal, file = paste0(outputDir, "/clonal_expression.csv"))
-  
-  # if (GSEA) {
-  #   GSEA_analysis(X_optimal, outputDir, GSEA_file=GSEA_file)
-  # }
-  
+  return(edge_list)
 }
 
+volcanoplot <- function(data_full) {
+  data_full <- data_full %>%
+    mutate(Significance = ifelse(10^(-Log10Pval) < 0.05, 
+                                 ifelse(Enrichment < 0, "Negative", "Positive"), "Not Significant"))
+  
+  labels <- data_full %>%
+    arrange(desc(Enrichment)) %>%
+    slice_head(n = 5) %>%
+    bind_rows(
+      data_full %>%
+        arrange(Enrichment) %>%
+        slice_head(n = 5)
+    )
+  
+  volcano_plot <- ggplot(data_full, aes(x = Enrichment, y = Log10Pval, color = Significance)) +
+    geom_point(size = 3, alpha = 0.8) + # Add points with size and transparency
+    scale_color_manual(values = c("Negative" = "blue", "Positive" = "red", "Not Significant" = "gray")) + # Custom colors
+    # geom_text(data = labels, aes(label = Pathway), vjust = -1, size = 3.5) + # Add labels
+    geom_text_repel(data = labels, aes(label = Pathway), size = 3.5, max.overlaps = Inf) + # Non-overlapping labels
+    labs(
+      title = "Volcano Plot",
+      x = "Enrichment Score",
+      y = "-log10(P-value)",
+      color = "Significant (p < 0.05)"
+    ) +
+    xlim(-1, 1) + # Set x-axis limits
+    ylim(0, 3.2) +  # Set y-axis limits
+    theme_minimal() +
+    theme(legend.position = "top")
+  
+  return(volcano_plot)
+}
 
-#' @export
-#' @import GSVA, pheatmap, limma, GSEABase
-runGSEA <- function(X_optimal,
-                    outputDir,
-                    GSEA_file=NULL) {
-  # read expression data
-  # X_optimal <- read.csv(paste0(outputDir, "/clonal_expression.csv"))
-  rownames(X_optimal) <- X_optimal[,1]
-  X_optimal <- X_optimal[,-1]
-  # X_optimal <- X_optimal[1,]
-  X <- mapply(as.matrix(X_optimal), FUN=as.numeric)
-  X <- matrix(X, ncol=ncol(X_optimal))
-  rownames(X) <- rownames(X_optimal)
-  colnames(X) <- colnames(X_optimal)
-  X <- t(X)
+prepare_barplot_data <- function(enrichment_matrix, pval_matrix, sample_name) {
+  enrichment <- enrichment_matrix[, sample_name]
+  pval <- pval_matrix[, sample_name]
   
-  # GSEA gene set
-  if (is.null(GSEA_file)) {
-    GSEA_file = system.file("extdata", "h.all.v2024.1.Hs.symbols.gmt.txt", package="pictographPlus")
-  }
+  # Create a data frame
+  df <- data.frame(
+    Pathway = rownames(enrichment_matrix),
+    Enrichment = enrichment,
+    Log10Pval = -log10(pval)
+  )
   
+  df$Log10Pval[df$Log10Pval == Inf] <- 3
+  
+  # Rank pathways by enrichment score
+  df <- df %>% arrange(desc(Enrichment)) %>% mutate(Rank = row_number())
+  return(df)
+}
+
+filter_top_pathways <- function(df, n=5) {
+  top_up <- df %>% arrange(desc(Enrichment)) %>% slice_head(n = n)
+  top_down <- df %>% arrange(Enrichment) %>% slice_head(n = n)
+  return(bind_rows(top_up, top_down))
+}
+
+read_GSEA_file <- function(GSEA_file) {
   lines <- readLines(GSEA_file) 
   
   gene_list <- list()
@@ -109,43 +332,7 @@ runGSEA <- function(X_optimal,
     gene_list[[gene_set_name]] <- genes
   }
   
-  # run GSVA
-  # gsvaPar <- gsvaParam(X, gene_list)
-  gsvaPar <- ssgseaParam(X, gene_list)
-  gsva.es <- gsva(gsvaPar)
-  
-  write.csv(gsva.es, file = paste0(outputDir, "/gsea_results.csv"))
-  
-  png(paste0(outputDir, "/gsea_heatmap.png"), width = 1200, height = 1000, res = 150)
-  pheatmap(gsva.es,
-           main = "Single Sample GSEA Scores",
-           cluster_rows = TRUE,
-           cluster_cols = TRUE,
-           scale = "none",
-           color = colorRampPalette(c("blue", "white", "red"))(100))
-  dev.off()
-  
-  # # differetial GSEA
-  # data <- t(X_optimal)
-  # normal_sample <- data[, "0", drop = FALSE]
-  # disease_samples <- data[, colnames(data) != "0"]
-  # gene_sets <- getGmt(GSEA_file, geneIdType=SymbolIdentifier())
-  # 
-  # combined_samples <- cbind(normal_sample, disease_samples)
-  # 
-  # # Perform ssGSEA
-  # gsea_results <- gsva(gsvaParam(combined_samples, gene_sets))
-  # 
-  # group <- factor(c("Normal", rep("Disease", ncol(disease_samples))))
-  # design <- model.matrix(~ group)
-  # 
-  # # Fit the linear model
-  # fit <- lmFit(gsea_results, design)
-  # fit <- eBayes(fit)
-  # 
-  # # Get the top differentially enriched gene sets
-  # results <- topTable(fit, coef = "groupDisease", adjust = "BH", number = Inf)
-  
+  return(gene_list)
 }
 
 optimize_X <- function(Y, pi, L, lambda_=0.1, X_init = NULL, learning_rate = 0.01, max_iter = 100000, tol = 1e-10, round_result = TRUE) {

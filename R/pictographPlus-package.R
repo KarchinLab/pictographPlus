@@ -22,6 +22,7 @@
 #' @import pheatmap
 #' @import limma
 #' @import GSEABase
+#' @import ggrepel
 #' @name pictographPlus-package
 #' @aliases pictographPlus
 NULL
