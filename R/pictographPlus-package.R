@@ -23,6 +23,7 @@
 #' @import limma
 #' @import GSEABase
 #' @import ggrepel
+#' @import fgsea
 #' @name pictographPlus-package
 #' @aliases pictographPlus
 NULL
