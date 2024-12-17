@@ -12,9 +12,9 @@ importFiles(
   LOH = FALSE,
   alt_reads_thresh = 0,
   vaf_thresh = 0,
-  cnv_max_dist = 2000,
+  cnv_max_dist = 1e+06,
   cnv_max_percent = 0.3,
-  tcn_normal_range = c(1.8, 2.2),
+  tcn_normal_range = c(1.7, 2.3),
   smooth_cnv = F,
   autosome = T,
   pval = 0.05

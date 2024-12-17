@@ -92,6 +92,8 @@ runGSEA <- function(X_optimal,
   
   GSEA_dir = paste0(outputDir, "/GSEA")
   suppressWarnings(dir.create(GSEA_dir))
+  ssGSEA_dir = paste0(GSEA_dir, "/ssGSEA")
+  suppressWarnings(dir.create(ssGSEA_dir))
   
   X <- mapply(as.matrix(X_optimal), FUN=as.numeric)
   X <- matrix(X, ncol=ncol(X_optimal))
@@ -105,6 +107,33 @@ runGSEA <- function(X_optimal,
   }
   
   gene_list <- read_GSEA_file(GSEA_file)
+  
+  ############# ssGSEA2 #########
+  # gctFile = paste0(GSEA_dir, "/clone_expression.gct")
+  # writeGCT(X, gctFile)
+  #   
+  # res = run_ssGSEA2(gctFile,
+  #                   output.prefix = "patient",
+  #                   gene.set.databases = GSEA_file,
+  #                   output.directory = ssGSEA_dir,
+  #                   output.score.type = "NES", 
+  #                   global.fdr = TRUE,
+  #                   log.file = paste0(GSEA_dir, "/ssGSEA/run.log"))
+  # 
+  # 
+  # ssGSEA_res <- read.delim(paste0(ssGSEA_dir, "/patient-combined.gct"), skip=2, header = TRUE)
+  # 
+  # sample_name = "1"
+  # 
+  # pvalue_col = paste0("pvalue.", sample_name)
+  # fdr_col = paste0("fdr.pvalue.", sample_name)
+  # nes_col = paste0("X", sample_name)
+  # 
+  # temp <- ssGSEA_res %>% 
+  #   select(id, !!sym(pvalue_col), !!sym(fdr_col), !!sym(nes_col)) %>% 
+  #   rename (pvalue = !!sym(pvalue_col), fdr = !!sym(fdr_col), NES =!!sym(nes_col))
+  
+  ############################
   
   # # run ssGSEA for each clone
   # gsvaPar <- ssgseaParam(X, gene_list)
@@ -136,38 +165,41 @@ runGSEA <- function(X_optimal,
   # rownames(p_values_corrected) = rownames(p_values)
   
   # plotting for clone level GSEA
-  samples <- colnames(X)
   
-  plots <- lapply(samples, function(sample_name) {
-    
-    sample_gsea <- ssGSEA(X, sample_name, gene_list, GSEA_dir, n_permutations=n_permutations, n=top_K)
-    # 
-    # data_full <- prepare_barplot_data(gsva.es, p_values_corrected, sample_name)
-    # 
-    # write.csv(data_full, file = paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA.csv"))
-    # 
-    # data_top <- filter_top_pathways(data_full, n=top_K)
-    # 
-    # # Top pathways barplot
-    # horizontal_top_plot <- ggplot(data_top, aes(x = Log10Pval, y = reorder(Pathway, Enrichment), fill = Enrichment)) +
-    #   geom_bar(stat = "identity") +
-    #   geom_vline(xintercept = -log10(0.05), color = "green", linetype = "dashed", size = 1) +
-    #   scale_fill_gradientn(colors = c("blue", "red"), name = "NES", oob = scales::squish) +
-    #   labs(x = "-log10(p-adj)", y = "Pathway", title = paste("Top Enrichment Pathways for Clone ", sample_name)) +
-    #   theme(axis.text.y = element_text(size = 16), 
-    #         axis.text.x = element_text(size = 14),
-    #         axis.title.x = element_text(size = 18),           # X-axis title size
-    #         axis.title.y = element_text(size = 18),           # Y-axis title size
-    #         plot.title = element_text(size = 20) # Title size and style
-    #   )
-    # 
-    # # Save the horizontal barplot for top pathways to a file
-    # output_file_top <- paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA_top", ".png") # Replace with desired file name
-    # ggsave(output_file_top, plot = horizontal_top_plot, width = 13, height = 12)
-    # 
-    # volcano plot
-    
-  })
+  ### ssGSEA using fgsea
+  
+  # samples <- colnames(X)
+  # 
+  # plots <- lapply(samples, function(sample_name) {
+  #   
+  #   sample_gsea <- ssGSEA(X, sample_name, gene_list, GSEA_dir, n_permutations=n_permutations, n=top_K)
+  #   # 
+  #   # data_full <- prepare_barplot_data(gsva.es, p_values_corrected, sample_name)
+  #   # 
+  #   # write.csv(data_full, file = paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA.csv"))
+  #   # 
+  #   # data_top <- filter_top_pathways(data_full, n=top_K)
+  #   # 
+  #   # # Top pathways barplot
+  #   # horizontal_top_plot <- ggplot(data_top, aes(x = Log10Pval, y = reorder(Pathway, Enrichment), fill = Enrichment)) +
+  #   #   geom_bar(stat = "identity") +
+  #   #   geom_vline(xintercept = -log10(0.05), color = "green", linetype = "dashed", size = 1) +
+  #   #   scale_fill_gradientn(colors = c("blue", "red"), name = "NES", oob = scales::squish) +
+  #   #   labs(x = "-log10(p-adj)", y = "Pathway", title = paste("Top Enrichment Pathways for Clone ", sample_name)) +
+  #   #   theme(axis.text.y = element_text(size = 16), 
+  #   #         axis.text.x = element_text(size = 14),
+  #   #         axis.title.x = element_text(size = 18),           # X-axis title size
+  #   #         axis.title.y = element_text(size = 18),           # Y-axis title size
+  #   #         plot.title = element_text(size = 20) # Title size and style
+  #   #   )
+  #   # 
+  #   # # Save the horizontal barplot for top pathways to a file
+  #   # output_file_top <- paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA_top", ".png") # Replace with desired file name
+  #   # ggsave(output_file_top, plot = horizontal_top_plot, width = 13, height = 12)
+  #   # 
+  #   # volcano plot
+  #   
+  # })
   
   edge_list <- read_tree(treeFile)
   
@@ -199,6 +231,22 @@ runGSEA <- function(X_optimal,
   
   # length(gsea_results_list)
   
+}
+
+writeGCT <- function(gene_counts, file) {
+  
+  gct_data <- as.data.frame(gene_counts)
+  # gct_data$Description <- "NA"
+  gct_data <- cbind(id = rownames(gct_data), gct_data)
+  rownames(gct_data) <- NULL
+  
+  cat("#1.3\n", file = file)
+  cat(nrow(gct_data), ncol(gct_data) - 1, 0, 0, "\n", file = file, append = TRUE, sep="\t")
+  
+  # Write data
+  write.table(gct_data, file = file, sep = "\t", row.names = FALSE, quote = FALSE, append = TRUE)
+  
+  cat("GCT file written to:", file, "\n")
 }
 
 ssGSEA <- function(X, sample_name, gene_list, GSEA_dir, n_permutations=10000, n=5) {

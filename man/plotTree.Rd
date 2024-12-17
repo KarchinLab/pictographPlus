@@ -4,7 +4,7 @@
 \alias{plotTree}
 \title{Plot single tree}
 \usage{
-plotTree(edges, palette = viridis::viridis)
+plotTree(edges, filtered_table = NULL, palette = viridis::viridis)
 }
 \arguments{
 \item{edges}{tibble of edges with columns edge, parent, child}

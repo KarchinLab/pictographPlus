@@ -4,7 +4,14 @@
 \alias{plotAllTrees}
 \title{Plot all trees with the highest scores}
 \usage{
-plotAllTrees(outputDir, scores, all_spanning_trees, mcfTable, data)
+plotAllTrees(
+  outputDir,
+  scores,
+  all_spanning_trees,
+  mcfTable,
+  data,
+  filteredDriverList
+)
 }
 \description{
 Plot all trees with the highest scores

@@ -40,6 +40,8 @@ runPICTographPlus <- function(
     thin=10, 
     mc.cores=8, 
     inits=list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123),
+    driverFile = NULL,
+    cytobandFile = NULL,
     threshes=NULL, # placeholder
     LOH = FALSE, # placeholder
     dual_model=TRUE, # placeholder
@@ -47,7 +49,7 @@ runPICTographPlus <- function(
     pval=0.05, # placeholder
     alt_reads_thresh = 0, # placeholder
     vaf_thresh = 0, # placeholder
-    cnv_max_dist=2000, # placeholder
+    cnv_max_dist=1000000, # placeholder
     cnv_max_percent=0.30, # placeholder
     tcn_normal_range=c(1.7, 2.3), # placeholder
     smooth_cnv=F, # placeholder
@@ -73,6 +75,8 @@ runPICTographPlus <- function(
            inits=inits,
            threshes=threshes,
            LOH=LOH,
+           driverFile=driverFile,
+           cytobandFile = cytobandFile,
            alt_reads_thresh = alt_reads_thresh, # placeholder
            vaf_thresh = vaf_thresh, # placeholder
            cnv_max_dist=cnv_max_dist, # placeholder

@@ -24,6 +24,7 @@
 #' @import GSEABase
 #' @import ggrepel
 #' @import fgsea
+#' @import diptest
 #' @name pictographPlus-package
 #' @aliases pictographPlus
 NULL

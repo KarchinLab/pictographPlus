@@ -12,9 +12,9 @@ importFiles <- function(mutation_file,
                         LOH = FALSE,
                         alt_reads_thresh = 0, # to be tested
                         vaf_thresh = 0, # to be tested
-                        cnv_max_dist=2000, # to be tested
+                        cnv_max_dist=1000000, # to be tested
                         cnv_max_percent=0.30, # to be tested
-                        tcn_normal_range=c(1.8, 2.2), # to be tested
+                        tcn_normal_range=c(1.7, 2.3), # to be tested
                         smooth_cnv=F, # to be tested
                         autosome=T, # to be tested
                         pval=0.05 # to be tested
@@ -164,6 +164,31 @@ smoothCNV <- function(data, cnv_max_dist=2000, cnv_max_percent=0.30) {
   return(data)
 }
 
+resegmentation <- function(data, cnv_max_dist=2000, cnv_max_percent=0.30) {
+  breakpoints <- data %>%
+    select(chrom, start, end) %>%
+    pivot_longer(cols = c(start, end), names_to = "position_type", values_to = "position") %>%
+    distinct(chrom, position) %>%
+    arrange(chrom, position)
+  
+  segments <- breakpoints %>%
+    group_by(chrom) %>%
+    arrange(position) %>%
+    mutate(next_position = lead(position)) %>%
+    filter(!is.na(next_position)) %>%
+    select(chrom, start.x = position, end.x = next_position)
+  
+  expanded_data <- segments %>%
+    left_join(data, by = "chrom") %>%
+    filter(start.x >= start & end.x <= end) %>%
+    select(-start, -end) %>%
+    rename(start=start.x, end=end.x) %>%
+    filter(end - start > cnv_max_dist)%>%
+    arrange(sample, chrom, start)
+  
+  return(expanded_data)
+}
+
 #' import copy number file
 #' @param cnv_max_dist: maximum of distance allowed between two segments to assign as the same one
 #' @param cnv_max_percent: maximum percentage of distance allowed between two segments to assign as the same one
@@ -174,6 +199,11 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, LOH
   
   if (nrow(data)==0) {
     return(NULL)
+  }
+  
+  if (smooth_cnv) {
+    # data <- smoothCNV(data, cnv_max_dist, cnv_max_percent)
+    data <- resegmentation(data, cnv_max_dist, cnv_max_percent)
   }
   
   if ("baf" %in% colnames(data)) {
@@ -198,9 +228,10 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, LOH
   
   # Smooth segments so segments with different start/end position are treated the same, 
   # conditioned on overlapping and distance between positions
-  if (smooth_cnv) {
-    data <- smoothCNV(data, cnv_max_dist, cnv_max_percent)
-  }
+  # if (smooth_cnv) {
+  #   # data <- smoothCNV(data, cnv_max_dist, cnv_max_percent)
+  #   data <- resegmentation(data, cnv_max_dist, cnv_max_percent)
+  # }
   
   data$CNA = paste(data$chrom, data$start, data$end, sep = '-')
   
@@ -237,11 +268,11 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, LOH
     
     baf <- add_missing_column(name_order, baf, 0.5)
     
-    tcn_tot <- matrix(2000, nrow(output_data), ncol(output_data))
+    tcn_tot <- matrix(1000, nrow(output_data), ncol(output_data))
     rownames(tcn_tot) <- rownames(output_data)
     colnames(tcn_tot) <- colnames(output_data)
     
-    tcn_tot <- add_missing_column(name_order, tcn_tot, 2000)
+    tcn_tot <- add_missing_column(name_order, tcn_tot, 1000)
     
     tcn_alt <- matrix(round(tcn_tot * baf), nrow(output_data),ncol(output_data))
     tcn_alt <- pmax(tcn_alt, tcn_tot - tcn_alt)
@@ -280,8 +311,8 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, LOH
     tcn_tot <- add_missing_column(name_order, tcn_tot, tot_mean)
     tcn_alt <- add_missing_column(name_order, tcn_alt, alt_mean)
     
-    tcn_tot <- round(tcn_tot) * 10
-    tcn_alt <- round(tcn_alt) * 10
+    tcn_tot <- round(tcn_tot) * 5
+    tcn_alt <- round(tcn_alt) * 5
   }
   
   return_data <- list()
@@ -368,7 +399,8 @@ check_sample_LOH <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(
       } else {
         if (!germline_test$p.value < pval/nrow(data)) { # proceed is germline distribution is unimodality
           if (data[i,]$tcn > tcn_normal_range[1] & data[i,]$tcn < tcn_normal_range[2]) { # check tcn within normal range
-            if (tumor_test$p.value < pval/nrow(data)) {
+            # if (tumor_test$p.value < pval/nrow(data)) {
+            if (tumor_test$p.value == 0) {
               # NOTE: TO DO
               # warning("check_sample_LOH diptest seems not working; not detecting LOH; more testing needed")
               if (LOH) {
@@ -383,8 +415,12 @@ check_sample_LOH <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(
               to_keep_index <- c(to_keep_index, 0)
             }
           } else { # keep CNA because tcn not in normal range
-            to_keep_index <- c(to_keep_index, 1)
-            plot(density(vaf), xlim=c(0,1), main = paste(data[i,]$sample, "\n", data[i,]$chrom, ":", data[i,]$start, "-", data[i,]$end, "\n tcn: ", data[i,]$tcn, sep=""))
+            if (tumor_test$p.value < pval/nrow(data)) {
+              to_keep_index <- c(to_keep_index, 1)
+              plot(density(vaf), xlim=c(0,1), main = paste(data[i,]$sample, "\n", data[i,]$chrom, ":", data[i,]$start, "-", data[i,]$end, "\n tcn: ", data[i,]$tcn, sep=""))
+            } else {
+              to_keep_index <- c(to_keep_index, 0)
+            }
           }
         } else { # proceed is germline distribution is not unimodality
           to_keep_index <- c(to_keep_index, 0)
@@ -448,7 +484,7 @@ importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh =
   if (any(output_data$n==0)) {
     # print("Total read counts of 0 encoutered. Replaced 0 with mean total read count.")
     # output_data$n[output_data$n==0] <- round(mean(output_data$n[output_data$n!=0]))
-    output_data$n[output_data$n==0] <- 2000
+    output_data$n[output_data$n==0] <- 700
   }
 
   output_data$S = ncol(output_data$y)
@@ -496,7 +532,7 @@ importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thre
   
   if (any(output_data$n==0)) {
     print("Total read counts of 0 encoutered. Replaced 0 with mean total read count.")
-    output_data$n[output_data$n==0] <- 2000
+    output_data$n[output_data$n==0] <- 700
   }
   
   output_data$icn <- as.matrix(data[c("mutation", "sample", "tumor_integer_copy_number")] %>% pivot_wider(names_from = sample, values_from = tumor_integer_copy_number, values_fill = 2))

@@ -44,8 +44,99 @@ plotPosteriorAmLong <- function(post_am, v_color, filter1 = TRUE, filter1.thresh
 #' 
 #' @export
 #' @param edges tibble of edges with columns edge, parent, child
-plotTree <- function(edges, palette=viridis::viridis) {
-  plotGraph(edgesToAmLong(edges), colorScheme(edges, palette))
+plotTree <- function(edges, filtered_table=NULL, palette=viridis::viridis) {
+  # plotGraph(edgesToAmLong(edges), colorScheme(edges, palette), filtered_table)
+  
+  v_color <- colorScheme(edges, palette)
+  edge_list <- as.matrix(edges[, c("parent", "child")])
+  ig <- graph_from_edgelist(edge_list, directed = TRUE)
+  # E(ig)$name <- edges$edge
+  ###########
+  
+  # ig <- igraph::graph_from_adjacency_matrix(am, mode = "directed", weighted = TRUE,
+  #                                           diag = FALSE, add.row = TRUE)
+  V(ig)$color <- as.list(v_color %>% arrange(match(v_sorted, names(V(ig)))) %>% select(colors))$colors
+  
+  V(ig)$label.color <- ifelse(calculate_brightness(V(ig)$color) < 100, "white", "black")
+  
+  par(mar=c(1,1,1,1))
+  
+  ##################
+  ig <- set_edge_attr(ig, "Mut_ID", value = "")
+  
+  if (!is.null(filtered_table)) {
+    
+    for (i in seq_len(nrow(filtered_table))) {
+      cluster_name <- filtered_table$Cluster[i]
+      new_mut_id <- filtered_table$Mut_ID[i]
+      
+      # Find the node index for the matching cluster
+      node_index <- which(V(ig)$name == cluster_name)
+      
+      if (length(node_index) > 0) {
+        # Find the edge leading to this node
+        in_edge <- incident(ig, node_index, mode = "in") # Incoming edge to the node
+        
+        if (length(in_edge) > 0) {
+          # Append the new_Mut_ID to the edge attribute
+          current_label <- edge_attr(ig, "Mut_ID", index = in_edge)
+          updated_label <- ifelse(
+            current_label == "",
+            new_mut_id,
+            paste(current_label, new_mut_id, sep = "\n ")
+          )
+          ig <- set_edge_attr(ig, "Mut_ID", index = in_edge, value = updated_label)
+        }
+      }
+    }
+  }
+  
+  edge_lengths <- sapply(E(ig)$Mut_ID, function(label) {
+    if (label == "") {
+      1  # Default length if no label
+    } else {
+      str_count(label, "\n") + 1  # Count lines (number of \n + 1)
+    }
+  })
+  
+  min_length <- 3  # Adjust this value as needed
+  adjusted_edge_lengths <- pmax(edge_lengths, min_length)
+  
+  layout <- layout_as_tree(ig)
+  
+  max_cluster <- filtered_table %>%
+    count(Cluster) %>%                  # Count occurrences of each unique Cluster
+    arrange(desc(n)) %>%                # Arrange by count in descending order
+    slice(1) 
+  
+  if (ecount(ig) > 3 & max_cluster$n > 4) {
+    # Scale the y-coordinates of the layout based on edge lengths
+    for (i in seq_len(ecount(ig))) {
+      parent <- ends(ig, i)[1]  # Get the parent node
+      child <- ends(ig, i)[2]   # Get the child node
+      
+      # Scale child y-coordinate based on edge length
+      layout[which(V(ig)$name == child), 2] <- 
+        layout[which(V(ig)$name == parent), 2] - adjusted_edge_lengths[i] * 0.1
+    }
+  }
+ 
+  
+  ########
+  V(ig)$name[V(ig)$name == "root"] <- "R"
+  
+  igraph::plot.igraph(ig, layout = layout, edge.label = edge_attr(ig, "Mut_ID"),
+                      vertex.size=26, vertex.frame.color = "#000000", vertex.label.cex = 1.2, edge.label.cex=0.5,
+                      vertex.label.family = "Helvetica", vertex.label.color = V(ig)$label.color, 
+                      edge.arrow.size = 0.4, edge.arrow.width = 1, edge.color = "grey", edge.label.color = "red",
+                      margin=0.2)
+  
+  # igraph::plot.igraph(ig, layout = igraph::layout_as_tree(ig), edge.label = edge_attr(ig, "Mut_ID"),
+  #                     vertex.size=32, vertex.frame.color = "#000000", vertex.label.cex = 1.6, edge.label.cex=0.75,
+  #                     vertex.label.family = "Helvetica", vertex.label.color = V(ig)$label.color, 
+  #                     edge.arrow.size = 0.5, edge.arrow.width = 2, edge.color = "black", edge.label.color = "red",
+  #                     margin=0.2)
+  
 }
 
 #' generate colors for each vertice
@@ -59,7 +150,14 @@ colorScheme <- function(edges, palette=viridis::viridis) {
   return(v_color)
 }
 
-plotGraph <- function(am.long, v_color){
+calculate_brightness <- function(hex_color) {
+  rgb <- col2rgb(hex_color)
+  # Brightness formula: 0.299*R + 0.587*G + 0.114*B
+  brightness <- 0.299 * rgb[1,] + 0.587 * rgb[2,] + 0.114 * rgb[3,]
+  return(brightness)
+}
+
+plotGraph <- function(am.long, v_color, filtered_table=NULL){
   # make sure am.long is sorted by parent and child
   am.long <- mutate(am.long, child = as.numeric(am.long$child)) %>%
     arrange(parent, child)
@@ -74,11 +172,52 @@ plotGraph <- function(am.long, v_color){
   am[is.na(am)] <- 0
   
   ig <- igraph::graph_from_adjacency_matrix(am, mode = "directed", weighted = TRUE,
-                                            diag = FALSE, add.row = TRUE) 
+                                            diag = FALSE, add.row = TRUE)
   V(ig)$color <- as.list(v_color %>% arrange(match(v_sorted, names(V(ig)))) %>% select(colors))$colors
-  par(mar=c(0,0,0,0)+.1)
-  igraph::plot.igraph(ig, layout = igraph::layout_as_tree(ig),
-                      vertex.size=24, vertex.frame.color = "#000000", vertex.label.cex = 1.5,
-                      vertex.label.family = "Helvetica", vertex.label.color = "#000000",
-                      edge.arrow.size = 0.5, edge.arrow.width = 2)
+  
+  V(ig)$label.color <- ifelse(calculate_brightness(V(ig)$color) < 100, "white", "black")
+  
+  par(mar=c(3,3,3,3))
+  
+  ##################
+  ig <- set_edge_attr(ig, "Mut_ID", value = "")
+  
+  if (!is.null(filtered_table)) {
+    
+    for (i in seq_len(nrow(filtered_table))) {
+      cluster_name <- filtered_table$Cluster[i]
+      new_mut_id <- filtered_table$Mut_ID[i]
+      
+      # Find the node index for the matching cluster
+      node_index <- which(V(ig)$name == cluster_name)
+      
+      if (length(node_index) > 0) {
+        # Find the edge leading to this node
+        in_edge <- incident(ig, node_index, mode = "in") # Incoming edge to the node
+        
+        if (length(in_edge) > 0) {
+          # Append the new_Mut_ID to the edge attribute
+          current_label <- edge_attr(ig, "Mut_ID", index = in_edge)
+          updated_label <- ifelse(
+            current_label == "",
+            new_mut_id,
+            paste(current_label, new_mut_id, sep = "\n ")
+          )
+          ig <- set_edge_attr(ig, "Mut_ID", index = in_edge, value = updated_label)
+        }
+      }
+    }
+  }
+  
+  ########
+  # V(ig)$name[V(ig)$name == "root"] <- "R"
+  
+  igraph::plot.igraph(ig, layout = igraph::layout_as_tree(ig), edge.label = edge_attr(ig, "Mut_ID"),
+                      vertex.size=32, vertex.frame.color = "#000000", vertex.label.cex = 1.6, edge.label.cex=0.75,
+                      vertex.label.family = "Helvetica", vertex.label.color = V(ig)$label.color,
+                      edge.arrow.size = 0.5, edge.arrow.width = 2, edge.color = "black", edge.label.color = "red",
+                      margin=0.3)
+  
+  
+
 }
