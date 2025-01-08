@@ -82,7 +82,7 @@ runDeconvolution <- function(rna_file,
 
 
 #' @export
-#' @import GSVA, pheatmap, limma, ggplot2, ggrepel, fgsea, GSEABase
+#' @import GSVA pheatmap limma ggplot2 ggrepel fgsea GSEABase
 runGSEA <- function(X_optimal,
                     outputDir,
                     treeFile,
