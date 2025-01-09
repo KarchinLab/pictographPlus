@@ -13,6 +13,7 @@ importCopyNumberFile(
   cnv_max_dist = 2000,
   cnv_max_percent = 0.3,
   tcn_normal_range = c(1.8, 2.2),
+  filter_cnv = T,
   smooth_cnv = F,
   autosome = T,
   pval = 0.05
