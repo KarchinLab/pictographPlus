@@ -10,6 +10,7 @@ runMCMCForAllBoxes(
   ploidy = 2,
   max_K = 5,
   min_mutation_per_cluster = 5,
+  min_cluster_thresh = 0.05,
   cluster_diff_thresh = 0.05,
   n.iter = 5000,
   n.burn = 1000,
