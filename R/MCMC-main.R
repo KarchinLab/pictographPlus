@@ -33,6 +33,7 @@ runPictograph <- function(mutation_file,
                      pval=0.05, # placeholder
                      max_K = 10, 
                      min_mutation_per_cluster=5, 
+                     min_cluster_thresh=0.05,
                      cluster_diff_thresh=0.05,
                      n.iter=5000, 
                      n.burn=1000, 
@@ -41,15 +42,17 @@ runPictograph <- function(mutation_file,
                      inits=list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123),
                      threshes=NULL,
                      LOH = FALSE,
+                     purity_min=0.2,
                      driverFile = NULL,
                      cytobandFile = NULL,
                      alt_reads_thresh = 0, # placeholder
                      vaf_thresh = 0, # placeholder
-                     cnv_max_dist=1000000, # placeholder
-                     cnv_max_percent=0.30, # placeholder
-                     tcn_normal_range=c(1.7, 2.3), # placeholder
-                     smooth_cnv=F, # placeholder
-                     autosome=T # placeholder
+                     cnv_max_dist = 1000000, # placeholder
+                     cnv_max_percent = 0.30, # placeholder
+                     tcn_normal_range = c(1.75, 2.3), # placeholder
+                     filter_cnv = T, # placeholder
+                     smooth_cnv = F, # placeholder
+                     autosome = T # placeholder
                      ) {
   
   data <- importFiles(mutation_file, 
@@ -57,12 +60,14 @@ runPictograph <- function(mutation_file,
                       outputDir, 
                       SNV_file=SNV_file, 
                       LOH=LOH,
+                      purity_min=purity_min,
                       alt_reads_thresh=alt_reads_thresh, 
                       vaf_thresh=vaf_thresh, 
                       cnv_max_dist=cnv_max_dist, 
                       cnv_max_percent=cnv_max_percent, 
                       tcn_normal_range=tcn_normal_range, 
-                      smooth_cnv=smooth_cnv, 
+                      filter_cnv=filter_cnv,
+                      smooth_cnv=smooth_cnv,
                       autosome=autosome, 
                       pval=pval)
   
@@ -103,7 +108,7 @@ runPictograph <- function(mutation_file,
       
       # For each presence set, run clustering MCMC, calculate silhouette and BIC and choose best K
       all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                            cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                            min_cluster_thresh=min_cluster_thresh, cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                             n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
     } else {
       message("Not using sample presence; SSM only")
@@ -120,7 +125,7 @@ runPictograph <- function(mutation_file,
       input_data <- assign("input_data", input_data, envir = .GlobalEnv)
       
       all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                            cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                            min_cluster_thresh=min_cluster_thresh, cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                             n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
     }
   } else {
@@ -148,7 +153,7 @@ runPictograph <- function(mutation_file,
         
         # For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
         all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                              min_cluster_thresh=min_cluster_thresh, cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                               n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
         
         
@@ -190,7 +195,7 @@ runPictograph <- function(mutation_file,
         
         # For each presence set, run clustering MCMC
         all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                              min_cluster_thresh=min_cluster_thresh, cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                               n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
         
       } else {
@@ -213,7 +218,7 @@ runPictograph <- function(mutation_file,
         
         # For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
         all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=TRUE, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                              min_cluster_thresh=min_cluster_thresh, cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                               n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type1")
         # pick K
         set_k_choices <- writeSetKTable(all_set_results)
@@ -251,7 +256,7 @@ runPictograph <- function(mutation_file,
         input_data <- assign("input_data", input_data, envir = .GlobalEnv)
 
         all_set_results <- runMCMCForAllBoxes(input_data, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
-                                              cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
+                                              min_cluster_thresh=min_cluster_thresh, cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                               n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
         
        }
@@ -474,7 +479,7 @@ runPictograph <- function(mutation_file,
   dev.off()
 
   # save all data
-  save.image(file=paste(outputDir, "PICTograph2.RData", sep="/"))
+  save.image(file=paste(outputDir, "PICTographPlus.RData", sep="/"))
   
 }
 
