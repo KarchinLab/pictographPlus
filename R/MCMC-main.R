@@ -625,6 +625,10 @@ getDrivers <- function(ClusterAssignmentTable, driverList, cytobandFile) {
         })
     )
   
+  if (nrow(filtered_table) == 0) {
+    return(NULL)
+  }
+  
   filtered_table <- filtered_table %>%
     rowwise() %>%
     mutate(
