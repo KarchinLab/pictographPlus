@@ -4,7 +4,12 @@
 \alias{importMutationFile}
 \title{import mutation file}
 \usage{
-importMutationFile(mutation_file, alt_reads_thresh = 0, vaf_thresh = 0)
+importMutationFile(
+  mutation_file,
+  alt_reads_thresh = 0,
+  vaf_thresh = 0,
+  purity_min = 0.2
+)
 }
 \description{
 import mutation file
