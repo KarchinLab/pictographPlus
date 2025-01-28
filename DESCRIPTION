@@ -1,6 +1,6 @@
 Package: pictographPlus
 Type: Package
-Title: Tumor evolution reconstruction using MCMC
+Title: Tumor evolution drives intra-tumor heterogeneity, yet functional clone-specific profiles remain poorly understood. We developed PICTographPlus, a computational tool that integrates bulk DNA and RNA sequencing to reconstruct clone-specific transcriptomic profiles and uncover functional transitions between clones, offering a powerful framework for cancer evolution studies. 
 Version: 1.0.0
 Author: Jiaying Lai
 Maintainer: The package maintainer <jlai33@jh.edu>
@@ -20,5 +20,8 @@ Imports:
   UpSetR (>= 1.4.0),
   cluster (>= 2.1.4),
   fgsea (>= 1.32.0),
-  ggrepel (>= 0.9.6)
+  ggrepel (>= 0.9.6),
+  diptest (>= 0.77-1),
+  pheatmap (>= 1.0.12),
+  DESeq2 (>= 1.46.0)
 RoxygenNote: 7.3.2

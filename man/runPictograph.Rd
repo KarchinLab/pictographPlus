@@ -49,11 +49,19 @@ runPictograph(
 
 \item{sample_presence}{whether to use sample presence to separate the mutations. Not applicable if dual_model is set to FALSE and a copy number file is provided.}
 
+\item{dual_model}{description}
+
 \item{score}{scoring function to estimate the number of clusters. silhouette or BIC.}
+
+\item{ploidy}{description}
+
+\item{pval}{description}
 
 \item{max_K}{user defined maximum number of clusters.}
 
 \item{min_mutation_per_cluster}{minumum number of mutations in each cluster.}
+
+\item{min_cluster_thresh}{description}
 
 \item{cluster_diff_thresh}{threshold to merge two clusters.}
 
@@ -66,6 +74,32 @@ runPictograph(
 \item{mc.cores}{number of cores to use for parallel computing; not applicable to windows.}
 
 \item{inits}{additional parameters by JAGS.}
+
+\item{threshes}{description}
+
+\item{LOH}{description}
+
+\item{purity_min}{description}
+
+\item{driverFile}{description}
+
+\item{cytobandFile}{description}
+
+\item{alt_reads_thresh}{description}
+
+\item{vaf_thresh}{description}
+
+\item{cnv_max_dist}{description}
+
+\item{cnv_max_percent}{description}
+
+\item{tcn_normal_range}{description}
+
+\item{filter_cnv}{description}
+
+\item{smooth_cnv}{description}
+
+\item{autosome}{description}
 }
 \description{
 run MCMC chains to  infer the clonal evolution of tumors from single or multi-region sequencing data. 

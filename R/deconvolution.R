@@ -1,19 +1,12 @@
-#' @import igraph
-#' @export
+#' bulk RNA deconvolution using tumor evolution information
 #' 
+#' @export
 runDeconvolution <- function(rna_file,
                           treeFile,
                           proportionFile,
                           purityFile,
                           outputDir,
                           lambda=0.2){
-  
-  # rnaFile <- "~/Karchin Lab Dropbox/Jillian Lai/U01-Wood-Fertig/analysis/htan-mcl-pre-cancer-pancreas/semaan_analysis/pictographPlus/MCL111_001_expression.csv"
-  # treeFile <- "~/Karchin Lab Dropbox/Jillian Lai/U01-Wood-Fertig/analysis/htan-mcl-pre-cancer-pancreas/pictograph2_latest/MCL111_001/tree.csv"
-  # proportionFile <- "~/Karchin Lab Dropbox/Jillian Lai/U01-Wood-Fertig/analysis/htan-mcl-pre-cancer-pancreas/pictograph2_latest/MCL111_001/subclone_proportion.csv"
-  # purityFile <- "~/Karchin Lab Dropbox/Jillian Lai/U01-Wood-Fertig/analysis/htan-mcl-pre-cancer-pancreas/pictograph2_latest/MCL111_001/purity.csv"
-  # outputDir <- "~/Karchin Lab Dropbox/Jillian Lai/U01-Wood-Fertig/analysis/htan-mcl-pre-cancer-pancreas/semaan_analysis/pictographPlus"
-  
   rnaData <- read.csv(rna_file, row.names=1)
   propData <-read.csv(proportionFile, row.names=1)
   purityData <- read.csv(purityFile)
@@ -29,30 +22,6 @@ runDeconvolution <- function(rna_file,
   proportionDF <- round(proportionDF, 4)
   proportionDF <- proportionDF[, colnames(rnaData)]
   proportionDF <- proportionDF[order(rownames(proportionDF)), ]
-  
-  # edges <- list()
-  # con <- file(treeFile, "r")
-  # on.exit(close(con))
-  # readLines(con, n = 1)
-  # 
-  # while(TRUE) {
-  #   line <- readLines(con, n = 1)
-  #   if (length(line) == 0) break  # Exit loop if no more lines
-  #   line <- strsplit(line, ",")[[1]]
-  #   
-  #   # Add edges based on conditions
-  #   if (line[2] == "root") {
-  #     edges <- append(edges, list(c(0, as.integer(line[3]))))
-  #   } else if (line[3] == "root") {
-  #     edges <- append(edges, list(c(as.integer(line[2]), 0)))
-  #   } else {
-  #     edges <- append(edges, list(c(as.integer(line[2]), as.integer(line[3]))))
-  #   }
-  # }
-  # 
-  # # Create a graph and add edges
-  # edge_list <- as.matrix(do.call(rbind, edges))  # Convert to matrix if not already
-  # edge_list <- apply(edge_list, 2, as.integer) 
   
   edge_list <- read_tree(treeFile)
   edge_list <- edge_list + 1
@@ -72,17 +41,15 @@ runDeconvolution <- function(rna_file,
   
   X_optimal <- optimize_X(Y, pi, L, lambda)
   write.csv(X_optimal, file = paste0(outputDir, "/clonal_expression.csv"))
-  
-  # if (GSEA) {
-  #   GSEA_analysis(X_optimal, outputDir, GSEA_file=GSEA_file)
-  # }
+
   return(X_optimal)
-  
 }
 
 
+#' GSEA analysis using fgsea
+#' 
 #' @export
-#' @import ggplot2 fgsea ggrepel
+#' @import ggplot2 fgsea ggrepel pheatmap DESeq2
 runGSEA <- function(X_optimal,
                     outputDir,
                     treeFile,
@@ -92,8 +59,6 @@ runGSEA <- function(X_optimal,
   
   GSEA_dir = paste0(outputDir, "/GSEA")
   suppressWarnings(dir.create(GSEA_dir))
-  ssGSEA_dir = paste0(GSEA_dir, "/ssGSEA")
-  suppressWarnings(dir.create(ssGSEA_dir))
   
   X <- mapply(as.matrix(X_optimal), FUN=as.numeric)
   X <- matrix(X, ncol=ncol(X_optimal))
@@ -108,99 +73,6 @@ runGSEA <- function(X_optimal,
   
   gene_list <- read_GSEA_file(GSEA_file)
   
-  ############# ssGSEA2 #########
-  # gctFile = paste0(GSEA_dir, "/clone_expression.gct")
-  # writeGCT(X, gctFile)
-  #   
-  # res = run_ssGSEA2(gctFile,
-  #                   output.prefix = "patient",
-  #                   gene.set.databases = GSEA_file,
-  #                   output.directory = ssGSEA_dir,
-  #                   output.score.type = "NES", 
-  #                   global.fdr = TRUE,
-  #                   log.file = paste0(GSEA_dir, "/ssGSEA/run.log"))
-  # 
-  # 
-  # ssGSEA_res <- read.delim(paste0(ssGSEA_dir, "/patient-combined.gct"), skip=2, header = TRUE)
-  # 
-  # sample_name = "1"
-  # 
-  # pvalue_col = paste0("pvalue.", sample_name)
-  # fdr_col = paste0("fdr.pvalue.", sample_name)
-  # nes_col = paste0("X", sample_name)
-  # 
-  # temp <- ssGSEA_res %>% 
-  #   select(id, !!sym(pvalue_col), !!sym(fdr_col), !!sym(nes_col)) %>% 
-  #   rename (pvalue = !!sym(pvalue_col), fdr = !!sym(fdr_col), NES =!!sym(nes_col))
-  
-  ############################
-  
-  # # run ssGSEA for each clone
-  # gsvaPar <- ssgseaParam(X, gene_list)
-  # gsva.es <- gsva(gsvaPar)
-  # 
-  # # permutation test to generate p values
-  # perm_results <- matrix(0, nrow = nrow(gsva.es), ncol = ncol(gsva.es))
-  # # n_permutations <- 10000
-  # 
-  # for (i in 1:n_permutations) {
-  #   # Permute gene labels
-  #   permuted_data <- X[sample(nrow(X)),,drop=FALSE]
-  #   rownames(permuted_data) <- rownames(X)
-  #   
-  #   # Perform ssGSEA on permuted data
-  #   permPar <- ssgseaParam(permuted_data, gene_list)
-  #   perm_ssgsea <- suppressMessages(gsva(permPar))
-  #   
-  #   # Store results
-  #   perm_results <- perm_results + ((gsva.es > 0 & gsva.es <= perm_ssgsea) | (gsva.es < 0 & gsva.es >= perm_ssgsea))
-  # }
-  # 
-  # p_values <- perm_results / n_permutations
-  # 
-  # p_values_corrected <- matrix(p.adjust(as.vector(p_values), method = "fdr"),
-  #                              nrow = nrow(p_values), 
-  #                              ncol = ncol(p_values))
-  # colnames(p_values_corrected) = colnames(p_values)
-  # rownames(p_values_corrected) = rownames(p_values)
-  
-  # plotting for clone level GSEA
-  
-  ### ssGSEA using fgsea
-  
-  # samples <- colnames(X)
-  # 
-  # plots <- lapply(samples, function(sample_name) {
-  #   
-  #   sample_gsea <- ssGSEA(X, sample_name, gene_list, GSEA_dir, n_permutations=n_permutations, n=top_K)
-  #   # 
-  #   # data_full <- prepare_barplot_data(gsva.es, p_values_corrected, sample_name)
-  #   # 
-  #   # write.csv(data_full, file = paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA.csv"))
-  #   # 
-  #   # data_top <- filter_top_pathways(data_full, n=top_K)
-  #   # 
-  #   # # Top pathways barplot
-  #   # horizontal_top_plot <- ggplot(data_top, aes(x = Log10Pval, y = reorder(Pathway, Enrichment), fill = Enrichment)) +
-  #   #   geom_bar(stat = "identity") +
-  #   #   geom_vline(xintercept = -log10(0.05), color = "green", linetype = "dashed", size = 1) +
-  #   #   scale_fill_gradientn(colors = c("blue", "red"), name = "NES", oob = scales::squish) +
-  #   #   labs(x = "-log10(p-adj)", y = "Pathway", title = paste("Top Enrichment Pathways for Clone ", sample_name)) +
-  #   #   theme(axis.text.y = element_text(size = 16), 
-  #   #         axis.text.x = element_text(size = 14),
-  #   #         axis.title.x = element_text(size = 18),           # X-axis title size
-  #   #         axis.title.y = element_text(size = 18),           # Y-axis title size
-  #   #         plot.title = element_text(size = 20) # Title size and style
-  #   #   )
-  #   # 
-  #   # # Save the horizontal barplot for top pathways to a file
-  #   # output_file_top <- paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA_top", ".png") # Replace with desired file name
-  #   # ggsave(output_file_top, plot = horizontal_top_plot, width = 13, height = 12)
-  #   # 
-  #   # volcano plot
-  #   
-  # })
-  
   edge_list <- read_tree(treeFile)
   
   gsea_results_list <- list()
@@ -213,7 +85,8 @@ runGSEA <- function(X_optimal,
     sample2 = edge_list[2]
     
     gsea_results_list[[1]] <- GSEA_diff(X, sample1, sample2, gene_list, GSEA_dir, n_permutations, top_K)
-    # gsea_results <- GSEA_diff(X, sample1, sample2, gene_list, n_permutations)
+    
+    leadingEdgePlot(log2(X+1), sample1, sample2, GSEA_dir)
     
   } else {
     edge_list <- apply(edge_list, 2, as.character)
@@ -224,72 +97,77 @@ runGSEA <- function(X_optimal,
       sample2 = edge_list[i, 2]
       
       gsea_results_list[[i]] <- GSEA_diff(X, sample1, sample2, gene_list, GSEA_dir, n_permutations, top_K)
-      # gsea_results <- GSEA_diff(X, sample1, sample2, gene_list, n_permutations)
-      
+
+      leadingEdgePlot(log2(X+1), sample1, sample2, GSEA_dir)
     }
   }
   
-  # length(gsea_results_list)
-  
 }
 
-writeGCT <- function(gene_counts, file) {
+leadingEdgePlot <- function(X, sample1, sample2, GSEA_dir) {
   
-  gct_data <- as.data.frame(gene_counts)
-  # gct_data$Description <- "NA"
-  gct_data <- cbind(id = rownames(gct_data), gct_data)
-  rownames(gct_data) <- NULL
+  pdf_filename <- paste0(GSEA_dir, "/", "heatmaps_", sample1, "_", sample2, "_top30.pdf")
+  pdf(pdf_filename, width = 8, height = 6)  # Open PDF device
   
-  cat("#1.3\n", file = file)
-  cat(nrow(gct_data), ncol(gct_data) - 1, 0, 0, "\n", file = file, append = TRUE, sep="\t")
+  pathway_data <- read.csv(paste0(GSEA_dir, "/", "clone", sample2, "_", sample1, "_GSEA_diff.csv"))
   
-  # Write data
-  write.table(gct_data, file = file, sep = "\t", row.names = FALSE, quote = FALSE, append = TRUE)
+  filtered_pathways <- pathway_data %>%
+    filter(padj < 0.05) %>%
+    mutate(leadingEdge = strsplit(as.character(leadingEdge), ";")) %>%
+    mutate(leadingEdge = map(leadingEdge, ~ .x[1:min(30, length(.x))])) %>%  # Limit to first 20 genes
+    unnest(leadingEdge)
   
-  cat("GCT file written to:", file, "\n")
-}
-
-ssGSEA <- function(X, sample_name, gene_list, GSEA_dir, n_permutations=10000, n=5) {
-  sample_ranked_genes <- sort(X[,sample_name], decreasing = T)
+  significant_pathways <- filtered_pathways %>%
+    distinct(pathway, NES) %>%
+    arrange(desc(NES)) %>%
+    pull(pathway)
   
-  # sample_gsea <- fgsea(pathways = gene_list, stats = sample_ranked_genes, nperm = n_permutations)
-  sample_gsea <- fgseaMultilevel(pathways = gene_list, stats = sample_ranked_genes)
-  
-  
-  sample_gsea$Log10padj <- -log10(sample_gsea$padj)
-  
-  # top_up <- sample_gsea %>% arrange(desc(NES)) %>% slice_head(n = n)
-  # top_down <- sample_gsea %>% arrange(NES) %>% slice_head(n = n)
-  # sample_gsea_top <- bind_rows(top_up, top_down)
-  sample_gsea_top <- sample_gsea %>% filter(padj < 0.05)
-  
-  horizontal_top_plot <- ggplot(sample_gsea_top, aes(x = Log10padj, y = reorder(pathway, NES), fill = NES)) +
-    geom_bar(stat = "identity") +
-    geom_vline(xintercept = -log10(0.05), color = "green", linetype = "dashed", linewidth = 1) +
-    scale_fill_gradientn(colors = c("blue", "red"), name = "NES", oob = scales::squish) +
-    labs(x = "-log10(p-adj)", y = "Pathway", title = paste0("Top Enrichment Pathways for Clone ", sample_name)) +
-    theme(axis.text.y = element_text(size = 16), 
-          axis.text.x = element_text(size = 14),
-          axis.title.x = element_text(size = 18),           # X-axis title size
-          axis.title.y = element_text(size = 18),           # Y-axis title size
-          plot.title = element_text(size = 20) # Title size and style
+  for (pathway in significant_pathways) {
+    # Get genes for the current pathway
+    pathway_genes <- filtered_pathways %>% 
+      filter(pathway == !!pathway) %>% 
+      pull(leadingEdge) %>% 
+      unique()
+    
+    # Filter the matrix X for these genes
+    pathway_X <- X[pathway_genes, c(sample1, sample2), drop = FALSE]
+    
+    # Skip pathway if no genes are found in X
+    if (nrow(pathway_X) == 0) {
+      next
+    }
+    
+    pathway_info <- filtered_pathways %>%
+      filter(pathway == !!pathway) %>%
+      select(padj, NES) %>%
+      distinct()
+    
+    padj_value <- signif(pathway_info$padj, 3)
+    nes_value <- signif(pathway_info$NES, 3)
+    
+    # Define a color palette for the heatmap
+    color_palette <- colorRampPalette(c("blue", "white", "red"))(100)
+    
+    # Define breaks for the heatmap to limit range to [0, 5]
+    breaks <- seq(0, 8, length.out = 101)
+    
+    # Create the heatmap for this pathway
+    pheatmap(
+      pathway_X,
+      cluster_rows = FALSE,  # Cluster genes within the pathway
+      cluster_cols = TRUE,  # Cluster columns (samples)
+      color = color_palette,  # Use custom color palette
+      # breaks = breaks,  # Set range to [0, 5]
+      fontsize_row = 8,  # Adjust row font size
+      fontsize_col = 8,  # Adjust column font size
+      main = paste0("Pathway: ", pathway, "\n", "padj: ", padj_value, ", NES: ", nes_value),  # Add title
+      border_color = NA  # Remove cell borders for a cleaner look
     )
-  
-  # Save the horizontal barplot for top pathways to a file
-  output_file_top <- paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA_top", ".png") # Replace with desired file name
-  ggsave(output_file_top, plot = horizontal_top_plot, width = 13, height = 12)
-  
-  volcano_plot <- volcanoplot(sample_gsea, paste0("Volcano plot for Clone ", sample_name), n=n)
-  
-  output_file_top <- paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA_top_volcano", ".png") # Replace with desired file name
-  ggsave(output_file_top, plot = volcano_plot, width = 13, height = 12)
-  
-  leadingEdge <- sample_gsea$leadingEdge
-  sample_gsea$leadingEdge <- NULL
-  write.csv(as.data.frame(sample_gsea), file = paste0(GSEA_dir,"/clone", sample_name, "_ssGSEA.csv"))
-  sample_gsea$leadingEdge <- leadingEdge
-  return(sample_gsea)
+    
+  }
+  dev.off()  # Close the PDF device
 }
+
 
 GSEA_diff <- function(expr_matrix, sample1, sample2, gene_list, GSEA_dir, n_permutations=10000, n=5) {
   log2_diff <- log2((expr_matrix[, sample2] + 1) / (expr_matrix[, sample1] + 1))
@@ -306,7 +184,7 @@ GSEA_diff <- function(expr_matrix, sample1, sample2, gene_list, GSEA_dir, n_perm
   top_down <- gsea_results %>% arrange(NES) %>% slice_head(n = n)
   gsea_top <- bind_rows(top_up, top_down)
   gsea_top <- gsea_top %>% filter(padj < 0.05)
-  # gsea_top <- gsea_results %>% filter(padj < 0.05)
+  gsea_sig <- gsea_results %>% filter(padj < 0.05)
   
   sample1N = sample1
   if (sample1N == "0") {
@@ -328,15 +206,27 @@ GSEA_diff <- function(expr_matrix, sample1, sample2, gene_list, GSEA_dir, n_perm
   output_file_top <- paste0(GSEA_dir,"/clone", sample2, "_", sample1, "_GSEA_diff", ".png") # Replace with desired file name
   ggsave(output_file_top, plot = horizontal_top_plot, width = 13, height = 12)
   
-  leadingEdge <- gsea_results$leadingEdge
-  gsea_results$leadingEdge <- NULL
-  write.csv(as.data.frame(gsea_results), file = paste0(GSEA_dir,"/clone", sample2, "_", sample1, "_GSEA_diff.csv"))
-  gsea_results$leadingEdge <- leadingEdge
   
-  volcano_plot <- volcanoplot(gsea_results, paste0("Volcano plot for Top Differential Pathways between Clone ", sample2, " and Clone ", sample1), n=n)
-
-  output_file_top <- paste0(GSEA_dir,"/clone", sample2, "_", sample1, "_GSEA_diff_volcano", ".png") # Replace with desired file name
-  ggsave(output_file_top, plot = volcano_plot, width = 13, height = 12)
+  horizontal_sig_plot <- ggplot(gsea_sig, aes(x = Log10padj, y = reorder(pathway, NES), fill = NES)) +
+    geom_bar(stat = "identity") +
+    geom_vline(xintercept = -log10(0.05), color = "green", linetype = "dashed", size = 1) +
+    scale_fill_gradientn(colors = c("blue", "red"), name = "NES", oob = scales::squish, limits = c(-2, 2)) +
+    labs(x = "-log10(p-adj)", y = "Pathway", title = paste("Clone ", sample2, " vs Clone ", sample1N)) +
+    theme(axis.text.y = element_text(size = 24), 
+          axis.text.x = element_text(size = 18),
+          axis.title.x = element_text(size = 20),           # X-axis title size
+          axis.title.y = element_text(size = 20),           # Y-axis title size
+          plot.title = element_text(size = 26) # Title size and style
+    )
+  
+  # Save the horizontal barplot for top pathways to a file
+  output_file_sig <- paste0(GSEA_dir,"/clone", sample2, "_", sample1, "_GSEA_sig", ".png") # Replace with desired file name
+  ggsave(output_file_sig, plot = horizontal_sig_plot, width = 13, height = 12)
+  
+  gsea_df <- as.data.frame(gsea_results)
+  gsea_df$leadingEdge <- sapply(gsea_df$leadingEdge, function(x) paste(x, collapse = ";"))
+  write.csv(as.data.frame(gsea_df), file = paste0(GSEA_dir,"/clone", sample2, "_", sample1, "_GSEA_diff.csv"))
+  # volcano_plot <- volcanoplot(gsea_results, paste0("Volcano plot for Top Differential Pathways between Clone ", sample2, " and Clone ", sample1), n=n)
   
   return(gsea_results)
 }
@@ -400,30 +290,6 @@ volcanoplot <- function(data_full, title, n=5) {
     theme(legend.position = "top")
   
   return(volcano_plot)
-}
-
-prepare_barplot_data <- function(enrichment_matrix, pval_matrix, sample_name) {
-  enrichment <- enrichment_matrix[, sample_name]
-  pval <- pval_matrix[, sample_name]
-  
-  # Create a data frame
-  df <- data.frame(
-    Pathway = rownames(enrichment_matrix),
-    Enrichment = enrichment,
-    Log10Pval = -log10(pval)
-  )
-  
-  df$Log10Pval[df$Log10Pval == Inf] <- 3
-  
-  # Rank pathways by enrichment score
-  df <- df %>% arrange(desc(Enrichment)) %>% mutate(Rank = row_number())
-  return(df)
-}
-
-filter_top_pathways <- function(df, n=5) {
-  top_up <- df %>% arrange(desc(Enrichment)) %>% slice_head(n = n)
-  top_down <- df %>% arrange(Enrichment) %>% slice_head(n = n)
-  return(bind_rows(top_up, top_down))
 }
 
 read_GSEA_file <- function(GSEA_file) {

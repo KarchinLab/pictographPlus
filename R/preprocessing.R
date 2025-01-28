@@ -1,27 +1,40 @@
+#' data processing for mutation and copy number files
+#' 
 #' read input data file and store in required format
 #' 
 #' @export
-#' @param mutation_file mutation data file; see inst/extdata/examples/*_snv.csv for examples
-#' @param copy_number_file copy number file; see inst/extdata/examples/*_cna.csv for examples
-#' @param SNV_file SNV file for germline heterozygous SNVs; see inst/extdata/examples/*_SNP.csv for examples
-#' @param outputDir output directory for saving output data
+#' @param mutation_file a csv file that include information for SSMs. See vignette for details.
+#' @param copy_number_file a csv file that include information for CNA. See vignette for details.
+#' @param SNV_file a csv file that include information for germline heterozygous SNVs. See vignette for details.
+#' @param outputDir output directory for saving all files.
+#' @param LOH whether or not to include copy number segments that are copy neutral but LOH
+#' @param purity_min minimum purity for tumor samples
+#' @param alt_reads_thresh minimum number of alternative read count for a SSM to be included in the analysis
+#' @param vaf_thresh minimum VAF for a SSM to be included in the analysis
+#' @param cnv_min_length minimum length of copy number alterations for it to be included in analysis
+#' @param tcn_normal_range range of total copy number considered as copy-neutral
+#' @param filter_cnv whether or not to filter copy number alterations
+#' @param smooth_cnv whether or not to process copy number alterations across samples to unify the segment start and end positions
+#' @param autosome to only include autosomes
+#' @param pval placeholder
+
 importFiles <- function(mutation_file, 
                         copy_number_file=NULL, 
                         SNV_file=NULL, 
                         outputDir=NULL,
                         LOH = FALSE,
                         purity_min = 0.2,
-                        alt_reads_thresh = 0, # to be tested
-                        vaf_thresh = 0, # to be tested
-                        cnv_max_dist=1000000, # to be tested
-                        cnv_max_percent=0.30, # to be tested
-                        tcn_normal_range=c(1.75, 2.3), # to be tested
-                        filter_cnv = T, # to be tested
-                        smooth_cnv=F, # to be tested
-                        autosome=T, # to be tested
-                        pval=0.05 # to be tested
+                        alt_reads_thresh = 0,
+                        vaf_thresh = 0,
+                        cnv_min_length=1000000,
+                        tcn_normal_range=c(1.75, 2.3),
+                        filter_cnv = T,
+                        smooth_cnv= T,
+                        autosome=T,
+                        pval=0.05
                         ) {
   
+  # set output directory to current directory if outputDir is NULL
   if (is.null(outputDir)) {
     outputDir = getwd()
   }
@@ -29,6 +42,8 @@ importFiles <- function(mutation_file,
   if (!is.null(copy_number_file)) {
     # keep mutations if alt_reads >= alt_reads_thresh and vaf >= vaf_thresh
     mutation_data = importMutationFile(mutation_file, alt_reads_thresh, vaf_thresh, purity_min)
+    
+    # sample orders
     name_order <- colnames(mutation_data$y)
     
     copy_number_data = importCopyNumberFile(copy_number_file, 
@@ -36,8 +51,7 @@ importFiles <- function(mutation_file,
                                             SNV_file, 
                                             LOH, 
                                             name_order,
-                                            cnv_max_dist, 
-                                            cnv_max_percent, 
+                                            cnv_min_length, 
                                             tcn_normal_range,
                                             filter_cnv,
                                             smooth_cnv, 
@@ -98,8 +112,6 @@ importFiles <- function(mutation_file,
 
 #' check whether a mutation overlaps a CNA region
 resolveOverlap <- function(mutation_data) {
-  # NOTE: TO DO
-  # warning("resolveOverlap: need to check whether a mutation overlaps with two CNA segs")
   mut_count = nrow(mutation_data$y)
   cna_count = nrow(mutation_data$tcn)
   output = matrix(0, nrow=mut_count, ncol=cna_count)
@@ -131,43 +143,7 @@ resolveOverlap <- function(mutation_data) {
   return(output)
 }
 
-#' merge segments with similar coordinates
-#' 
-#' the maximum allowed distance between the start or end position of two segments 
-#' is the max(cnv_max_dist, min(length of two segments)*cnv_max_percent)
-smoothCNV <- function(data, cnv_max_dist=2000, cnv_max_percent=0.30) {
-  # NOTE: TO DO
-  # message("improvements needed for smoothCNV under preprocessing.R; 
-  # currently detecting two segments as the same if overlap and star/end position 
-  # within certain distance; merge the two segments as the outcome")
-  data <- data %>% 
-    mutate(numeric_chrom = as.numeric(sub("chr", "", chrom))) %>% 
-    arrange(numeric_chrom, start) %>%
-    select(-numeric_chrom)
-  
-  indexList = seq_len(nrow(data))
-  
-  for (i in seq_len(nrow(data))) {
-    # print(i)
-    if (i %in% indexList) {
-      max_dis = max(cnv_max_dist, cnv_max_percent*(data[i,]$end-data[i,]$start))
-      index_selected = which((data$chrom==data[i,]$chrom)&(data$start<=data[i,]$end)&(data[i,]$start<=data$end)&(abs(data$start-data[i,]$start)<max_dis)&(abs(data$end-data[i,]$end)<max_dis))
-      if (length(index_selected) > 1) {
-        # list of cnv segments able to merge
-        cnv_selected = data[index_selected,]
-        data[index_selected,]$start = min(cnv_selected$start)
-        data[index_selected,]$end = max(cnv_selected$end)
-        # data[index_selected,]$drivers = paste(unique(unlist(strsplit(cnv_selected$drivers, ";"))), collapse=";")
-        # data[index_selected,]$genes = paste(unique(unlist(strsplit(cnv_selected$genes, ";"))), collapse=";")
-      }
-      indexList <- indexList[!(indexList %in% index_selected)]
-    }
-  }
-  
-  return(data)
-}
-
-resegmentation <- function(data, cnv_max_dist=2000, cnv_max_percent=0.30) {
+resegmentation <- function(data, cnv_min_length=2000) {
   breakpoints <- data %>%
     select(chrom, start, end) %>%
     pivot_longer(cols = c(start, end), names_to = "position_type", values_to = "position") %>%
@@ -186,20 +162,17 @@ resegmentation <- function(data, cnv_max_dist=2000, cnv_max_percent=0.30) {
     filter(start.x >= start & end.x <= end) %>%
     select(-start, -end) %>%
     rename(start=start.x, end=end.x) %>%
-    filter(end - start > cnv_max_dist)%>%
+    filter(end - start > cnv_min_length)%>%
     arrange(sample, chrom, start)
   
   return(expanded_data)
 }
 
 #' import copy number file
-#' @param cnv_max_dist: maximum of distance allowed between two segments to assign as the same one
-#' @param cnv_max_percent: maximum percentage of distance allowed between two segments to assign as the same one
-#' @param smooth_cnv: process input CNV to merge  segments with similar distance
 importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, 
-                                 LOH=FALSE, name_order=NULL, cnv_max_dist=2000, 
-                                 cnv_max_percent=0.30, tcn_normal_range=c(1.8, 2.2), 
-                                 filter_cnv = T, smooth_cnv=F, autosome=T, pval=0.05) {
+                                 LOH=FALSE, name_order=NULL, cnv_min_length=1000000, 
+                                 tcn_normal_range=c(1.75, 2.3), filter_cnv = T, 
+                                 smooth_cnv=F, autosome=T, pval=0.05) {
   
   data <- read_csv(copy_number_file, show_col_types = FALSE) # read copy number csv file
   
@@ -208,8 +181,7 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL,
   }
   
   if (smooth_cnv) {
-    # data <- smoothCNV(data, cnv_max_dist, cnv_max_percent)
-    data <- resegmentation(data, cnv_max_dist, cnv_max_percent)
+    data <- resegmentation(data, cnv_min_length)
   }
   
   if ("baf" %in% colnames(data)) {
@@ -222,26 +194,17 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL,
     
   } else if (!is.null(SNV_file)) {
     message("inferring allele-specific copy number using heterozygous SNVs")
-    # check unimodality at both normal and tumor sample
     
-    # NOTE: TO DO; Not working yet thus only incuding cna in certain range, but not LOH
-    data <- check_sample_LOH(data, outputDir, SNV_file, LOH, tcn_normal_range=tcn_normal_range, pval=pval) 
+    # check unimodality in both normal and tumor sample
+    data <- check_sample_CNA(data, outputDir, SNV_file, LOH, tcn_normal_range=tcn_normal_range, pval=pval) 
     if (filter_cnv) {
       data <- data[data$to_keep==1,] # keep rows is to_keep is 1
     }
-    
   } else {
     stop("Please provide either a baf column in the copy number file or supply a SNV file with heterozygous SNV counts")
   }
   
   data$tcn[data$tcn==2] <- 2.001 # make tcn=2 -> 2.01 to avoid confusion during sample presence
-  
-  # Smooth segments so segments with different start/end position are treated the same, 
-  # conditioned on overlapping and distance between positions
-  # if (smooth_cnv) {
-  #   # data <- smoothCNV(data, cnv_max_dist, cnv_max_percent)
-  #   data <- resegmentation(data, cnv_max_dist, cnv_max_percent)
-  # }
   
   data$CNA = paste(data$chrom, data$start, data$end, sep = '-')
   
@@ -348,12 +311,12 @@ add_missing_column <- function(name_order, output_data, val) {
   return(output_data)
 }
 
-#' Check if a copy-neutral segment is a LOH event by checking the distribution of germline heterozygous mutations
-#' @import LaplacesDemon
-#' @import parallel
-#' @import diptest
+#' copy number quality check
 #' 
-check_sample_LOH <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(1.8, 2.2), pval=0.05) {
+#' Check if a copy-neutral segment is a LOH event by checking the distribution of germline heterozygous mutations
+#' @import LaplacesDemon parallel diptest
+#' 
+check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(1.75, 2.3), pval=0.05) {
 
   SNV_data <- read_csv(SNV_file)
   samples <- unique(data$sample)
@@ -409,10 +372,7 @@ check_sample_LOH <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(
       } else {
         if (!germline_test$p.value < pval/nrow(data)) { # proceed is germline distribution is unimodality
           if (data[i,]$tcn > tcn_normal_range[1] & data[i,]$tcn < tcn_normal_range[2]) { # check tcn within normal range
-            # if (tumor_test$p.value < pval/nrow(data)) {
             if (tumor_test$p.value == 0) {
-              # NOTE: TO DO
-              # warning("check_sample_LOH diptest seems not working; not detecting LOH; more testing needed")
               if (LOH) {
                 to_keep_index <- c(to_keep_index, 1)
               } else {
@@ -516,7 +476,7 @@ importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh =
   return(output_data)
 }
 
-#' import mutation file
+#' import only mutation file
 importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh = 0, purity_min=0.2) {
   data <- read_csv(mutation_file, show_col_types = FALSE)
   data <- data %>% filter(alt_reads/total_reads>=vaf_thresh, alt_reads>=alt_reads_thresh)

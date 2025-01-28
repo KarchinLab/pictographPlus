@@ -1,4 +1,4 @@
-#' run PICTograph2 in an automated pipeline
+#' main function to infer tumor evolution history
 #' 
 #' run MCMC chains to  infer the clonal evolution of tumors from single or multi-region sequencing data. 
 #' This function automatically runs a pipeline of the tool. It models uncertainty of mutation cellular 
@@ -7,30 +7,39 @@
 #' that are constrained based on principles of lineage precedence, sum condition, and optionally by 
 #' sample-presence. 
 #' 
-#' @param mutation_file a csv file that include information for SSMs.
-#' @param copy_number_file a csv file that include information for CNA.
-#' @param SNV_file a csv file that include information for germline heterozygous SNVs.
+#' @param mutation_file a csv file that include information for SSMs. See vignette for details.
+#' @param copy_number_file a csv file that include information for CNA. See vignette for details.
+#' @param SNV_file a csv file that include information for germline heterozygous SNVs. See vignette for details.
 #' @param outputDir output directory for saving all files.
-#' @param sample_presence whether to use sample presence to separate the mutations. Not applicable if dual_model is set to FALSE and a copy number file is provided.
-#' @param score scoring function to estimate the number of clusters. silhouette or BIC.
-#' @param max_K user defined maximum number of clusters.
-#' @param min_mutation_per_cluster minumum number of mutations in each cluster.
-#' @param n.iter number of iterations by JAGS.
-#' @param n.burn number of burns by JAGS.
-#' @param thin number of thin by JAGS.
-#' @param mc.cores number of cores to use for parallel computing; not applicable to windows.
+#' @param sample_presence whether or not to use sample presence to separate the mutations; default: TRUE 
+#' @param score scoring function to estimate the number of clusters. silhouette or BIC; default: silhuette
+#' @param max_K user defined maximum number of clusters; default: 10
+#' @param min_mutation_per_cluster minumum number of mutations in each cluster; default: 5
+#' @param min_cluster_thresh minimum MCF for each cluster; default: 0.05
+#' @param cluster_diff_thresh difference threshold to merge two clusters: default: 0.05
+#' @param n.iter number of iterations by JAGS; default: 5000
+#' @param n.burn number of burns by JAGS; default: 1000
+#' @param thin number of thin by JAGS; default: 10
+#' @param mc.cores number of cores to use for parallel computing; not applicable to windows; default: 8
 #' @param inits additional parameters by JAGS.
-#' @param cluster_diff_thresh threshold to merge two clusters.
+#' @param LOH whether or not to include copy number segments that are copy neutral but LOH; default: FALSE
+#' @param purity_min minimum purity for tumor samples; default: 0.2
+#' @param driverFile list of driver genes used for visualization. See vignette for details.
+#' @param cytobandFile list of cytoband regions used for visualization. See vignette for details.
+#' @param alt_reads_thresh minimum number of alternative read count for a SSM to be included in the analysis; default: 0
+#' @param vaf_thresh minimum VAF for a SSM to be included in the analysis; default: 0
+#' @param tcn_normal_range range of total copy number considered as copy-neutral; default: c(1.75,2.3)
+#' @param filter_cnv whether or not to filter copy number alterations; default: TRUE
+#' @param smooth_cnv whether or not to process copy number alterations across samples to unify the segment start and end postions; default: TRUE
+#' @param autosome to only include autosomes; default: TRUE
+#' @param cnv_min_length minimum length of copy number alterations for it to be included in analysis
 #' @export
 runPictograph <- function(mutation_file,
                      copy_number_file=NULL,
                      SNV_file=NULL,
                      outputDir=NULL,
                      sample_presence=TRUE,
-                     dual_model=TRUE, # placeholder; dual_model=FALSE still require testing
                      score="silhouette", # either BIC or silhouette
-                     ploidy=2, # placeholder
-                     pval=0.05, # placeholder
                      max_K = 10, 
                      min_mutation_per_cluster=5, 
                      min_cluster_thresh=0.05,
@@ -40,31 +49,32 @@ runPictograph <- function(mutation_file,
                      thin=10, 
                      mc.cores=8, 
                      inits=list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123),
-                     threshes=NULL,
                      LOH = FALSE,
                      purity_min=0.2,
                      driverFile = NULL,
                      cytobandFile = NULL,
-                     alt_reads_thresh = 0, # placeholder
-                     vaf_thresh = 0, # placeholder
-                     cnv_max_dist = 1000000, # placeholder
-                     cnv_max_percent = 0.30, # placeholder
-                     tcn_normal_range = c(1.75, 2.3), # placeholder
-                     filter_cnv = T, # placeholder
-                     smooth_cnv = F, # placeholder
-                     autosome = T # placeholder
+                     alt_reads_thresh = 0, 
+                     vaf_thresh = 0, 
+                     cnv_min_length = 1000000,
+                     tcn_normal_range = c(1.75, 2.3), 
+                     filter_cnv = T, 
+                     smooth_cnv = T, 
+                     autosome = T,
+                     dual_model=TRUE,
+                     ploidy=2,
+                     pval=0.05,
+                     threshes=NULL
                      ) {
   
-  data <- importFiles(mutation_file, 
-                      copy_number_file, 
-                      outputDir, 
+  data <- importFiles(mutation_file=mutation_file, 
+                      copy_number_file=copy_number_file, 
+                      outputDir=outputDir, 
                       SNV_file=SNV_file, 
                       LOH=LOH,
                       purity_min=purity_min,
                       alt_reads_thresh=alt_reads_thresh, 
                       vaf_thresh=vaf_thresh, 
-                      cnv_max_dist=cnv_max_dist, 
-                      cnv_max_percent=cnv_max_percent, 
+                      cnv_min_length=cnv_min_length, 
                       tcn_normal_range=tcn_normal_range, 
                       filter_cnv=filter_cnv,
                       smooth_cnv=smooth_cnv,
@@ -90,7 +100,7 @@ runPictograph <- function(mutation_file,
   if (data$cnnull) { 
     
     if (sample_presence) {
-      message("Using sample presence; SSM only")
+      message("Mode: SSM only; using sample presence")
       input_data <- list(y=data$y,
                          n=data$n,
                          tcn=data$tcn,
@@ -111,16 +121,16 @@ runPictograph <- function(mutation_file,
                                             min_cluster_thresh=min_cluster_thresh, cluster_diff_thresh = cluster_diff_thresh, inits = inits, 
                                             n.iter = n.iter, n.burn = n.burn, thin = thin, mc.cores = mc.cores, model_type = "type2")
     } else {
-      message("Not using sample presence; SSM only")
+      message("Mode: SSM only; not using sample presence")
       input_data <- list(y=data$y,
-                   n=data$n,
-                   tcn=data$tcn,
-                   is_cn=data$is_cn,
-                   mtp=data$mtp,
-                   icn=data$icn,
-                   cncf=data$cncf,
-                   MutID=data$MutID,
-                   purity=data$purity)
+                         n=data$n,
+                         tcn=data$tcn,
+                         is_cn=data$is_cn,
+                         mtp=data$mtp,
+                         icn=data$icn,
+                         cncf=data$cncf,
+                         MutID=data$MutID,
+                         purity=data$purity)
 
       input_data <- assign("input_data", input_data, envir = .GlobalEnv)
       
@@ -133,7 +143,7 @@ runPictograph <- function(mutation_file,
     if (dual_model) {
       if (sample_presence) {
         
-        message("Using sample presence; SSM and CNA")
+        message("Mode: SSM and CNA; using sample presence")
         ##############################################################################
         #              MCMC 1: SSMs (CN-neutral region) and all CNAs                 #
         ##############################################################################
@@ -200,7 +210,7 @@ runPictograph <- function(mutation_file,
         
       } else {
         
-        warning("Not using sample presence; SSM and CNA; NOT TESTED YET")
+        message("Mode: SSM and CNA; not using sample presence")
         ##############################################################################
         #              MCMC 1: SSMs (CN-neutral region) and all CNAs                 #
         ##############################################################################
@@ -262,7 +272,7 @@ runPictograph <- function(mutation_file,
        }
       
     } else {
-      message("Not using sample presence; Using single model for both SSM and CNA")
+      warning("Mode: SSM and CNA; using sample presence; single model NEED TO BE TESTED")
       ##############################################################################
       #             MCMC chain for all; no sample presence                         #
       ##############################################################################
@@ -301,19 +311,13 @@ runPictograph <- function(mutation_file,
   
   chains <- mergeSetChains(best_set_chains, input_data)
   chains <- assign("chains", chains, envir = .GlobalEnv)
+  
   # plot MCMC tracing 
   png(paste(outputDir, "mcf.png", sep="/"))
   print(
     plotChainsMCF(chains$mcf_chain)
   )
   dev.off()
-  
-  # plot violin plot
-  # png(paste(outputDir, "violin.png", sep="/"))
-  # print(
-  #   plotMCFViolin(chains$mcf_chain, chains$z_chain, indata = input_data)
-  # )
-  # dev.off()
   
   # write mcf table
   mcfTable = writeClusterMCFsTable(chains$mcf_chain)
@@ -455,12 +459,6 @@ runPictograph <- function(mutation_file,
     dev.off()
   }
   
-  # if (length(which(scores == max(scores))) > 1) {
-  #   png(paste(outputDir, "tree_ensemble.png", sep="/"))
-  #   plotEnsembleTree(all_spanning_trees[which(scores == max(scores))], palette = viridis::viridis)
-  #   dev.off()
-  # }
-  
   # estimate purity
   cc <- best_tree %>% filter(parent=="root") %>% select(child)
   purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
@@ -497,82 +495,6 @@ get_overlapping_gene <- function(chromosome, start1, end1, driverList) {
 
 getDrivers <- function(ClusterAssignmentTable, driverList, cytobandFile) {
   
-  # filtered_table <- ClusterAssignmentTable %>%
-  #   rowwise() %>%
-  #   mutate(
-  #     new_Mut_ID = if_else(
-  #       # Check if it's a gene mutation
-  #       !startsWith(Mut_ID, "chr"),
-  #       Mut_ID, # If a gene mutation, keep Mut_ID unchanged
-  #       {
-  #         # Extract chromosome information
-  #         chrom_info <- strsplit(strsplit(Mut_ID, ";")[[1]][1], "-")[[1]]
-  #         chrom <- chrom_info[1]
-  #         start <- as.numeric(chrom_info[2])
-  #         end <- as.numeric(chrom_info[3])
-  #         
-  #         # Find the overlapping gene
-  #         overlapping_gene <- get_overlapping_gene(chrom, start, end, driverList)
-  #         
-  #         # If an overlapping gene exists, replace the last trunk of Mut_ID
-  #         if (!is.na(overlapping_gene)) {
-  #           paste0(Mut_ID, ";", overlapping_gene)
-  #         } else {
-  #           Mut_ID
-  #         }
-  #       }
-  #     )
-  #   ) %>%
-  #   filter(
-  #     # Retain rows where gene mutation is in driverList or overlap exists
-  #     (!startsWith(Mut_ID, "chr") & strsplit(Mut_ID, "_")[[1]][1] %in% driverList$gene) |
-  #       (startsWith(Mut_ID, "chr") & !is.na(get_overlapping_gene(
-  #         strsplit(strsplit(Mut_ID, ";")[[1]][1], "-")[[1]][1], 
-  #         as.numeric(strsplit(strsplit(Mut_ID, ";")[[1]][1], "-")[[1]][2]), 
-  #         as.numeric(strsplit(strsplit(Mut_ID, ";")[[1]][1], "-")[[1]][3]), 
-  #         driverList
-  #       )))
-  #   ) %>%
-  #   ungroup()
-  # 
-  # filtered_table <- filtered_table %>%
-  #   mutate(
-  #     processed_Mut_ID = if_else(
-  #       startsWith(new_Mut_ID, "chr"),
-  #       {
-  #         # Split the string by semicolon
-  #         parts <- strsplit(new_Mut_ID, ";")
-  #         
-  #         # Extract first and last parts
-  #         first_part <- sapply(parts, `[`, 1)
-  # 
-  #         last_part <- sapply(parts, `[`, 4)
-  #         
-  #         # Extract and process the second part
-  #         inc_part <- sapply(parts, `[`, 2)
-  #         inc_number <- as.numeric(sub("icn:", "", inc_part))
-  #         
-  #         # Determine the label based on inc:number
-  #         label <- ifelse(
-  #           inc_number < 2, "DEL",
-  #           ifelse(inc_number == 2, "LOH", "DUP")
-  #         )
-  #         
-  #         # Combine the results
-  #         paste(last_part, label, sep = ";")
-  #       },
-  #       # If not starting with chr, keep the original value
-  #       new_Mut_ID
-  #     )
-  #   )
-  # 
-  # filtered_table <- filtered_table %>% select(Mut_ID = processed_Mut_ID, Cluster)
-  
-  # driverList <- driverList %>%
-  #   mutate(
-  #     gene_type = ifelse(oncogene == "yes", "oncogene", "tumor_suppressor")
-  #   )
-  
   filtered_table <- ClusterAssignmentTable %>%
     mutate(
       # Check if Mut_ID starts with "chr"
@@ -602,7 +524,6 @@ getDrivers <- function(ClusterAssignmentTable, driverList, cytobandFile) {
               (matching_genes$gene_type == "tumor_suppressor" & icn_value < 2)
           )
         }) |
-        
         # New Condition 3: If icn_value is 2, check if any driverList gene belongs to the segment and is in Mut_ID
         (is_chr & icn_value == 2 & {
           # Extract chrom, start, and end from chrom_start_end
@@ -736,7 +657,6 @@ plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data, 
       png(paste(outputDir, "/tree", i, ".png", sep=""), width = 1600, height = 1200, res = 300)
       # plot tree
       plotTree(best_tree, filteredDriverList, palette = viridis::viridis)
-      # plotEnsembleTree(all_spanning_trees, palette = viridis::viridis)
       dev.off()
   
       cc <- best_tree %>% filter(parent=="root") %>% select(child)

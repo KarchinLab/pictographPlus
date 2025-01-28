@@ -19,6 +19,8 @@
 #' @import UpSetR
 #' @import cluster
 #' @import ggrepel
+#' @import DESeq2
+#' @import pheatmap
 #' @import fgsea
 #' @import diptest
 #' @name pictographPlus-package
