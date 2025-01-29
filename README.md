@@ -75,6 +75,8 @@ python getPileUp.py -v germline.vcf -b sample1.bam sample2.bam ... -o outputDir 
 | -f| human reference genome | required
 | --submit | submit as a slurm job | optional
 
+Examples of the three csv files are:
+
 * SSM file
 
     | sample | mutation | total_reads | alt_reads | chrom | start | end | purity (optional) |
