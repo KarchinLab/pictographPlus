@@ -223,18 +223,18 @@ Output files will be stored in the outputDir a user specifies, or in the current
 
 Alternatively, the user can run tumor evolurion reconstruction and bulk RNA deconvolution in separate steps. 
 
-Tumor evolution reconstruction can be run using:
+**Tumor evolution reconstruction** can be run using:
 ```
 runPictograph(mutation_file, copy_number_file, SNV_file, outputDir)
 ```
 
-Bulk RNA exression deconvolution can be run using:
+**Bulk RNA exression deconvolution** can be run using:
 ```
 runDeconvolution(rna_file, treeFile, proportionFile, purityFile, outputDir)
 ```
 where the treeFile, proportionFile, and purityFile are outputs of ```runPictograph``` function. Users may also choose other tools to get these information.
 
-GSEA analysis using fgsea can be run using:
+**GSEA analysis using fgsea** can be run using:
 ```
 X_optimal <- read.csv(paste0(outputDir, "/clonal_expression.csv), row.names=1, check.names=FALSE)
 runGSEA(X_optimal, outputDir, treeFile, GSEA_file)
