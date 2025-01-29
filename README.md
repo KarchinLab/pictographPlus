@@ -62,9 +62,32 @@ PICTographPlus takes input data in multiple formats for flexible user inputs:
 
 ### 1) Three CSV files, one each for SSMs, CNAs, and germline heterozygous SNVs (RECOMMENDED)
 
-The recommended input for tumor evolution reconstruction is to provide individual files for SSMs, CNAs and germline heterozygous SNVs. The SSM file should contain at least sample, mutation, total_reads, alt_reads, chrom, start, and end columns, with the purity column being optional. The CNA file should contain sample, chrom, start, end, and tcn columns. The total copy number (tcn) can be inferred from many copy number callers. In case a copy number caller outputs the $log2$ ratio of a segment, the tcn can be calculate using $tcn = 2^{\log_2 R}$. 
+The recommended input for tumor evolution reconstruction is to provide individual files for SSMs, CNAs and germline heterozygous SNVs. 
 
-The SNV file contains the count of the heterozygous germline SNVs that has the information about the "chrom", the "position" of the germline heterozygous SNV, "ref" and "alt" allele, and the reference and altenative reads counts in germline (normal) sample as well as all other samples. Note: the sample name (sample1, sample2, ... etc.) should matched the sample name used in the SSM and CNA file. The germline positions can be obtained using tools such as ```GATK HaplotypeCaller```. The reference an alternative read counts for each tumor sample can be obtained using ```samtools mpileup```. We provide a python script, ```getPileUp.py```, to get the pileup information. 
+The SSM file should contain at least sample, mutation, total_reads, alt_reads, chrom, start, and end columns, with the purity column being optional. 
+
+| sample | mutation | total_reads | alt_reads | chrom | start | end | purity (optional) |
+| ---- | ---- | ---- | ---- | ---- | ---- | --- | --- |
+| sample1 | mut1 | 100 | 67 | chr1 | 1000 | 1000 | 0.9
+| sample1 | mut2 | 50 | 67 | chr2 | 3000| 3000 | 0.9
+| sample2 | mut1 | 100 | 50 | chr1 | 1000 | 1000 | 0.9
+
+The CNA file should contain sample, chrom, start, end, and tcn columns. The total copy number (tcn) can be inferred from many copy number callers. In case a copy number caller outputs the $log2$ ratio of a segment, the tcn can be calculate using $tcn = 2^{\log_2 R}$. 
+
+| sample | chrom | start | end | tcn | 
+| ---- | ---- | ---- | ---- | ---- |
+| sample1 | chr1 | 10 | 10000 | 3.6 |
+| sample1 | chr2 | 2000| 3000 | 3.4 |
+| sample2 | chr1 | 10 | 10000 | 3.6 |
+
+The SNV file contains the count of the heterozygous germline SNVs that has the information about the "chrom", the "position" of the germline heterozygous SNV, "ref" and "alt" allele, and the reference and altenative reads counts in germline (normal) sample as well as all other samples. Note: the sample name (sample1, sample2, ... etc.) should matched the sample name used in the SSM and CNA file. 
+
+| chrom | position | ref | alt | germline_ref | germline_alt | sample1_ref | sample1_alt | sample2_ref | sample2_alt |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| chr1 | 20 | A | C | 50 | 50 | 70 | 30 | 60 | 40 |
+| chr1 | 50 | G | T | 55 | 45 | 76 | 34 | 80 | 20 |
+
+The heterozygous germline positions can be obtained using tools such as ```GATK HaplotypeCaller```. The reference and alternative read counts for each tumor sample can be obtained using ```samtools mpileup``` tool. We provide a python script, ```getPileUp.py```, to get the ref and alt read counts for each germline location in each tumor sample. Users would need to  process the outputs to convert the data to the desired format.
 
 ```python
 python getPileUp.py -v germline.vcf -b sample1.bam sample2.bam ... -o outputDir -f hg38.fa [--submit]
@@ -77,29 +100,7 @@ python getPileUp.py -v germline.vcf -b sample1.bam sample2.bam ... -o outputDir 
 | -f| human reference genome | required
 | --submit | submit as a slurm job | optional
 
-Examples of the three csv files are:
-
-* SSM file
-
-    | sample | mutation | total_reads | alt_reads | chrom | start | end | purity (optional) |
-    | ---- | ---- | ---- | ---- | ---- | ---- | --- | --- |
-    | sample1 | mut1 | 100 | 67 | chr1 | 1000 | 1000 | 0.9
-    | sample1 | mut2 | 50 | 67 | chr2 | 3000| 3000 | 0.9
-    | sample2 | mut1 | 100 | 50 | chr1 | 1000 | 1000 | 0.9
-
-* CNA file
-    | sample | chrom | start | end | tcn | 
-    | ---- | ---- | ---- | ---- | ---- |
-    | sample1 | chr1 | 10 | 10000 | 3.6 |
-    | sample1 | chr2 | 2000| 3000 | 3.4 |
-    | sample2 | chr1 | 10 | 10000 | 3.6 |
-
-* SNV file of germline heterozygous SNVs
-
-    | chrom | position | ref | alt | germline_ref | germline_alt | sample1_ref | sample1_alt | sample2_ref | sample2_alt |
-    | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-    | chr1 | 20 | A | C | 50 | 50 | 70 | 30 | 60 | 40 |
-    | chr1 | 50 | G | T | 55 | 45 | 76 | 34 | 80 | 20 |
+Outputs of ```getPileUp.py``` are stored under ```outputDir/pileup```. Users would need to combine the germline_het.txt file with all pileup_summary.txt files to extract the germline heterozygous positions and convert the outputs to match the SNV file format listed above.
 
 ### 2) Two csv files, one for SSM and one for CNA
 
