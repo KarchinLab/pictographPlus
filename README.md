@@ -40,6 +40,8 @@ install.packages("devtools")
 devtools::install_github("KarchinLab/pictographPlus", build_vignettes = TRUE)
 ```
 
+--- 
+
 ## **Access Tutorial**
 ```r
 library(pictographPlus)
@@ -130,6 +132,8 @@ NOTE: using this option will generate trees with SSMs only, CNA will not be assi
     | sample1 | mut2 | 100 | 67 | 4 | 0.8 | 2 | 0.8
     | sample2 | mut1 | 100 | 40 | 2 | 1 | 3 | 0.8
 
+---
+
 ## Input data for bulk RNA expression
 
 The RNA file should be a csv file of columns Gene, followed by the tumor samples (tumor sample name should match that of the genomic input), and lastly the read counts of a matched normal sample. The read counts should be normalized to transcript per million (TPM).
@@ -139,6 +143,8 @@ The RNA file should be a csv file of columns Gene, followed by the tumor samples
 | gene1 | 1 | 1| 3
 | gene2 | 10 | 12 | 5
 | gene3 | 1 | 0 | 0
+
+---
 
 ## Running PICTographPlus in one step
 
@@ -209,6 +215,8 @@ Output files will be stored in the outputDir a user specifies, or in the current
 | clone_expression.csv | clone level gene expression for each clone
 | GSEA | directory contains all files from GSEA analysis
 
+---
+
 ## Running PICTographPlus in multiple steps
 
 Alternatively, the user can run tumor evolurion reconstruction and bulk RNA deconvolution in separate steps. 
@@ -230,6 +238,8 @@ X_optimal <- read.csv(paste0(outputDir, "/clonal_expression.csv), row.names=1, c
 runGSEA(X_optimal, outputDir, treeFile, GSEA_file)
 ```
 where GSEA_file is a text file of pathways of interest that can be obtained from resources such as [MSigDB](https://www.gsea-msigdb.org/gsea/msigdb/index.jsp).
+
+---
 
 ## Additional file format
 
