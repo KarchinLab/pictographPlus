@@ -68,7 +68,7 @@ The SNV file contains the count of the heterozygous germline SNVs that has the i
 python getPileUp.py -v germline.vcf -b sample1.bam sample2.bam ... -o outputDir -f hg38.fa [--submit]
 ```
 | parameter | description | option |
-| - | - |
+| - | - | - |
 | -v| vcf output from HaplotypeCaller | required
 | -b| tumor bam files for tumor samples | required
 | -o| output directory | required
