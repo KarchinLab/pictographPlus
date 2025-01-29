@@ -43,6 +43,8 @@ devtools::install_github("KarchinLab/pictographPlus", build_vignettes = TRUE)
 --- 
 
 ## **Access Tutorial**
+
+Detailed tutorial can be accessed through vignette.
 ```r
 library(pictographPlus)
 vignette("pictographPlus", package = "pictographPlus")
