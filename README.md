@@ -245,34 +245,34 @@ where GSEA_file is a text file of pathways of interest that can be obtained from
 
 ## Additional file format
 
-**treeFile** - csv file of tumor evolution tree used by ```runDeconvolution``` and ```runGSEA```
+**treeFile** - CSV file of tumor evolution tree used by ```runDeconvolution``` and ```runGSEA```
 
 | edge | parent | child |
 | - | - | - |
 | root->1 | root | 1|
 | 1->2 | 1 | 2
 
-**proportionFile** - csv file of subclone proportions used by ```runDeconvolution```. The row names are clones.
+**proportionFile** - CSV file of subclone proportions used by ```runDeconvolution```. The row names are clones.
 
 | | sample1 | sample2 |
 | - | - | - |
 | 1 | 0.12 | 0.3 |
 | 2 | 0.82 | 0.7 |
 
-**purityFile** - csv file of tumor purity used by ```runDeconvolution```. 
+**purityFile** - CSV file of tumor purity used by ```runDeconvolution```. 
 
 | sample1 | sample2 |
 | - | - |
 | 0.7 | 0.5 |
 
-**driverFile** - csv file of with driver mutation information that will be used for plotting by ```runPictograph```. If using this file, make sure the mutation in mutation_file follows the format of $gene_$extra_information where the $gene should be the gene name. Gene_type should be either oncogene or tumor_supressor, leave blank if unknown. 
+**driverFile** - CSV file of with driver mutation information that will be used for plotting by ```runPictograph```. If using this file, make sure the mutation in mutation_file follows the format of $gene_$extra_information where the $gene should be the gene name. Gene_type should be either oncogene or tumor_supressor, leave blank if unknown. 
 
 | gene | chrom | start | end | gene_type |
 | - | - | - | - | - |
 | KRAS | chr12 | 25205246 | 25250936 | oncogene |
 | SMAD4 | chr18 | 51028528 | 51085045 | tumor_suppressor |
 
-**cytobandFile** - tsv file of cytoband information used for plotting by ```runPictograph```.
+**cytobandFile** - TSV file of cytoband information used for plotting by ```runPictograph```.
 
 | | | | | |
 | - | - | - | - | - |
