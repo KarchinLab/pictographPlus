@@ -29,8 +29,7 @@ PICTographPlus is a computational tool that integrates bulk DNA and RNA sequenci
 ## **Installation**
 
 ### **Install JAGS (Required for Bayesian Analysis)**
-JAGS must be installed separately. Download it from:  
-[https://mcmc-jags.sourceforge.io](https://mcmc-jags.sourceforge.io)
+JAGS must be installed separately. Download it from: [https://mcmc-jags.sourceforge.io](https://mcmc-jags.sourceforge.io)
 
 ### **Install PICTographPlus**
 Run the following command in R:
