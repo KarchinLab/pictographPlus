@@ -319,6 +319,12 @@ add_missing_column <- function(name_order, output_data, val) {
 check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(1.75, 2.3), pval=0.05) {
 
   SNV_data <- read_csv(SNV_file)
+  
+  if ("chroms" %in% colnames(SNV_data)) {
+    SNV_data <- SNV_data %>%
+      rename(chrom = chroms)
+  }
+  
   samples <- unique(data$sample)
 
   pdf(paste(outputDir, "sample_modality.pdf", sep="/"), width = 12, height = 18)
@@ -334,7 +340,7 @@ check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(
   for (i in 1:rowLen) {
     toSkip = FALSE
     
-    SNV_temp <- SNV_data %>% filter(chroms==data[i,]$chrom & position>=data[i,]$start & position<=data[i,]$end)
+    SNV_temp <- SNV_data %>% filter(chrom==data[i,]$chrom & position>=data[i,]$start & position<=data[i,]$end)
     sample <- data[i,]$sample
     
     if (nrow(SNV_temp) > 20) {

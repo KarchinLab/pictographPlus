@@ -10,21 +10,13 @@ importCopyNumberFile(
   SNV_file = NULL,
   LOH = FALSE,
   name_order = NULL,
-  cnv_max_dist = 2000,
-  cnv_max_percent = 0.3,
-  tcn_normal_range = c(1.8, 2.2),
+  cnv_min_length = 1e+06,
+  tcn_normal_range = c(1.75, 2.3),
   filter_cnv = T,
   smooth_cnv = F,
   autosome = T,
   pval = 0.05
 )
-}
-\arguments{
-\item{cnv_max_dist:}{maximum of distance allowed between two segments to assign as the same one}
-
-\item{cnv_max_percent:}{maximum percentage of distance allowed between two segments to assign as the same one}
-
-\item{smooth_cnv:}{process input CNV to merge  segments with similar distance}
 }
 \description{
 import copy number file

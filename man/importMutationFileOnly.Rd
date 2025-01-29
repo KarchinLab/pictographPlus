@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{importMutationFileOnly}
 \alias{importMutationFileOnly}
-\title{import mutation file}
+\title{import only mutation file}
 \usage{
 importMutationFileOnly(
   mutation_file,
@@ -12,5 +12,5 @@ importMutationFileOnly(
 )
 }
 \description{
-import mutation file
+import only mutation file
 }

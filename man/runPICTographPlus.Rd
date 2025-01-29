@@ -2,8 +2,7 @@
 % Please edit documentation in R/pictographPlus.R
 \name{runPICTographPlus}
 \alias{runPICTographPlus}
-\title{Tumor evolution drives intra-tumor heterogeneity, yet functional clone-specific profiles remain poorly understood. 
-We developed PICTographPlus, a computational tool that integrates bulk DNA and RNA sequencing to reconstruct clone-specific transcriptomic profiles and uncover functional transitions between clones, offering a powerful framework for cancer evolution studies.}
+\title{run both tumor evolution reconstruction and clone-specific transcriptomic profile deconvolution at once}
 \usage{
 runPICTographPlus(
   mutation_file,
@@ -29,60 +28,88 @@ runPICTographPlus(
   inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 123),
   driverFile = NULL,
   cytobandFile = NULL,
-  threshes = NULL,
   LOH = FALSE,
   purity_min = 0.2,
-  dual_model = TRUE,
-  ploidy = 2,
-  pval = 0.05,
   alt_reads_thresh = 0,
   vaf_thresh = 0,
-  cnv_max_dist = 1e+06,
-  cnv_max_percent = 0.3,
+  cnv_min_length = 1e+06,
   tcn_normal_range = c(1.75, 2.3),
   filter_cnv = T,
   smooth_cnv = F,
-  autosome = T
+  autosome = T,
+  threshes = NULL,
+  dual_model = TRUE,
+  pval = 0.05,
+  ploidy = 2
 )
 }
 \arguments{
-\item{mutation_file}{a csv file that include information for SSMs.}
+\item{mutation_file}{a csv file that include information for SSMs. See vignette for details.}
 
-\item{rna_file}{bulk RNA file in integer read counts; rows are samples and columns are genes}
+\item{rna_file}{bulk RNA file in integer read counts; rows are samples and columns are genes. See vignette for details.}
 
 \item{outputDir}{output directory for saving all files.}
 
-\item{copy_number_file}{a csv file that include information for CNA.}
+\item{copy_number_file}{a csv file that include information for CNA. See vignette for details.}
 
-\item{SNV_file}{a csv file that include information for germline heterozygous SNVs.}
+\item{SNV_file}{a csv file that include information for germline heterozygous SNVs. See vignette for details.}
 
-\item{lambda}{weights used in deconvolution step; default is 0.2}
+\item{lambda}{weights used in deconvolution step; default: 0.2}
 
 \item{GSEA}{whether to perform GSEA analysis; default is TRUE}
 
 \item{GSEA_file}{geneset file in MSigDB .gmt format; the geneset name will show up in plotting}
 
-\item{sample_presence}{whether to use sample presence to separate the mutations. Not applicable if dual_model is set to FALSE and a copy number file is provided.}
+\item{top_K}{top_K significant pathways to be plotted as GSEA results; default: 5}
 
-\item{score}{scoring function to estimate the number of clusters. silhouette or BIC.}
+\item{n_permutations}{number of permutations in fgsea; default: 10000}
 
-\item{max_K}{user defined maximum number of clusters.}
+\item{sample_presence}{whether or not to use sample presence to separate the mutations; default: TRUE}
 
-\item{min_mutation_per_cluster}{minumum number of mutations in each cluster.}
+\item{score}{scoring function to estimate the number of clusters. silhouette or BIC; default: silhuette}
 
-\item{cluster_diff_thresh}{threshold to merge two clusters.}
+\item{max_K}{user defined maximum number of clusters; default: 10}
 
-\item{n.iter}{number of iterations by JAGS.}
+\item{min_mutation_per_cluster}{minumum number of mutations in each cluster; default: 5}
 
-\item{n.burn}{number of burns by JAGS.}
+\item{min_cluster_thresh}{minimum MCF for each cluster; default: 0.05}
 
-\item{thin}{number of thin by JAGS.}
+\item{cluster_diff_thresh}{difference threshold to merge two clusters: default: 0.05}
 
-\item{mc.cores}{number of cores to use for parallel computing; not applicable to windows.}
+\item{n.iter}{number of iterations by JAGS; default: 5000}
+
+\item{n.burn}{number of burns by JAGS; default: 1000}
+
+\item{thin}{number of thin by JAGS; default: 10}
+
+\item{mc.cores}{number of cores to use for parallel computing; not applicable to windows; default: 8}
 
 \item{inits}{additional parameters by JAGS.}
+
+\item{driverFile}{list of driver genes used for visualization. See vignette for details.}
+
+\item{cytobandFile}{list of cytoband regions used for visualization. See vignette for details.}
+
+\item{LOH}{whether or not to include copy number segments that are copy neutral but LOH; default: FALSE}
+
+\item{purity_min}{minimum purity for tumor samples; default: 0.2}
+
+\item{alt_reads_thresh}{minimum number of alternative read count for a SSM to be included in the analysis; default: 0}
+
+\item{vaf_thresh}{minimum VAF for a SSM to be included in the analysis; default: 0}
+
+\item{cnv_min_length}{minimum length of copy number alterations for it to be included in analysis}
+
+\item{tcn_normal_range}{range of total copy number considered as copy-neutral; default: c(1.75,2.3)}
+
+\item{filter_cnv}{whether or not to filter copy number alterations; default: TRUE}
+
+\item{smooth_cnv}{whether or not to process copy number alterations across samples to unify the segment start and end postions; default: TRUE}
+
+\item{autosome}{to only include autosomes; default: TRUE}
 }
 \description{
 Tumor evolution drives intra-tumor heterogeneity, yet functional clone-specific profiles remain poorly understood. 
-We developed PICTographPlus, a computational tool that integrates bulk DNA and RNA sequencing to reconstruct clone-specific transcriptomic profiles and uncover functional transitions between clones, offering a powerful framework for cancer evolution studies.
+We developed PICTographPlus, a computational tool that integrates bulk DNA and RNA sequencing to reconstruct clone-specific transcriptomic profiles 
+and uncover transcriptional transitions between clones, offering a powerful framework for cancer evolution studies.
 }
