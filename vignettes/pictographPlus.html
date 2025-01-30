@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>PICTographPlus</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">PICTographPlus</h1>
+
+
+
+<div id="introduction" class="section level1">
+<h1>1. Introduction</h1>
+<p>This is a tutorial for using PICTographPlus. The tool infers tumor
+clonal evolution from single or multi-region sequencing data by modeling
+the uncertainty of mutation cellular fraction (MCF) in small somatic
+mutations (SSMs) and copy number alterations (CNAs). Using a Bayesian
+hierarchical model, it assigns SSMs and CNAs to subclones,
+reconstructing tumor evolutionary trees that adhere to principles of
+lineage precedence, sum condition, and optional constraints based on
+sample presence. For deconvolution, PICTographPlus integrates tumor
+clonal tree structures with clone proportions across samples to resolve
+bulk gene expression data. It optimizes an objective function that
+minimizes discrepancies between observed and predicted sample-level gene
+expression while imposing a smoothness penalty, ensuring that closely
+related clones display greater gene expression similarity. Lastly, the
+tool conducts pathway enrichment analysis to identify statistically
+significant alterations in pathways connecting tumor clones.</p>
+<hr />
+</div>
+<div id="input-data-file-format" class="section level1">
+<h1>2. Input data file format</h1>
+<p>PICTographPlus takes input data in multiple formats for flexible user
+inputs:</p>
+<ol style="list-style-type: decimal">
+<li>Three CSV files, one each for SSMs, CNAs, and germline heterozygous
+SNVs (RECOMMENDED)</li>
+<li>Two csv files, one for SSM and one for CNA</li>
+<li>A single csv file that contains SSM and CNA information.</li>
+</ol>
+<div id="input-data-dna-for-tumor-evolution-reconstruction" class="section level2">
+<h2>2.1 Input data (DNA) for tumor evolution reconstruction</h2>
+<div id="the-recommended-input-for-tumor-evolution-reconstruction-is-to-provide-individual-files-for-ssms-cnas-and-germline-heterozygous-snvs." class="section level3">
+<h3>2.1.1 The recommended input for tumor evolution reconstruction is to
+provide individual files for SSMs, CNAs and germline heterozygous
+SNVs.</h3>
+<p>The SSM file should contain at least sample, mutation, total_reads,
+alt_reads, chrom, start, and end columns, with the purity column being
+optional.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/example4_snv_with_purity.csv&#39;</span>, <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="co">#&gt;    sample         mutation total_reads alt_reads chrom start  end purity</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="co">#&gt; 1 sample1   chr1-57-clone1         100        67  chr1    57   57    0.8</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="co">#&gt; 2 sample1  chr1-110-clone1         100        67  chr1   110  110    0.8</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="co">#&gt; 3 sample1  chr1-167-clone1         100        67  chr1   167  167    0.8</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co">#&gt; 4 sample1  chr1-386-clone1         100        40  chr1   386  386    0.8</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="co">#&gt; 5 sample1  chr1-441-clone1         100        40  chr1   441  441    0.8</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co">#&gt; 6 sample1 chr1-1276-clone1         100        40  chr1  1276 1276    0.8</span></span></code></pre></div>
+<p>The CNA file should contain sample, chrom, start, end, and tcn
+columns. The total copy number (tcn) can be inferred from many copy
+number callers. In case a copy number caller outputs the <span class="math inline">\(log2\)</span> ratio of a segment, the tcn can be
+calculate using <span class="math inline">\(tcn = 2^{\log_2
+R}\)</span>.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/example4_cna.csv&#39;</span>, <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="co">#&gt;    sample chrom start  end tcn</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co">#&gt; 1 sample1  chr1     1  200 3.6</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="co">#&gt; 2 sample2  chr1     1  200 3.4</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co">#&gt; 3 sample3  chr1     1  200 3.4</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="co">#&gt; 4 sample3  chr1   401 1500 1.4</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co">#&gt; 5 sample3  chr1  7001 7200 2.6</span></span></code></pre></div>
+<p>The SNV file contains the count of the heterozygous germline SNVs
+that has the information about the “chrom”, the “position” of the
+germline heterozygous SNV, “ref” and “alt” allele, and the reference and
+altenative reads counts in germline (normal) sample as well as all other
+samples. Note: the sample name (sample1, sample2, … etc.) should matched
+the sample name used in the SSM and CNA file.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/example4_SNP.csv&#39;</span>, <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="co">#&gt;   chroms position ref alt germline_ref germline_alt sample1_ref sample1_alt</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a><span class="co">#&gt; 1   chr1      178   A   C           50           50          72          28</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co">#&gt; 2   chr1      107   A   C           50           50          72          28</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co">#&gt; 3   chr1       84   A   C           50           50          28          72</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co">#&gt; 4   chr1       31   A   C           50           50          28          72</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co">#&gt; 5   chr1       18   A   C           50           50          72          28</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co">#&gt; 6   chr1      165   A   C           50           50          28          72</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co">#&gt;   sample2_ref sample2_alt sample3_ref sample3_alt</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co">#&gt; 1          71          29          71          29</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co">#&gt; 2          71          29          71          29</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co">#&gt; 3          29          71          29          71</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co">#&gt; 4          29          71          29          71</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; 5          71          29          71          29</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co">#&gt; 6          29          71          29          71</span></span></code></pre></div>
+<div id="obtaining-germline-heterozygous-positions" class="section level4">
+<h4>Obtaining Germline Heterozygous Positions</h4>
+<p>The heterozygous germline positions can be obtained using tools such
+as <strong>GATK HaplotypeCaller</strong>. The reference and alternative
+read counts for each tumor sample can be retrieved using
+<strong>samtools mpileup</strong>.</p>
+<p>We provide a Python script, <code>getPileUp.py</code>, to help
+generate the desired SNV file:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="ex">python</span> getPileUp.py <span class="at">-v</span> haplotype.vcf <span class="at">-b</span> sample1.bam sample2.bam ... <span class="at">-o</span> outputDir <span class="at">-f</span> hg38.fa <span class="pp">[--</span><span class="ss">minreads</span><span class="pp">]</span> <span class="pp">[--</span><span class="ss">vaf</span><span class="pp">]</span></span></code></pre></div>
+<table>
+<colgroup>
+<col width="13%" />
+<col width="63%" />
+<col width="24%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Parameter</th>
+<th>Description</th>
+<th>Option</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>-v</strong></td>
+<td>VCF output from HaplotypeCaller</td>
+<td><strong>Required</strong></td>
+</tr>
+<tr class="even">
+<td><strong>-b</strong></td>
+<td>Tumor BAM files for tumor samples</td>
+<td><strong>Required</strong></td>
+</tr>
+<tr class="odd">
+<td><strong>-o</strong></td>
+<td>Output directory</td>
+<td><strong>Required</strong></td>
+</tr>
+<tr class="even">
+<td><strong>-f</strong></td>
+<td>Human reference genome</td>
+<td><strong>Required</strong></td>
+</tr>
+<tr class="odd">
+<td><strong>–minreads</strong></td>
+<td>Minimum read count for both ref and alt to keep a site</td>
+<td>Default: 3</td>
+</tr>
+<tr class="even">
+<td><strong>–vaf</strong></td>
+<td>Minimum and maximum VAF for normal heterozygous sites</td>
+<td>Default: 0.3 0.7</td>
+</tr>
+</tbody>
+</table>
+<p>This script creates a folder <code>outputDir/pileup</code>, which
+contains a <code>germline_het.txt</code> file and all
+<code>pileup_summary.txt</code> files. These files are used to extract
+the germline heterozygous positions and convert them to the SNV file
+format described above. The resulting <code>germline_SNV.csv</code> can
+be used as input for <strong>PICTographPlus</strong>.</p>
+<blockquote>
+<p><strong>Note:</strong> Ensure that the BAM file names (e.g.,
+<code>sample1.bam</code>) match the sample names (e.g.,
+<code>sample1</code>) used in the SSM and CNA files. If needed, rename
+the columns in <code>germline_SNV.csv</code> so they match the sample
+names in your SSM and CNA files.</p>
+</blockquote>
+</div>
+</div>
+<div id="two-csv-files-one-for-ssm-and-one-for-cna" class="section level3">
+<h3>2.1.2 Two csv files, one for SSM and one for CNA</h3>
+<p>The second option is to provide the SSM read counts and copy number
+alterations (CNA) in two separate files.</p>
+<p>The SSM file should contain columns “sample”, “mutation”,
+“total_reads”, “alt_reads”, “chrom”, “start”, and “end”. The “purity”
+column with be optional.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/example3_snv_with_purity.csv&#39;</span>, <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co">#&gt;    sample         mutation total_reads alt_reads chrom start  end purity</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co">#&gt; 1 sample1   chr1-57-clone1         100        67  chr1    57   57    0.8</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">#&gt; 2 sample1  chr1-110-clone1         100        67  chr1   110  110    0.8</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="co">#&gt; 3 sample1  chr1-167-clone1         100        67  chr1   167  167    0.8</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co">#&gt; 4 sample1  chr1-386-clone1         100        40  chr1   386  386    0.8</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="co">#&gt; 5 sample1  chr1-441-clone1         100        40  chr1   441  441    0.8</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co">#&gt; 6 sample1 chr1-1276-clone1         100        40  chr1  1276 1276    0.8</span></span></code></pre></div>
+<p>The CNA file should contain columns “sample”, “chrom”, “start”,
+“end”, “tcn” and “baf”.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/example3_cna.csv&#39;</span>, <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="co">#&gt;    sample chrom start  end tcn       baf</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co">#&gt; 1 sample1  chr1     1  200 3.6 0.2777778</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co">#&gt; 2 sample2  chr1     1  200 3.4 0.2941176</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co">#&gt; 3 sample3  chr1     1  200 3.4 0.2941176</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="co">#&gt; 4 sample3  chr1   401 1500 1.4 0.2857143</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a><span class="co">#&gt; 5 sample3  chr1  7001 7200 2.6 0.3846154</span></span></code></pre></div>
+</div>
+<div id="a-single-csv-file-that-contains-ssm-and-cna-information" class="section level3">
+<h3>2.1.3 A single csv file that contains SSM and CNA information</h3>
+<p>The last option is to provide a single csv file that contains at
+least columns named “sample”, “mutation”, “total_reads”, “alt_reads”,
+“tumor_integer_copy_number”, and “cncf”. Set cncf to 0 if a mutation has
+no copy number alteration. Users can also provide an optional column
+“major_integer_copy_number” that provides the information of the integer
+copy number of the major allele. If “major_integer_copy_number” is not
+provided, it will be estimated using an internal function built in the
+package. Another optional column is “purity” column that provides the
+information of normal contamination of a sample.</p>
+<p>NOTE: using this option will generate trees with SSMs only, CNA will
+not be assigned to clusters but only used for VAF correction.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/example2_snv_with_purity.csv&#39;</span>, <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="co">#&gt;    sample         mutation total_reads alt_reads tumor_integer_copy_number</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="co">#&gt; 1 sample1   chr1-57-clone1         100        67                         4</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="co">#&gt; 2 sample1  chr1-110-clone1         100        67                         4</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="co">#&gt; 3 sample1  chr1-167-clone1         100        67                         4</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="co">#&gt; 4 sample1  chr1-386-clone1         100        40                         2</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="co">#&gt; 5 sample1  chr1-441-clone1         100        40                         2</span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co">#&gt; 6 sample1 chr1-1276-clone1         100        40                         2</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="co">#&gt;   major_integer_copy_number cncf purity</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="co">#&gt; 1                         3  0.8    0.8</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co">#&gt; 2                         3  0.8    0.8</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="co">#&gt; 3                         3  0.8    0.8</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="co">#&gt; 4                         1  0.0    0.8</span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co">#&gt; 5                         1  0.0    0.8</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="co">#&gt; 6                         1  0.0    0.8</span></span></code></pre></div>
+</div>
+</div>
+<div id="input-data-for-bulk-rna-expression" class="section level2">
+<h2>2.2 Input data for bulk RNA expression</h2>
+<p>The RNA file should be a csv file of columns Gene, followed by the
+tumor samples (tumor sample name should match that of the genomic
+input), and lastly the read counts of a matched normal sample. The read
+counts should be normalized to transcript per million (TPM).</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/rna_example.csv&#39;</span>, <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="co">#&gt;      Gene sample1 sample2 sampleN</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="co">#&gt; 1    A1BG       0       5       0</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="co">#&gt; 2    A1CF       0       0       0</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="co">#&gt; 3     A2M      21      50       9</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="co">#&gt; 4   A2ML1       0       0       0</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="co">#&gt; 5 A3GALT2       0       0       0</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="co">#&gt; 6  A4GALT       1       1       0</span></span></code></pre></div>
+<hr />
+</div>
+</div>
+<div id="run-pictographplus" class="section level1">
+<h1>3. Run PICTographPlus</h1>
+<div id="running-pictographplus-in-one-step" class="section level2">
+<h2>3.1 Running PICTographPlus in one step</h2>
+<p>PICTographPlus can be run using the function
+<code>runPICTographPlus</code>, which runs both tumor evolution
+reconstruction and clone-specific transcriptomic profile deconvolution.
+The required files include files for genomic data and RNA expression
+data.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="ex">runPICTographPlus</span><span class="er">(</span><span class="ex">mutation_file,</span> copy_number_file, SNV_file, rna_file, outputDir<span class="kw">)</span></span></code></pre></div>
+<p>Detailed documentation for the function can be found:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="bu">help</span><span class="er">(</span><span class="ex">runPICTographPlus</span><span class="kw">)</span></span></code></pre></div>
+</div>
+<div id="running-pictographplus-in-multiple-steps" class="section level2">
+<h2>3.2 Running PICTographPlus in multiple steps</h2>
+<p>Alternatively, the user can run tumor evolurion reconstruction and
+bulk RNA deconvolution in separate steps.</p>
+<p><strong>Tumor evolution reconstruction</strong> can be run using:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="ex">runPictograph</span><span class="er">(</span><span class="ex">mutation_file,</span> copy_number_file, SNV_file, outputDir<span class="kw">)</span></span></code></pre></div>
+<p><strong>Bulk RNA exression deconvolution</strong> can be run
+using:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="ex">runDeconvolution</span><span class="er">(</span><span class="ex">rna_file,</span> treeFile, proportionFile, purityFile, outputDir<span class="kw">)</span></span></code></pre></div>
+<p>where the treeFile, proportionFile, and purityFile are outputs of
+<code>runPictograph</code> function. Users may also choose other tools
+to get these information. File formats can be found in section 6.</p>
+<p><strong>GSEA analysis using fgsea</strong> can be run using:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="ex">X_optimal</span> <span class="op">&lt;</span>- read.csv<span class="er">(</span><span class="ex">paste0</span><span class="er">(</span><span class="ex">outputDir,</span> <span class="st">&quot;/clonal_expression.csv&quot;</span><span class="kw">)</span><span class="ex">,</span> row.names=1, check.names=FALSE<span class="kw">)</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a><span class="ex">runGSEA</span><span class="er">(</span><span class="ex">X_optimal,</span> outputDir, treeFile, GSEA_file<span class="kw">)</span></span></code></pre></div>
+<p>where GSEA_file is a text file of pathways of interest that can be
+obtained from resources such as <a href="https://www.gsea-msigdb.org/gsea/msigdb/index.jsp">MSigDB</a>.</p>
+<hr />
+</div>
+</div>
+<div id="parameters" class="section level1">
+<h1>4. Parameters</h1>
+<div id="parameters-for-runpictographplus-and-runpictograph" class="section level2">
+<h2>4.1 Parameters for runPICTographPlus and runPictograph</h2>
+<div id="mutation_file-required" class="section level3">
+<h3>4.1.1 mutation_file [required]</h3>
+<p>a csv file that include information for SSMs. See section 2 for
+details.</p>
+</div>
+<div id="copy_number_file" class="section level3">
+<h3>4.1.2 copy_number_file</h3>
+<p>a csv file that include information for CNA. See section 2 for
+details.</p>
+</div>
+<div id="snv_file" class="section level3">
+<h3>4.1.3 SNV_file</h3>
+<p>a csv file that include information for germline heterozygous SNVs.
+See section 2 for details.</p>
+</div>
+<div id="outputdir" class="section level3">
+<h3>4.1.4 outputDir</h3>
+<p>output directory for saving all files.</p>
+</div>
+<div id="sample_presence" class="section level3">
+<h3>4.1.5 sample_presence</h3>
+<p>whether or not to use sample presence to separate the mutations;
+default: TRUE</p>
+</div>
+<div id="max_k" class="section level3">
+<h3>4.1.6 max_K</h3>
+<p>user defined maximum number of clusters; default: 10</p>
+</div>
+<div id="alt_reads_thresh" class="section level3">
+<h3>4.1.7 alt_reads_thresh</h3>
+<p>minimum number of alternative read count for a SSM to be included in
+the analysis; default: 0</p>
+</div>
+<div id="vaf_thresh" class="section level3">
+<h3>4.1.8 vaf_thresh</h3>
+<p>minimum VAF for a SSM to be included in the analysis; default: 0</p>
+</div>
+<div id="smooth_cnv" class="section level3">
+<h3>4.1.9 smooth_cnv</h3>
+<p>whether or not to process copy number alterations across samples to
+unify the segment start and end postions; default: TRUE</p>
+</div>
+<div id="autosome" class="section level3">
+<h3>4.1.10 autosome</h3>
+<p>to only include autosomes; default: TRUE</p>
+</div>
+<div id="filter_cnv" class="section level3">
+<h3>4.1.11 filter_cnv</h3>
+<p>whether or not to filter copy number alterations; default: TRUE</p>
+</div>
+<div id="tcn_normal_range" class="section level3">
+<h3>4.1.12 tcn_normal_range</h3>
+<p>range of total copy number considered as copy-neutral; default:
+c(1.75,2.3)</p>
+</div>
+<div id="cnv_min_length" class="section level3">
+<h3>4.1.13 cnv_min_length</h3>
+<p>minimum length of copy number alterations for it to be included in
+analysis</p>
+</div>
+<div id="purity_min" class="section level3">
+<h3>4.1.14 purity_min</h3>
+<p>minimum purity for tumor samples; default: 0.2</p>
+</div>
+<div id="min_mutation_per_cluster" class="section level3">
+<h3>4.1.15 min_mutation_per_cluster</h3>
+<p>minumum number of mutations in each cluster; default: 5</p>
+</div>
+<div id="min_cluster_thresh" class="section level3">
+<h3>4.1.16 min_cluster_thresh</h3>
+<p>minimum MCF for each cluster; default: 0.05</p>
+</div>
+<div id="cluster_diff_thresh" class="section level3">
+<h3>4.1.17 cluster_diff_thresh</h3>
+<p>difference threshold to merge two clusters: default: 0.05</p>
+</div>
+<div id="loh" class="section level3">
+<h3>4.1.18 LOH</h3>
+<p>whether or not to include copy number segments that are copy neutral
+but LOH; default: FALSE</p>
+</div>
+<div id="n.iter" class="section level3">
+<h3>4.1.19 n.iter</h3>
+<p>number of iterations by JAGS; default: 5000</p>
+</div>
+<div id="n.burn" class="section level3">
+<h3>4.1.20 n.burn</h3>
+<p>number of burns by JAGS; default: 1000</p>
+</div>
+<div id="thin" class="section level3">
+<h3>4.1.21 thin</h3>
+<p>number of thin by JAGS; default: 10</p>
+</div>
+<div id="inits" class="section level3">
+<h3>4.1.22 inits</h3>
+<p>additional parameters by JAGS.</p>
+</div>
+<div id="score" class="section level3">
+<h3>4.1.23 score</h3>
+<p>scoring function to estimate the number of clusters. silhouette or
+BIC; default: silhuette</p>
+</div>
+<div id="mc.cores" class="section level3">
+<h3>4.1.24 mc.cores</h3>
+<p>number of cores to use for parallel computing; not applicable to
+windows; default: 8</p>
+</div>
+<div id="driverfile" class="section level3">
+<h3>4.1.25 driverFile</h3>
+<p>list of driver genes used for visualization.</p>
+</div>
+<div id="cytobandfile" class="section level3">
+<h3>4.1.26 cytobandFile</h3>
+<p>list of cytoband regions used for visualization.</p>
+</div>
+</div>
+<div id="parameters-for-runpictographplus-and-rundeconvolution" class="section level2">
+<h2>4.2 Parameters for runPICTographPlus and runDeconvolution</h2>
+<div id="rna_file-required" class="section level3">
+<h3>4.2.1 rna_file [required]</h3>
+<p>bulk RNA file in integer read counts; rows are samples and columns
+are genes. See section 2 for details.</p>
+</div>
+<div id="lambda" class="section level3">
+<h3>4.2.3 lambda</h3>
+<p>weights used in deconvolution step; default: 0.2</p>
+</div>
+</div>
+<div id="parameters-for-runpictographplus-and-rungsea" class="section level2">
+<h2>4.3 Parameters for runPICTographPlus and runGSEA</h2>
+<div id="gsea_file" class="section level3">
+<h3>4.3.1 GSEA_file</h3>
+<p>geneset file in MSigDB .gmt format; the geneset name will show up in
+plotting</p>
+</div>
+<div id="top_k" class="section level3">
+<h3>4.3.3 top_K</h3>
+<p>top_K significant pathways to be plotted as GSEA results; default:
+5</p>
+</div>
+<div id="n_permutations" class="section level3">
+<h3>4.3.3 n_permutations</h3>
+<p>number of permutations in fgsea; default: 10000</p>
+<hr />
+</div>
+</div>
+</div>
+<div id="output-files" class="section level1">
+<h1>5. Output files</h1>
+<table>
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">File name</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">mcf.csv</td>
+<td align="left">estimated MCF for each cluster in each sample</td>
+</tr>
+<tr class="even">
+<td align="left">clusterAssign.csv</td>
+<td align="left">cluster assignment of each SSM/CNA to each cluster</td>
+</tr>
+<tr class="odd">
+<td align="left">CN_results.csv</td>
+<td align="left">estimation of the integer and major copy number of
+CNAs</td>
+</tr>
+<tr class="even">
+<td align="left">tree.csv</td>
+<td align="left">the tree with the highest score; all trees with tied
+highest score is available under all_trees directory.</td>
+</tr>
+<tr class="odd">
+<td align="left">subclone_proportion.csv</td>
+<td align="left">estimated proportion of each cluster in each
+sample</td>
+</tr>
+<tr class="even">
+<td align="left">purity.csv</td>
+<td align="left">estimated purity for each sample, based on the tree
+structure</td>
+</tr>
+<tr class="odd">
+<td align="left">tree.png</td>
+<td align="left">the image of a tree with the best score</td>
+</tr>
+<tr class="even">
+<td align="left">upsetR.png</td>
+<td align="left">the mutation profiles between samples; only available
+if number of samples is bigger than 1.</td>
+</tr>
+<tr class="odd">
+<td align="left">mcf.png</td>
+<td align="left">the MCF chain trace from JAGS</td>
+</tr>
+<tr class="even">
+<td align="left">mutationClusterAssign.csv</td>
+<td align="left">table of all mutations information in all samples</td>
+</tr>
+<tr class="odd">
+<td align="left">clone_expression.csv</td>
+<td align="left">clone level gene expression for each clone</td>
+</tr>
+<tr class="even">
+<td align="left">GSEA</td>
+<td align="left">directory contains all files from GSEA analysis</td>
+</tr>
+</tbody>
+</table>
+<hr />
+</div>
+<div id="additional-file-format" class="section level1">
+<h1>6. Additional file format</h1>
+<div id="treefile" class="section level2">
+<h2>6.1 <strong>treeFile</strong></h2>
+<p>A CSV file describing the tumor evolution tree used by the functions
+<code>runDeconvolution()</code> and <code>runGSEA()</code>.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">edge</th>
+<th align="left">parent</th>
+<th align="left">child</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">root-&gt;1</td>
+<td align="left">root</td>
+<td align="left">1</td>
+</tr>
+<tr class="even">
+<td align="left">1-&gt;2</td>
+<td align="left">1</td>
+<td align="left">2</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="proportionfile" class="section level2">
+<h2>6.2 <strong>proportionFile</strong></h2>
+<p>A CSV file of subclone proportions used by
+<code>runDeconvolution()</code>. Each row corresponds to a clone, and
+each column to a sample.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">sample1</th>
+<th align="right">sample2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left"><strong>1</strong></td>
+<td align="right">0.12</td>
+<td align="right">0.30</td>
+</tr>
+<tr class="even">
+<td align="left"><strong>2</strong></td>
+<td align="right">0.82</td>
+<td align="right">0.70</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="purityfile" class="section level2">
+<h2>6.3 <strong>purityFile</strong></h2>
+<p>A CSV file of tumor purity used by
+<code>runDeconvolution()</code>.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="right">sample1</th>
+<th align="right">sample2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0.70</td>
+<td align="right">0.50</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="driverfile-1" class="section level2">
+<h2>6.4 <strong>driverFile</strong></h2>
+<p>A CSV file that contains driver mutation information used for
+plotting by <code>runPictograph()</code>.<br />
+If you use this file, ensure that the corresponding mutation file
+follows the format <strong>gene_extraInformation</strong>, where
+<strong>gene</strong> is the actual gene name. The
+<code>gene_type</code> column can be <strong>oncogene</strong> or
+<strong>tumor_suppressor</strong> (leave blank if unknown).</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">gene</th>
+<th align="left">chrom</th>
+<th align="right">start</th>
+<th align="right">end</th>
+<th align="left">gene_type</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">KRAS</td>
+<td align="left">chr12</td>
+<td align="right">25205246</td>
+<td align="right">25250936</td>
+<td align="left">oncogene</td>
+</tr>
+<tr class="even">
+<td align="left">SMAD4</td>
+<td align="left">chr18</td>
+<td align="right">51028528</td>
+<td align="right">51085045</td>
+<td align="left">tumor_suppressor</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="cytobandfile-1" class="section level2">
+<h2>6.5 <strong>cytobandFile</strong></h2>
+<p>A TSV file of cytoband information used for plotting by
+<code>runPictograph()</code>.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">chr</th>
+<th align="right">start</th>
+<th align="right">end</th>
+<th align="left">band</th>
+<th align="left">stain</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">chr1</td>
+<td align="right">0</td>
+<td align="right">2300000</td>
+<td align="left">p36.33</td>
+<td align="left">gneg</td>
+</tr>
+<tr class="even">
+<td align="left">chr1</td>
+<td align="right">2300000</td>
+<td align="right">5300000</td>
+<td align="left">p36.32</td>
+<td align="left">gpos25</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
