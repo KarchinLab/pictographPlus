@@ -47,7 +47,7 @@ PICTographPlus was developed under R (4.4.2). All package versions during develo
 
 ## **Access Tutorial**
 
-Detailed tutorial can be accessed through vignette.
+Detailed tutorial can be accessed through [vignette](https://github.com/KarchinLab/pictographPlus/tree/working/vignettes).
 ```r
 library(pictographPlus)
 vignette("pictographPlus", package = "pictographPlus")
