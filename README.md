@@ -87,10 +87,12 @@ The SNV file contains the count of the heterozygous germline SNVs that has the i
 | chr1 | 20 | A | C | 50 | 50 | 70 | 30 | 60 | 40 |
 | chr1 | 50 | G | T | 55 | 45 | 76 | 34 | 80 | 20 |
 
-The heterozygous germline positions can be obtained using tools such as ```GATK HaplotypeCaller```. The reference and alternative read counts for each tumor sample can be obtained using ```samtools mpileup``` tool. We provide a python script, ```getPileUp.py```, to get the ref and alt read counts for each germline location in each tumor sample. Users would need to  process the outputs to convert the data to the desired format.
+The heterozygous germline positions can be obtained using tools such as ```GATK HaplotypeCaller```. The reference and alternative read counts for each tumor sample can be obtained using ```samtools mpileup``` tool. 
+
+We provide a python script, ```getPileUp.py```, to help users to generate the desired SNV file.
 
 ```python
-python getPileUp.py -v germline.vcf -b sample1.bam sample2.bam ... -o outputDir -f hg38.fa [--submit]
+python getPileUp.py -v haplotype.vcf -b sample1.bam sample2.bam ... -o outputDir -f hg38.fa [--minreads] [--vaf]
 ```
 | parameter | description | option |
 | - | - | - |
@@ -98,9 +100,10 @@ python getPileUp.py -v germline.vcf -b sample1.bam sample2.bam ... -o outputDir 
 | -b| tumor bam files for tumor samples | required
 | -o| output directory | required
 | -f| human reference genome | required
-| --submit | submit as a slurm job | optional
+| --minreads | Minimum read count for both ref and alt to keep a site | default: 3
+| --vaf | Minimum and maximum VAF for normal heterozygous sites | default: 0.3 0.7
 
-Outputs of ```getPileUp.py``` are stored under ```outputDir/pileup```. Users would need to combine the germline_het.txt file with all pileup_summary.txt files to extract the germline heterozygous positions and convert the outputs to match the SNV file format listed above.
+This script will create a ```outputDir/pileup``` folder that contains germline_het.txt file with all pileup_summary.txt files to extract the germline heterozygous positions and convert the outputs to match the SNV file format listed above. The file germline_SNV.csv can be used for PICTographPlus. NOTE: please make sure the bam file name (e.g. sample1.bam) for each sample matches the sample names in SSM and CNA files (sample1), or convert the CSV headers in the germline_SNV.csv to make sure the sample names match.
 
 ### 2) Two csv files, one for SSM and one for CNA
 
