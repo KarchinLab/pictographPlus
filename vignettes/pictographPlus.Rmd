@@ -61,7 +61,8 @@ The heterozygous germline positions can be obtained using tools such as **GATK H
 We provide a Python script, `getPileUp.py`, to help generate the desired SNV file:
 
 ```bash
-python getPileUp.py -v haplotype.vcf -b sample1.bam sample2.bam ... -o outputDir -f hg38.fa [--minreads] [--vaf]
+python getPileUp.py -v haplotype.vcf -b sample1.bam sample2.bam ... 
+                    -o outputDir -f hg38.fa [--minreads] [--vaf]
 ```
 
 | Parameter   | Description                                                   | Option                 |
@@ -159,7 +160,7 @@ runGSEA(X_optimal, outputDir, treeFile, GSEA_file)
 
 where GSEA_file is a text file of pathways of interest that can be obtained from resources such as [MSigDB](https://www.gsea-msigdb.org/gsea/msigdb/index.jsp).
 
------------
+---------------------------------------------------
 
 # 4. Parameters
 
@@ -285,7 +286,7 @@ weights used in deconvolution step; default: 0.2
 
 geneset file in MSigDB .gmt format; the geneset name will show up in plotting
 
-### 4.3.3 top_K 
+### 4.3.2 top_K 
 
 top_K significant pathways to be plotted as GSEA results; default: 5
 
@@ -312,7 +313,7 @@ number of permutations in fgsea; default: 10000
 | clone_expression.csv | clone level gene expression for each clone
 | GSEA | directory contains all files from GSEA analysis
 
---------
+----------------------------------------------------------------
 
 # 6. Additional file format
 
