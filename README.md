@@ -40,6 +40,9 @@ install.packages("devtools")
 devtools::install_github("KarchinLab/pictographPlus", build_vignettes = TRUE)
 ```
 
+### **Package versions during development**
+PICTographPlus was developed under R (4.4.2). All package versions during development can be found at installed_packages.csv
+
 --- 
 
 ## **Access Tutorial**
