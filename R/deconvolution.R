@@ -104,6 +104,7 @@ runGSEA <- function(X_optimal,
   
 }
 
+#'@import purrr
 leadingEdgePlot <- function(X, sample1, sample2, GSEA_dir) {
   
   pdf_filename <- paste0(GSEA_dir, "/", "heatmaps_", sample1, "_", sample2, "_top30.pdf")

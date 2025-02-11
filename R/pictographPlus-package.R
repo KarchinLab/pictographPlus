@@ -21,6 +21,7 @@
 #' @import ggrepel
 #' @import DESeq2
 #' @import pheatmap
+#' @import purrr
 #' @import fgsea
 #' @import diptest
 #' @name pictographPlus-package

@@ -23,5 +23,6 @@ Imports:
   ggrepel (>= 0.9.6),
   diptest (>= 0.77-1),
   pheatmap (>= 1.0.12),
-  DESeq2 (>= 1.46.0)
+  DESeq2 (>= 1.46.0),
+  purrr (>= 1.0.2)
 RoxygenNote: 7.3.2
