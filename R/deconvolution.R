@@ -2,18 +2,24 @@
 #' 
 #' @export
 runDeconvolution <- function(rna_file,
-                          treeFile,
-                          proportionFile,
-                          purityFile,
-                          outputDir,
-                          lambda=0.2){
+                             treeFile,
+                             proportionFile,
+                             outputDir,
+                             purityFile=NULL,
+                             lambda=0.2){
   rnaData <- read.csv(rna_file, row.names=1)
   propData <-read.csv(proportionFile, row.names=1)
-  purityData <- read.csv(purityFile)
   tree <- read.csv(treeFile)
   
-  proportionDF <- propData * as.numeric(purityData[1,])
-  proportionDF <- rbind(proportionDF, 1 - purityData)
+  if (is.null(purityFile)) {
+    proportionDF <- propData
+    proportionDF <- rbind(proportionDF, 0)
+  } else {
+    purityData <- read.csv(purityFile)
+    proportionDF <- propData * as.numeric(purityData[1,])
+    proportionDF <- rbind(proportionDF, 1 - purityData)
+  }
+  
   rownames(proportionDF)[nrow(proportionDF)] <- "0"
   
   lesion <- setdiff(colnames(rnaData), colnames(proportionDF))
@@ -41,9 +47,10 @@ runDeconvolution <- function(rna_file,
   
   X_optimal <- optimize_X(Y, pi, L, lambda)
   write.csv(X_optimal, file = paste0(outputDir, "/clonal_expression.csv"))
-
+  
   return(X_optimal)
 }
+
 
 
 #' GSEA analysis using fgsea

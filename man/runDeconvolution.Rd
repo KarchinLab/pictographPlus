@@ -8,8 +8,8 @@ runDeconvolution(
   rna_file,
   treeFile,
   proportionFile,
-  purityFile,
   outputDir,
+  purityFile = NULL,
   lambda = 0.2
 )
 }
