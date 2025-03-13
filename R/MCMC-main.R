@@ -462,6 +462,7 @@ runPictograph <- function(mutation_file,
   # estimate purity
   cc <- best_tree %>% filter(parent=="root") %>% select(child)
   purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
+  # purity[purity>1] <- 1 # test
   colnames(purity) <- colnames(data$y)
   write.table(purity, file=paste(outputDir, "purity.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
