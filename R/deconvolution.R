@@ -16,15 +16,19 @@ runDeconvolution <- function(rna_file,
     proportionDF <- rbind(proportionDF, 0)
   } else {
     purityData <- read.csv(purityFile)
-    proportionDF <- propData * as.numeric(purityData[1,])
+    proportionDF <- t(t(propData) * as.numeric(purityData[1, ]))
     proportionDF <- rbind(proportionDF, 1 - purityData)
   }
   
   rownames(proportionDF)[nrow(proportionDF)] <- "0"
   
   lesion <- setdiff(colnames(rnaData), colnames(proportionDF))
-  proportionDF[[lesion]] <- 0
-  proportionDF[nrow(proportionDF), lesion] <- 1
+  
+  if (length(lesion) > 0) {
+    proportionDF[[lesion]] <- 0
+    proportionDF[nrow(proportionDF), lesion] <- 1
+  }
+  
   proportionDF <- round(proportionDF, 4)
   proportionDF <- proportionDF[, colnames(rnaData)]
   proportionDF <- proportionDF[order(rownames(proportionDF)), ]
