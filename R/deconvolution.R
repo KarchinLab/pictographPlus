@@ -30,8 +30,8 @@ runDeconvolution <- function(rna_file,
   }
   
   proportionDF <- round(proportionDF, 4)
-  proportionDF <- proportionDF[, colnames(rnaData)]
-  proportionDF <- proportionDF[order(rownames(proportionDF)), ]
+  proportionDF <- proportionDF[, colnames(rnaData), drop=FALSE]
+  proportionDF <- proportionDF[order(rownames(proportionDF)), , drop=FALSE]
   
   edge_list <- read_tree(treeFile)
   edge_list <- edge_list + 1
