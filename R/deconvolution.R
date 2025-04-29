@@ -1,6 +1,7 @@
 #' bulk RNA deconvolution using tumor evolution information
 #' 
 #' @export
+#' @import igraph
 runDeconvolution <- function(rna_file,
                              treeFile,
                              proportionFile,
