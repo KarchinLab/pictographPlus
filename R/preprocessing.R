@@ -400,7 +400,11 @@ check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(
               to_keep_index <- c(to_keep_index, 1)
               plot(density(vaf), xlim=c(0,1), main = paste(data[i,]$sample, "\n", data[i,]$chrom, ":", data[i,]$start, "-", data[i,]$end, "\n tcn: ", data[i,]$tcn, ", pval: ", tumor_test$p.value, sep=""))
             } else {
-              to_keep_index <- c(to_keep_index, 0)
+              if (data[i,]$tcn > 3 || data[i,]$tcn < 1.4) {
+                to_keep_index <- c(to_keep_index, 1)
+              } else {
+                to_keep_index <- c(to_keep_index, 0)
+              }
             }
           }
         } else { # proceed is germline distribution is not unimodality
