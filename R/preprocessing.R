@@ -31,7 +31,8 @@ importFiles <- function(mutation_file,
                         filter_cnv = T,
                         smooth_cnv= T,
                         autosome=T,
-                        pval=0.05
+                        pval=0.05,
+                        depth=NULL
                         ) {
   
   # set output directory to current directory if outputDir is NULL
@@ -41,7 +42,7 @@ importFiles <- function(mutation_file,
   
   if (!is.null(copy_number_file)) {
     # keep mutations if alt_reads >= alt_reads_thresh and vaf >= vaf_thresh
-    mutation_data = importMutationFile(mutation_file, alt_reads_thresh, vaf_thresh, purity_min)
+    mutation_data = importMutationFile(mutation_file, alt_reads_thresh, vaf_thresh, purity_min, depth)
     
     # sample orders
     name_order <- colnames(mutation_data$y)
@@ -100,7 +101,7 @@ importFiles <- function(mutation_file,
     }
     
   } else {
-    mutation_data = importMutationFileOnly(mutation_file, alt_reads_thresh, vaf_thresh, purity_min)
+    mutation_data = importMutationFileOnly(mutation_file, alt_reads_thresh, vaf_thresh, purity_min, depth)
     mutation_data$is_cn <- c(rep(0, nrow(mutation_data$y)))
     mutation_data$cnnull <- TRUE
   }
@@ -423,7 +424,7 @@ check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(
 }
 
 #' import mutation file
-importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh = 0, purity_min=0.2) {
+importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh = 0, purity_min=0.2, depth=300) {
   data <- read_csv(mutation_file, show_col_types = FALSE)
   data <- data %>% filter(alt_reads/total_reads>=vaf_thresh, alt_reads>=alt_reads_thresh)
   output_data <- list()
@@ -470,7 +471,12 @@ importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh =
   if (any(output_data$n==0)) {
     # print("Total read counts of 0 encoutered. Replaced 0 with mean total read count.")
     # output_data$n[output_data$n==0] <- round(mean(output_data$n[output_data$n!=0]))
-    output_data$n[output_data$n==0] <- 700
+    if (is.null(depth)) {
+      output_data$n <- update_n(output_data$n)
+    } else {
+      output_data$n[output_data$n==0] <- depth
+    }
+    
   }
 
   output_data$S = ncol(output_data$y)
@@ -487,7 +493,7 @@ importMutationFile <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh =
 }
 
 #' import only mutation file
-importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh = 0, purity_min=0.2) {
+importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thresh = 0, purity_min=0.2, depth=300) {
   data <- read_csv(mutation_file, show_col_types = FALSE)
   data <- data %>% filter(alt_reads/total_reads>=vaf_thresh, alt_reads>=alt_reads_thresh)
   output_data <- list()
@@ -517,8 +523,14 @@ importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thre
   }
   
   if (any(output_data$n==0)) {
-    print("Total read counts of 0 encoutered. Replaced 0 with mean total read count.")
-    output_data$n[output_data$n==0] <- 700
+    # print("Total read counts of 0 encoutered. Replaced 0 with mean total read count.")
+    # output_data$n[output_data$n==0] <- 300
+    # output_data$n <- update_n(output_data$n)
+    if (is.null(depth)) {
+      output_data$n <- update_n(output_data$n)
+    } else {
+      output_data$n[output_data$n==0] <- depth
+    }
   }
   
   output_data$icn <- as.matrix(data[c("mutation", "sample", "tumor_integer_copy_number")] %>% pivot_wider(names_from = sample, values_from = tumor_integer_copy_number, values_fill = 2))
@@ -579,4 +591,18 @@ importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thre
   }
   
   return(output_data)
+}
+
+update_n <- function(m) {
+  
+  int_means <- round(rowSums(m) / rowSums(m != 0))
+  
+  # 2. Replace zeros in each row with the corresponding int_mean
+  m2 <- m  # copy
+  for(i in seq_len(nrow(m2))) {
+    zero_locs <- m2[i, ] == 0
+    m2[i, zero_locs] <- int_means[i]
+  }
+  
+  return(m2)
 }
