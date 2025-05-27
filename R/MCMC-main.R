@@ -33,6 +33,7 @@
 #' @param smooth_cnv whether or not to process copy number alterations across samples to unify the segment start and end postions; default: TRUE
 #' @param autosome to only include autosomes; default: TRUE
 #' @param cnv_min_length minimum length of copy number alterations for it to be included in analysis
+#' @param depth total_read counts to fill in if missing from the input
 #' @export
 runPictograph <- function(mutation_file,
                      copy_number_file=NULL,
@@ -56,6 +57,7 @@ runPictograph <- function(mutation_file,
                      alt_reads_thresh = 0, 
                      vaf_thresh = 0, 
                      cnv_min_length = 1000000,
+                     depth=300,
                      tcn_normal_range = c(1.75, 2.3), 
                      filter_cnv = T, 
                      smooth_cnv = T, 
@@ -79,7 +81,8 @@ runPictograph <- function(mutation_file,
                       filter_cnv=filter_cnv,
                       smooth_cnv=smooth_cnv,
                       autosome=autosome, 
-                      pval=pval)
+                      pval=pval,
+                      depth=depth)
   
   # use working directory to save outputs if outputDir is not provided
   if (is.null(outputDir)) {
