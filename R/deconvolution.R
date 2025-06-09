@@ -7,8 +7,9 @@ runDeconvolution <- function(rna_file,
                              proportionFile,
                              outputDir,
                              purityFile=NULL,
-                             lambda=0.2){
+                             lambda=0.01){
   rnaData <- read.csv(rna_file, row.names=1)
+  rnaData <- normalize_RNA(rnaData)
   propData <-read.csv(proportionFile, row.names=1)
   tree <- read.csv(treeFile)
   
@@ -56,7 +57,31 @@ runDeconvolution <- function(rna_file,
   return(X_optimal)
 }
 
-
+#' @import DESeq2
+normalize_RNA <- function(rnaData) {
+  counts <- as.matrix(rnaData)
+  
+  # Step 3: Create a dummy colData. Here, we simply create a data frame with sample names.
+  colData <- data.frame(row.names = colnames(counts))
+  
+  # Step 4: Construct the DESeqDataSet with a dummy design (~1)
+  dds <- DESeqDataSetFromMatrix(countData = counts,
+                                colData = colData,
+                                design = ~ 1)
+  
+  # Step 5: Estimate size factors for normalization
+  dds <- estimateSizeFactors(dds)
+  
+  # (Optional) Check the computed size factors
+  # sizeFactors(dds)
+  
+  normalized_counts <- counts(dds, normalized = TRUE)
+  
+  # Convert the matrix to a data frame
+  norm_counts_df <- as.data.frame(normalized_counts)
+  
+  return(norm_counts_df)
+}
 
 #' GSEA analysis using fgsea
 #' 
@@ -67,7 +92,7 @@ runGSEA <- function(X_optimal,
                     treeFile,
                     GSEA_file=NULL,
                     top_K=5,
-                    n_permutations=1000) {
+                    n_permutations=10000) {
   
   GSEA_dir = paste0(outputDir, "/GSEA")
   suppressWarnings(dir.create(GSEA_dir))
@@ -320,7 +345,7 @@ read_GSEA_file <- function(GSEA_file) {
   return(gene_list)
 }
 
-optimize_X <- function(Y, pi, L, lambda_=0.1, X_init = NULL, learning_rate = 0.01, max_iter = 100000, tol = 1e-10, round_result = TRUE) {
+optimize_X <- function(Y, pi, L, lambda_=0.01, X_init = NULL, learning_rate = 0.01, max_iter = 100000, tol = 1e-10, round_result = TRUE) {
   # Get dimensions of pi and Y
   k <- ncol(pi)
   n <- ncol(Y)
