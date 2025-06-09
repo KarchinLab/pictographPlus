@@ -45,12 +45,12 @@ runPICTographPlus <- function(
     outputDir=NULL,
     copy_number_file=NULL,
     SNV_file=NULL,
-    lambda=0.2,
+    lambda=0.01,
     GSEA = TRUE,
     GSEA_file = NULL,
     top_K = 5,
     purityFile = NULL,
-    n_permutations=1000,
+    n_permutations=10000,
     sample_presence=TRUE,
     score="silhouette", # either BIC or silhouette
     max_K = 10, 
@@ -71,12 +71,12 @@ runPICTographPlus <- function(
     cnv_min_length=1000000,
     tcn_normal_range=c(1.75, 2.3),
     filter_cnv = T, 
-    smooth_cnv=F, 
-    autosome=T,
-    threshes=NULL,
-    dual_model=TRUE, 
-    pval=0.05, 
-    ploidy=2
+    smooth_cnv = T, 
+    autosome = T,
+    threshes = NULL,
+    dual_model = TRUE, 
+    pval = 0.05, 
+    ploidy = 2
 ) {
   
   runPictograph(mutation_file,
