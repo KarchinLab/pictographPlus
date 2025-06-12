@@ -169,7 +169,122 @@ resegmentation <- function(data, cnv_min_length=2000) {
   return(expanded_data)
 }
 
+#' @import GenomicRanges IRanges dplyr tidyr
+reSegCNV <- function(data, cnv_min_length) {
+  
+  # data_merged <- data %>%
+  #   # 1) sort
+  #   arrange(sample, chrom, start) %>%
+  #   
+  #   # 2) flag mergeable to previous
+  #   group_by(sample, chrom) %>%
+  #   mutate(
+  #     tcn_diff = abs(tcn - lag(tcn)),
+  #     baf_diff = abs(baf - lag(baf)),
+  #     mergeable = (tcn_diff <= 0.2 & baf_diff <= 0.1) %>% replace_na(FALSE),
+  #     
+  #     # 3) assign a new group whenever NOT mergeable
+  #     grp = cumsum(!mergeable),
+  #     
+  #     # compute segment length for weighting
+  #     seg_length = end - start
+  #   ) %>%
+  #   
+  #   # 4) collapse each run‐group
+  #   group_by(sample, chrom, grp) %>%
+  #   summarise(
+  #     start = min(start),
+  #     end   = max(end),
+  #     tcn   = weighted.mean(tcn, w = seg_length),
+  #     baf   = weighted.mean(baf, w = seg_length),
+  #     .groups = "drop"
+  #   ) %>%
+  #   arrange(sample, chrom, start)
+  
+  grl <- split(data, data$sample) |> 
+    lapply(function(df) {
+      GRanges(
+        seqnames = df$chrom,
+        ranges   = IRanges(start = df$start, end = df$end),
+        tcn      = df$tcn,
+        baf      = df$baf
+      )
+    })
+  grl <- GRangesList(grl)
+  
+  # — 2) Create the consensus “tiny bins”
+  all_gr        <- unlist(grl, use.names = FALSE)
+  consensus_gr  <- disjoin(all_gr)
+  
+  # — 3) Annotate each bin with each sample’s tcn & baf
+  for (s in names(grl)) {
+    hits <- findOverlaps(consensus_gr, grl[[s]])
+    mcols(consensus_gr)[[paste0("tcn_", s)]] <- NA_real_
+    mcols(consensus_gr)[[paste0("baf_", s)]] <- NA_real_
+    mcols(consensus_gr)[[paste0("tcn_", s)]][queryHits(hits)] <- mcols(grl[[s]])$tcn[subjectHits(hits)]
+    mcols(consensus_gr)[[paste0("baf_", s)]][queryHits(hits)] <- mcols(grl[[s]])$baf[subjectHits(hits)]
+  }
+  
+  # — 4) Turn into a tidy data.frame
+  df <- data.frame(
+    seqnames = as.character(seqnames(consensus_gr)),
+    start    = start(consensus_gr),
+    end      = end(consensus_gr),
+    mcols(consensus_gr),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+
+  # — 5) Prepare for breakpoint logic
+  tcn_cols <- grep("^tcn_", names(df), value = TRUE)
+  tol      <- 0.4   # adjust: 0 for exact, ~0.3–0.5 to smooth small jumps
+  
+  df2 <- df %>%
+    mutate(
+      across(all_of(tcn_cols),   ~ coalesce(., 2)),
+      across(starts_with("baf_"), ~ coalesce(., 0.5))
+    ) %>%
+    mutate(width = end - start + 1) %>%
+    group_by(seqnames) %>%
+    mutate(
+      # pack TCN into a matrix for diff’ing
+      tcn_mat    = list(as.matrix(across(all_of(tcn_cols)))),
+      break_flag = {
+        m     <- tcn_mat[[1]]
+        diffs <- abs(m[-1L, , drop=FALSE] - m[-nrow(m), , drop=FALSE])
+        c(TRUE, apply(diffs, 1, function(x) any(x > tol)))
+      },
+      seg_id = cumsum(break_flag)
+    ) %>%
+    ungroup() %>%
+    select(-tcn_mat, -break_flag)
+  
+  # — 6) Summarise into shared segments and re-pivot, using names_pattern
+  final <- df2 %>%
+    group_by(seqnames, seg_id) %>%
+    summarise(
+      start = min(start),
+      end   = max(end),
+      across(all_of(tcn_cols),  ~ sum(. * width, na.rm=TRUE) / sum(width, na.rm=TRUE)),
+      across(starts_with("baf_"), ~ sum(. * width, na.rm=TRUE) / sum(width, na.rm=TRUE)),
+      .groups = "drop"
+    ) %>%
+    pivot_longer(
+      cols       = matches("^(tcn|baf)_"),
+      names_to   = c("metric","sample"),
+      names_pattern = "^(tcn|baf)_(.+)$",
+      values_to  = "value"
+    ) %>%
+    pivot_wider(names_from = metric, values_from = value) %>%
+    rename(chrom = seqnames) %>%
+    select(sample, chrom, start, end, tcn, baf) %>%
+    filter(end - start > cnv_min_length)
+  
+  return(final)
+}
+
 #' import copy number file
+#' @import GenomicRanges IRanges dplyr tidyr
 importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, 
                                  LOH=FALSE, name_order=NULL, cnv_min_length=1000000, 
                                  tcn_normal_range=c(1.75, 2.3), filter_cnv = T, 
@@ -182,15 +297,32 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL,
   }
   
   if (smooth_cnv) {
-    data <- resegmentation(data, cnv_min_length)
+    if ("baf" %in% colnames(data)) {
+      data <- reSegCNV(data, cnv_min_length)
+    } else {
+      data <- resegmentation(data, cnv_min_length)
+    }
   }
   
   if ("baf" %in% colnames(data)) {
     message("inferring allele-specific copy number using BAF")
     
     if (filter_cnv) {
+      
+      data <- data %>%
+        group_by(chrom, start, end) %>%
+        filter(
+          sum(
+            tcn < tcn_normal_range[1] |
+              tcn > tcn_normal_range[2] |
+              baf < 0.3 |
+              baf > 0.7
+          ) >= 2
+        ) %>%
+        ungroup()
+      
       data <- data %>% 
-        filter(!(tcn >= tcn_normal_range[1] & tcn <= tcn_normal_range[2] & baf >= 0.3 & baf <= 0.7))
+        filter(!(tcn >= 1.9 & tcn <= 2.1 & baf >= 0.4 & baf <= 0.6))
     }
     
   } else if (!is.null(SNV_file)) {
