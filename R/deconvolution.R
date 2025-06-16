@@ -6,10 +6,13 @@ runDeconvolution <- function(rna_file,
                              treeFile,
                              proportionFile,
                              outputDir,
+                             normalize=TRUE,
                              purityFile=NULL,
                              lambda=0.01){
   rnaData <- read.csv(rna_file, row.names=1)
-  rnaData <- normalize_RNA(rnaData)
+  if (normalize) {
+    rnaData <- normalize_RNA(rnaData)
+  }
   propData <-read.csv(proportionFile, row.names=1)
   tree <- read.csv(treeFile)
   

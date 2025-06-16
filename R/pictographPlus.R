@@ -39,6 +39,7 @@
 #' @param top_K top_K significant pathways to be plotted as GSEA results; default: 5
 #' @param n_permutations number of permutations in fgsea; default: 10000
 #' @param purityFile purity file for each sample; default: NULL
+#' @param normalize normalize the raw count using DESeq2; default: TRUE
 runPICTographPlus <- function(
     mutation_file,
     rna_file,
@@ -49,6 +50,7 @@ runPICTographPlus <- function(
     GSEA = TRUE,
     GSEA_file = NULL,
     top_K = 5,
+    normalize=TRUE,
     purityFile = NULL,
     n_permutations=10000,
     sample_presence=TRUE,
@@ -122,6 +124,7 @@ runPICTographPlus <- function(
   X_optimal = runDeconvolution(rna_file = rna_file,
                 treeFile = treeFile,
                 proportionFile = proportionFile,
+                normalize=normalize,
                 purityFile = purityFile,
                 outputDir = outputDir,
                 lambda=lambda)
