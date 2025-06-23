@@ -245,7 +245,7 @@ def main():
                         help="Reference genome fasta file.")
     parser.add_argument("--minreads", type=int, default=3,
                         help="Minimum read count for both ref and alt to keep a site.")
-    parser.add_argument("--vaf", type=float, nargs=2, default=[0.3, 0.7],
+    parser.add_argument("--vaf", type=float, nargs=2, default=[0.1, 0.9],
                         help="Minimum and maximum VAF for normal heterozygous sites.")
     args = parser.parse_args()
 
