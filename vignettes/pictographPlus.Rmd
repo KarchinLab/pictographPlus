@@ -99,7 +99,7 @@ head(read.csv(system.file('extdata/examples/example3_snv_with_purity.csv',
 
 The CNA file should contain columns "sample", "chrom", "start", "end", "tcn" and "baf". Depending on the copy number caller used, the users may need to convert the numbers to the desired format.
 
-For example, if using facets for copy number calls, users can get tcn by using the formula $tcn = 2 * 2^{cnlr.median.clust}$, and baf using the formula $baf = 1 / (1 + 1 / 2 ^ {mafR.clust})$
+For example, if using facets for copy number calls, users can get tcn by using the formula $tcn = ploidy * 2^{cnlr.median.clust}$, and baf using the formula $baf = 1 / (1 + 1 / 2 ^ {mafR.clust})$
 
 ```{r}
 head(read.csv(system.file('extdata/examples/example3_cna.csv', 
