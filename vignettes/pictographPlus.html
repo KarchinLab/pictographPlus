@@ -523,7 +523,7 @@ column with be optional.</p>
 “end”, “tcn” and “baf”. Depending on the copy number caller used, the
 users may need to convert the numbers to the desired format.</p>
 <p>For example, if using facets for copy number calls, users can get tcn
-by using the formula <span class="math inline">\(tcn = 2 *
+by using the formula <span class="math inline">\(tcn = ploidy *
 2^{cnlr.median.clust}\)</span>, and baf using the formula <span class="math inline">\(baf = 1 / (1 + 1 / 2 ^ {mafR.clust})\)</span></p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/example3_cna.csv&#39;</span>, </span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>                          <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
