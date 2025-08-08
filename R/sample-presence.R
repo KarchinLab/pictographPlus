@@ -1,6 +1,6 @@
 #' sample presence for MCMC
 #' @export
-separateMutationsBySamplePresence <- function(input_data) {
+separateMutationsBySamplePresence <- function(input_data, min_mutation_per_cluster=5) {
   # returns list of lists -- 
   # each item of list contains input data for a mutation sample presence set 
   # original mutation indices from input_data are recorded in $mutation_indices
@@ -13,6 +13,7 @@ separateMutationsBySamplePresence <- function(input_data) {
   names(type_indices) <- types
   
   sep_list <- list()
+  toWarn = FALSE
   for (t in seq_len(length(types))) {
     sep_list[[types[t]]] <- list(pattern = types[t],
                                  mutation_indices = type_indices[[types[t]]],
@@ -25,6 +26,10 @@ separateMutationsBySamplePresence <- function(input_data) {
                                  icn = input_data$icn[type_indices[[types[t]]]],
                                  MutID = input_data$MutID[type_indices[[types[t]]]],
                                  purity = input_data$purity)
+    if (length(sep_list[[types[t]]]$MutID) < min_mutation_per_cluster) {toWarn = T}
   }
+  
+  if (toWarn) {warning("Using sample_presence mode, but exists clusters where number of mutations in the cluster is less than min_mutation_per_cluster. Please consider to set sample_presence = FALSE")}
+  
   return(sep_list)
 }

@@ -53,7 +53,7 @@ runPICTographPlus <- function(
     normalize=TRUE,
     purityFile = NULL,
     n_permutations=10000,
-    sample_presence=TRUE,
+    sample_presence=FALSE,
     score="silhouette", # either BIC or silhouette
     max_K = 10, 
     min_mutation_per_cluster=5, 

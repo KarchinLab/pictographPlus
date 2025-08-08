@@ -39,7 +39,7 @@ runPictograph <- function(mutation_file,
                      copy_number_file=NULL,
                      SNV_file=NULL,
                      outputDir=NULL,
-                     sample_presence=TRUE,
+                     sample_presence=FALSE,
                      score="silhouette", # either BIC or silhouette
                      max_K = 10, 
                      min_mutation_per_cluster=5, 
@@ -117,7 +117,7 @@ runPictograph <- function(mutation_file,
       input_data <- assign("input_data", input_data, envir = .GlobalEnv)
       
       # separate mutations by sample presence
-      sep_list <- separateMutationsBySamplePresence(input_data)
+      sep_list <- separateMutationsBySamplePresence(input_data, min_mutation_per_cluster)
       
       # For each presence set, run clustering MCMC, calculate silhouette and BIC and choose best K
       all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
@@ -162,7 +162,7 @@ runPictograph <- function(mutation_file,
                            purity=data$purity)
         
         # separate mutations by sample presence
-        sep_list <- separateMutationsBySamplePresence(input_data)
+        sep_list <- separateMutationsBySamplePresence(input_data, min_mutation_per_cluster)
         
         # For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
         all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
@@ -204,7 +204,7 @@ runPictograph <- function(mutation_file,
         input_data <- assign("input_data", input_data, envir = .GlobalEnv)
         
         # separate mutations by sample presence
-        sep_list <- separateMutationsBySamplePresence(input_data)
+        sep_list <- separateMutationsBySamplePresence(input_data, min_mutation_per_cluster)
         
         # For each presence set, run clustering MCMC
         all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=sample_presence, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
@@ -227,7 +227,7 @@ runPictograph <- function(mutation_file,
                            MutID=data$MutID[index],
                            purity=data$purity)
         
-        sep_list <- separateMutationsBySamplePresence(input_data)
+        sep_list <- separateMutationsBySamplePresence(input_data, min_mutation_per_cluster)
         
         # For each presence set, run clustering MCMC, calc BIC and choose best K (min BIC)
         all_set_results <- runMCMCForAllBoxes(sep_list, sample_presence=TRUE, ploidy=ploidy, max_K = max_K, min_mutation_per_cluster = min_mutation_per_cluster, 
@@ -332,10 +332,10 @@ runPictograph <- function(mutation_file,
   
   # record estimated icn and multiplicity information
   icnTable <- writeIcnTable(chains$icn_chain, Mut_ID = input_data$MutID)
-  write.table(icnTable, file=paste(outputDir, "icn_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  # write.table(icnTable, file=paste(outputDir, "icn_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   multiplicityTable <- writeMultiplicityTable(chains$m_chain, chains$icn_chain, Mut_ID = input_data$MutID)
-  write.table(multiplicityTable, file=paste(outputDir, "multiplicity_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  # write.table(multiplicityTable, file=paste(outputDir, "multiplicity_all.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   
   icnTableCN <- icnTable[data$is_cn==1,]
   multiplicityTableCN <- multiplicityTable[data$is_cn==1,]
