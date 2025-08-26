@@ -4,7 +4,7 @@
 \alias{separateMutationsBySamplePresence}
 \title{sample presence for MCMC}
 \usage{
-separateMutationsBySamplePresence(input_data)
+separateMutationsBySamplePresence(input_data, min_mutation_per_cluster = 5)
 }
 \description{
 sample presence for MCMC

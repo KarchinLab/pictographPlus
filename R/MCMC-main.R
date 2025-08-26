@@ -40,9 +40,9 @@ runPictograph <- function(mutation_file,
                      SNV_file=NULL,
                      outputDir=NULL,
                      sample_presence=FALSE,
-                     score="silhouette", # either BIC or silhouette
+                     score="BIC", # either BIC or silhouette
                      max_K = 10, 
-                     min_mutation_per_cluster=5, 
+                     min_mutation_per_cluster=1, 
                      min_cluster_thresh=0.05,
                      cluster_diff_thresh=0.05,
                      n.iter=5000, 
@@ -309,7 +309,11 @@ runPictograph <- function(mutation_file,
       best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$BIC_K)
     }
   } else {
-    best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$min_BIC)
+    if (score=="silhouette") {
+      best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$silhouette_K)
+    } else {
+      best_set_chains <- collectBestKChains(all_set_results, chosen_K = set_k_choices$BIC_K)
+    }
   }
   
   chains <- mergeSetChains(best_set_chains, input_data)
@@ -569,9 +573,9 @@ getDrivers <- function(ClusterAssignmentTable, driverList, cytobandFile) {
           filter(chrom == chrom1, start >= start1, end <= end1) %>%
           pull(gene)
         
-        # Create the updated Mut_ID by appending genes and DUP/DEL
+        # Create the updated Mut_ID by appending genes and AMP/DEL
         gene_list <- if (length(matching_genes) > 0) paste(matching_genes, collapse = ";") else ""
-        dup_del <- if (icn_value > 2) "DUP" else if (icn_value < 2) "DEL" else "LOH"
+        dup_del <- if (icn_value > 2) "AMP" else if (icn_value < 2) "DEL" else "LOH"
         paste(gene_list, dup_del, sep = "_")
         # paste(Mut_ID_processed, gene_list, dup_del, sep = "_")
       } else {

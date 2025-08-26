@@ -9,6 +9,7 @@ runDeconvolution(
   treeFile,
   proportionFile,
   outputDir,
+  normalize = TRUE,
   purityFile = NULL,
   lambda = 0.01
 )

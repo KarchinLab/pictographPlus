@@ -14,9 +14,10 @@ runPICTographPlus(
   GSEA = TRUE,
   GSEA_file = NULL,
   top_K = 5,
+  normalize = TRUE,
   purityFile = NULL,
   n_permutations = 10000,
-  sample_presence = TRUE,
+  sample_presence = FALSE,
   score = "silhouette",
   max_K = 10,
   min_mutation_per_cluster = 5,
@@ -62,6 +63,8 @@ runPICTographPlus(
 \item{GSEA_file}{geneset file in MSigDB .gmt format; the geneset name will show up in plotting}
 
 \item{top_K}{top_K significant pathways to be plotted as GSEA results; default: 5}
+
+\item{normalize}{normalize the raw count using DESeq2; default: TRUE}
 
 \item{purityFile}{purity file for each sample; default: NULL}
 

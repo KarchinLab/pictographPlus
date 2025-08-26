@@ -9,7 +9,7 @@ runPictograph(
   copy_number_file = NULL,
   SNV_file = NULL,
   outputDir = NULL,
-  sample_presence = TRUE,
+  sample_presence = FALSE,
   score = "silhouette",
   max_K = 10,
   min_mutation_per_cluster = 5,
