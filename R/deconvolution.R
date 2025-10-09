@@ -272,6 +272,7 @@ GSEA_diff <- function(expr_matrix, sample1, sample2, gene_list, GSEA_dir, n_perm
   return(gsea_results)
 }
 
+#' @export
 read_tree <- function(treeFile) {
   edges <- list()
   con <- file(treeFile, "r")
