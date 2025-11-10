@@ -820,8 +820,8 @@ computePosteriorTable <- function(all_set_results) {
     BIC_values <- res$BIC$BIC
     
     # numerical stability: subtract min BIC
-    exp_vals <- exp(-0.5 * (BIC_values))
-    #exp_vals <- exp(-0.5 * (BIC_values - min(BIC_values)))
+    #exp_vals <- exp(-0.5 * (BIC_values))
+    exp_vals <- exp(-0.5 * (BIC_values - min(BIC_values)))
     posterior_probs <- exp_vals / sum(exp_vals)
     
     posterior_table_list[[set_name]] <- data.frame(
