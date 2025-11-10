@@ -80,7 +80,7 @@ runPICTographPlus <- function(
     pval = 0.05, 
     ploidy = 2
 ) {
-  
+  message("Running Tumor Evolution Reconstruction")
   runPictograph(mutation_file,
            copy_number_file=copy_number_file,
            SNV_file=SNV_file,
@@ -120,7 +120,7 @@ runPICTographPlus <- function(
   # if (normalization) {
   #   purityFile = paste(outputDir, "purity.csv", sep="/")
   # }
-  
+  message("Running RNA Deconvolution")
   X_optimal = runDeconvolution(rna_file = rna_file,
                 treeFile = treeFile,
                 proportionFile = proportionFile,
