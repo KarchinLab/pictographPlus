@@ -25,6 +25,7 @@
 #' @param LOH whether or not to include copy number segments that are copy neutral but LOH; default: FALSE
 #' @param purity_min minimum purity for tumor samples; default: 0.2
 #' @param driverFile list of driver genes used for visualization. See vignette for details.
+#' @param selectedMutFile list of genes or mutations used for visualization. See vignette for details.
 #' @param cytobandFile list of cytoband regions used for visualization. See vignette for details.
 #' @param alt_reads_thresh minimum number of alternative read count for a SSM to be included in the analysis; default: 0
 #' @param vaf_thresh minimum VAF for a SSM to be included in the analysis; default: 0
@@ -64,7 +65,8 @@ runPICTographPlus <- function(
     thin=10, 
     mc.cores=8, 
     inits=list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123),
-    driverFile = NULL,
+    #driverFile = NULL,
+    selectedMutFile = NULL,
     cytobandFile = NULL,
     LOH = FALSE,
     purity_min=0.2, 
@@ -102,7 +104,8 @@ runPICTographPlus <- function(
            threshes=threshes,
            LOH=LOH,
            purity_min=purity_min,
-           driverFile=driverFile,
+           #driverFile=driverFile,
+           selectedMutFile=selectedMutFile,
            cytobandFile = cytobandFile,
            alt_reads_thresh = alt_reads_thresh,
            vaf_thresh = vaf_thresh,

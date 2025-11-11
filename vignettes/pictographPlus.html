@@ -775,8 +775,8 @@ applicable to Windows</td>
 <td align="left">runPictograph</td>
 </tr>
 <tr class="odd">
-<td align="left">driverFile</td>
-<td align="left">list of driver genes used for visualization</td>
+<td align="left">selectedMutFile</td>
+<td align="left">list of genes or mutations used for visualization</td>
 <td align="left">NULL</td>
 <td align="left">runPictograph</td>
 </tr>
@@ -1019,11 +1019,12 @@ each column to a sample.</p>
 </tbody>
 </table>
 </div>
-<div id="driverfile" class="section level2">
-<h2>6.4 <strong>driverFile</strong></h2>
-<p>A CSV file that contains driver mutation information used for
-plotting by <code>runPictograph()</code>.<br />
-If you use this file, ensure that the corresponding mutation file
+<div id="selectedmutfile" class="section level2">
+<h2>6.4 <strong>SelectedMutFile</strong></h2>
+<p>A CSV file that contains mutation information or gene region
+information used for plotting by <code>runPictograph()</code>.<br />
+If you use this file to plot any mutations in certain gene region
+information on the tree, ensure that the corresponding mutation file
 follows the format <strong>gene_extraInformation</strong>, where
 <strong>gene</strong> is the actual gene name. The
 <code>gene_type</code> column can be <strong>oncogene</strong> or
@@ -1052,6 +1053,24 @@ follows the format <strong>gene_extraInformation</strong>, where
 <td align="right">51028528</td>
 <td align="right">51085045</td>
 <td align="left">tumor_suppressor</td>
+</tr>
+</tbody>
+</table>
+<p>If you use this file to plot any specific mutations on the tree,
+ensure that all specified mutation names match mutation column in SSM
+file.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">mutation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">chr1-57-clone1</td>
+</tr>
+<tr class="even">
+<td align="left">chr1-110-clone1</td>
 </tr>
 </tbody>
 </table>

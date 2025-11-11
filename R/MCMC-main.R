@@ -25,6 +25,7 @@
 #' @param LOH whether or not to include copy number segments that are copy neutral but LOH; default: FALSE
 #' @param purity_min minimum purity for tumor samples; default: 0.2
 #' @param driverFile list of driver genes used for visualization. See vignette for details.
+#' @param selectedMutFile list of genes or mutations used for visualization. See vignette for details.
 #' @param cytobandFile list of cytoband regions used for visualization. See vignette for details.
 #' @param alt_reads_thresh minimum number of alternative read count for a SSM to be included in the analysis; default: 0
 #' @param vaf_thresh minimum VAF for a SSM to be included in the analysis; default: 0
@@ -52,7 +53,8 @@ runPictograph <- function(mutation_file,
                      inits=list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123),
                      LOH = FALSE,
                      purity_min=0.2,
-                     driverFile = NULL,
+                     #driverFile = NULL,
+                     selectedMutFile = NULL,
                      cytobandFile = NULL,
                      alt_reads_thresh = 0, 
                      vaf_thresh = 0, 
@@ -474,12 +476,24 @@ runPictograph <- function(mutation_file,
   scores <- assign("scores", scores, envir = .GlobalEnv)
   
   ##### find dirver mutations
+  # driverList = NULL
+  # filteredDriverList = NULL
+  # if (!is.null(driverFile)) {
+  #   driverList <- read.csv(driverFile)
+  #   filteredDriverList <- getDrivers(clusterassignmentTable, driverList, cytobandFile)
+  #   write.table(filteredDriverList, file=paste(outputDir, "labelling.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  # }
   driverList = NULL
   filteredDriverList = NULL
-  if (!is.null(driverFile)) {
-    driverList <- read.csv(driverFile)
-    filteredDriverList <- getDrivers(clusterassignmentTable, driverList, cytobandFile)
-    write.table(filteredDriverList, file=paste(outputDir, "labelling.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+  if (!is.null(selectedMutFile)) {
+    driverList <- read.csv(selectedMutFile)
+    if(ncol(driverList)>1){
+      filteredDriverList <- getDrivers(clusterassignmentTable, driverList, cytobandFile)
+      write.table(filteredDriverList, file=paste(outputDir, "labelling.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    }else{
+      filteredDriverList <- getLabels(clusterassignmentTable, driverList, cytobandFile)
+      write.table(filteredDriverList, file=paste(outputDir, "labelling.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
+    }
   }
   
   # plot all possible trees
@@ -677,7 +691,85 @@ getDrivers <- function(ClusterAssignmentTable, driverList, cytobandFile) {
   
   return(filtered_table)
 }
-
+getLabels <- function(ClusterAssignmentTable, driverList, cytobandFile) {
+  
+  # Ensure column name consistency
+  colnames(driverList)[1] <- "mutation"
+  
+  # Filter cluster assignment table for matching driver mutations
+  filtered_table <- ClusterAssignmentTable %>%
+    filter(Mut_ID %in% driverList$mutation) %>%
+    mutate(
+      # Identify if this mutation is a CNV segment
+      is_chr = str_starts(Mut_ID, "chr"),
+      chrom_start_end = ifelse(is_chr, str_extract(Mut_ID, "chr[0-9XY]+-[0-9]+-[0-9]+"), NA)
+    ) %>%
+    select(Mut_ID, Cluster, chrom_start_end)
+  
+  # If nothing matched, return NULL
+  if (nrow(filtered_table) == 0) {
+    return(NULL)
+  }
+  
+  # Add cytoband info if provided
+  if (!is.null(cytobandFile)) {
+    allowed_chromosomes <- c(paste0("chr", 1:22), "chrX", "chrY")
+    cytobandTable <- read.delim(cytobandFile, header = FALSE, stringsAsFactors = FALSE)
+    cytobandTable <- cytobandTable[cytobandTable[[1]] %in% allowed_chromosomes, ]
+    colnames(cytobandTable) <- c("chrom", "start", "end", "cytoband", "ext")
+    cytobandTable <- unique(cytobandTable)
+    
+    filtered_table <- filtered_table %>%
+      mutate(
+        chromosome = sub("-.*", "", chrom_start_end),
+        starts = as.numeric(sub("-.*", "", sub(".*?-", "", chrom_start_end))),
+        ends = as.numeric(sub(".*-", "", chrom_start_end))
+      ) %>%
+      rowwise() %>%
+      mutate(
+        cytoband = if (!is.na(chromosome)) {
+          match_start <- which(cytobandTable$chrom == chromosome &
+                                 cytobandTable$start <= starts &
+                                 cytobandTable$end > starts)
+          cytoband_start <- if (length(match_start) > 0) cytobandTable$cytoband[match_start[1]] else NA
+          
+          match_end <- which(cytobandTable$chrom == chromosome &
+                               cytobandTable$start <= ends &
+                               cytobandTable$end > ends)
+          cytoband_end <- if (length(match_end) > 0) cytobandTable$cytoband[match_end[1]] else NA
+          
+          if (!is.na(cytoband_start) && cytoband_start == cytoband_end) {
+            cytoband_start
+          } else {
+            paste(na.omit(c(cytoband_start, cytoband_end)), collapse = "-")
+          }
+        } else {
+          NA
+        },
+        Mut_ID = if (!is.na(cytoband)) {
+          paste(chromosome, cytoband, Mut_ID, sep = "_")
+        } else {
+          Mut_ID
+        }
+      ) %>%
+      ungroup() %>%
+      select(Mut_ID, Cluster, chrom_start_end)
+    
+  } else {
+    filtered_table <- filtered_table %>%
+      rowwise() %>%
+      mutate(
+        Mut_ID = if (!is.na(chrom_start_end)) {
+          paste(chrom_start_end, Mut_ID, sep = "_")
+        } else {
+          Mut_ID
+        }
+      ) %>%
+      ungroup()
+  }
+  
+  return(filtered_table)
+}
 #' Plot all trees with the highest scores
 plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data, filteredDriverList) {
   # plot all tree with best scores
