@@ -35,6 +35,7 @@
 #' @param autosome to only include autosomes; default: TRUE
 #' @param cnv_min_length minimum length of copy number alterations for it to be included in analysis
 #' @param depth total_read counts to fill in if missing from the input
+#' @param sampleorderFile a csv file that orders samples in the piechart output
 #' @export
 runPictograph <- function(mutation_file,
                      copy_number_file=NULL,
@@ -67,7 +68,8 @@ runPictograph <- function(mutation_file,
                      dual_model=TRUE,
                      ploidy=2,
                      pval=0.05,
-                     threshes=NULL
+                     threshes=NULL,
+                     sampleorderFile=NULL
                      ) {
   
   data <- importFiles(mutation_file=mutation_file, 
@@ -497,7 +499,7 @@ runPictograph <- function(mutation_file,
   }
   
   # plot all possible trees
-  plotAllTrees(outputDir, scores, all_spanning_trees, mcfTable, data, filteredDriverList)
+  plotAllTrees(outputDir, scores, all_spanning_trees, mcfTable, data, filteredDriverList, sampleorderFile)
   
   # highest scoring tree
   best_tree <- all_spanning_trees[[which(scores == max(scores))[length(which(scores == max(scores)))]]]
@@ -524,9 +526,18 @@ runPictograph <- function(mutation_file,
 
   write.csv(subclone_props, file=paste(outputDir, "subclone_proportion.csv", sep="/"), quote = FALSE)
 
-  png(paste(outputDir, "subclone_props.png", sep="/"))
-  print(plotSubclonePie(subclone_props, sample_names=colnames(input_data$y)))
-  dev.off()
+  if(is.null(sampleorderFile)){
+    png(paste(outputDir, "subclone_props.png", sep="/"))
+    print(plotSubclonePie(subclone_props, sample_names=colnames(input_data$y)))
+    dev.off()
+  }else{
+    order_df <- read.csv(sampleorderFile)
+    ordered_sample_names <- order_df$sample_name[order(order_df$order)]
+    png(paste(outputDir, "subclone_props.png", sep="/"))
+    print(plotSubclonePie(subclone_props, sample_names=ordered_sample_names))
+    dev.off()
+  }
+
 
   # save all data
   save.image(file=paste(outputDir, "PICTographPlus.RData", sep="/"))
@@ -771,7 +782,7 @@ getLabels <- function(ClusterAssignmentTable, driverList, cytobandFile) {
   return(filtered_table)
 }
 #' Plot all trees with the highest scores
-plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data, filteredDriverList) {
+plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data, filteredDriverList, sampleorderFile) {
   # plot all tree with best scores
   
   outputDir = paste(outputDir, "all_trees", sep = "/")
@@ -799,10 +810,19 @@ plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data, 
       colnames(subclone_props) = colnames(data$y)
   
       write.csv(subclone_props, file=paste(outputDir, "/tree_", i, "_subclone_proportion.csv", sep=""), quote = FALSE)
-  
-      png(paste(outputDir, "/tree_", i, "_subclone_proportion.png", sep=""))
-      print(plotSubclonePie(subclone_props, sample_names=colnames(input_data$y)))
-      dev.off()
+      
+      if(is.null(sampleorderFile)){
+        png(paste(outputDir, "/tree_", i, "_subclone_proportion.png", sep=""))
+        print(plotSubclonePie(subclone_props, sample_names=colnames(input_data$y)))
+        dev.off()
+      }else{
+        order_df <- read.csv(sampleorderFile)
+        ordered_sample_names <- order_df$sample_name[order(order_df$order)]
+        png(paste(outputDir, "/tree_", i, "_subclone_proportion.png", sep=""))
+        print(plotSubclonePie(subclone_props, sample_names=ordered_sample_names))
+        dev.off()
+      }
+
     }
   }
 }

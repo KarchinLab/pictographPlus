@@ -212,6 +212,7 @@ The parameters are for function ```bash runPICTographPlus``` and the indicated m
 | filter_cnv | whether or not to filter CNAs | TRUE | runPictograph |
 | smooth_cnv | whether or not to process copy number alterations across samples to unify the segment start and end postions | TRUE | runPictograph |
 | autosome | to only include autosome | TRUE | runPictograph |
+| sampleorderFile | a csv file that defines the order of samples in the piechart | NULL | runPictograph |
 | rna_file | bulk RNA file in integer read counts; rows are samples and columns are genes | Required | runDeconvolution |
 | treeFile | tumor clone tree file | NULL | runDeconvolution runGSEA|
 | proportionFile | subclone proportion file | NULL | runDeconvolution |
@@ -221,6 +222,7 @@ The parameters are for function ```bash runPICTographPlus``` and the indicated m
 | GSEA_file | geneset file in MSigDB .gmt format | NULL | runGSEA |
 | top_K | top_K significant pathways to be plotted as GSEA results | 5 | runGSEA |
 | n_permutations | number of permutations in fgsea | 10000 | runGSEA |
+
 ------
 
 # 5. Output files
@@ -290,3 +292,11 @@ A TSV file of cytoband information used for plotting by `runPictograph()`.
 |:-----|------:|--------:|:-------|:-------|
 | chr1 |     0 |  2300000 | p36.33 | gneg   |
 | chr1 | 2300000 |  5300000 | p36.32 | gpos25 |
+
+## 6.5 **sampleorderFile**
+A csv file that defines the order of samples in the piechart, plotting by `runPictograph()`.
+
+| order  | sample_name | 
+|:-----|------:|
+| 1 | sample1 |  
+| 2 | sample2 |  

@@ -814,57 +814,64 @@ across samples to unify the segment start and end postions</td>
 <td align="left">runPictograph</td>
 </tr>
 <tr class="odd">
+<td align="left">sampleorderFile</td>
+<td align="left">a csv file that defines the order of samples in the
+piechart</td>
+<td align="left">NULL</td>
+<td align="left">runPictograph</td>
+</tr>
+<tr class="even">
 <td align="left">rna_file</td>
 <td align="left">bulk RNA file in integer read counts; rows are samples
 and columns are genes</td>
 <td align="left">Required</td>
 <td align="left">runDeconvolution</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">treeFile</td>
 <td align="left">tumor clone tree file</td>
 <td align="left">NULL</td>
 <td align="left">runDeconvolution runGSEA</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">proportionFile</td>
 <td align="left">subclone proportion file</td>
 <td align="left">NULL</td>
 <td align="left">runDeconvolution</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">normalize</td>
 <td align="left">normalize the raw count using DESeq2</td>
 <td align="left">TRUE</td>
 <td align="left">runDeconvolution</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">purityFile</td>
 <td align="left">tumor purity file</td>
 <td align="left">NULL</td>
 <td align="left">runDeconvolution</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">lambda</td>
 <td align="left">lambda weight for Laplacian matrix used in
 deconvolution</td>
 <td align="left">0.01</td>
 <td align="left">runDeconvolution</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">GSEA_file</td>
 <td align="left">geneset file in MSigDB .gmt format</td>
 <td align="left">NULL</td>
 <td align="left">runGSEA</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">top_K</td>
 <td align="left">top_K significant pathways to be plotted as GSEA
 results</td>
 <td align="left">5</td>
 <td align="left">runGSEA</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">n_permutations</td>
 <td align="left">number of permutations in fgsea</td>
 <td align="left">10000</td>
@@ -1103,6 +1110,29 @@ file.</p>
 <td align="right">5300000</td>
 <td align="left">p36.32</td>
 <td align="left">gpos25</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="sampleorderfile" class="section level2">
+<h2>6.5 <strong>sampleorderFile</strong></h2>
+<p>A csv file that defines the order of samples in the piechart,
+plotting by <code>runPictograph()</code>.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">order</th>
+<th align="right">sample_name</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1</td>
+<td align="right">sample1</td>
+</tr>
+<tr class="even">
+<td align="left">2</td>
+<td align="right">sample2</td>
 </tr>
 </tbody>
 </table>

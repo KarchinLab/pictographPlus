@@ -41,6 +41,7 @@
 #' @param n_permutations number of permutations in fgsea; default: 10000
 #' @param purityFile purity file for each sample; default: NULL
 #' @param normalize normalize the raw count using DESeq2; default: TRUE
+#' @param sampleorderFile a csv file that orders samples in the piechart output
 runPICTographPlus <- function(
     mutation_file,
     rna_file,
@@ -80,7 +81,8 @@ runPICTographPlus <- function(
     threshes = NULL,
     dual_model = TRUE, 
     pval = 0.05, 
-    ploidy = 2
+    ploidy = 2,
+    sampleorderFile=NULL
 ) {
   
   runPictograph(mutation_file,
@@ -113,7 +115,8 @@ runPICTographPlus <- function(
            tcn_normal_range=tcn_normal_range,
            filter_cnv=filter_cnv,
            smooth_cnv=smooth_cnv, 
-           autosome=autosome
+           autosome=autosome,
+           sampleorderFile=sampleorderFile
   )
   
   treeFile = paste(outputDir, "tree.csv", sep="/")

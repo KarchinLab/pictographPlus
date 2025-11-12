@@ -50,6 +50,8 @@ plotSubclonePie <- function(subclone_props, palette=viridis::viridis, sample_nam
                  values_to = "Proportion")
   
   clone_colors <- palette(nrow(subclone_props))
+  props_tb$Sample <- factor(props_tb$Sample,
+                            levels = sample_names)
   ggplot(props_tb, aes(x="", y=Proportion, fill = Subclone)) +
     geom_bar(stat="identity", width=1, color="black") +
     coord_polar("y", start=0) +
