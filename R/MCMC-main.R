@@ -471,13 +471,21 @@ runPictograph <- function(mutation_file,
   filteredDriverList = NULL
   if (!is.null(selectedMutFile)) {
     driverList <- read.csv(selectedMutFile)
-    if(ncol(driverList)>1){
-      filteredDriverList <- getDrivers(clusterassignmentTable, driverList, cytobandFile)
-      #write.table(filteredDriverList, file=paste(outputDir, "labelling.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-    }else{
-      filteredDriverList <- getLabels(clusterassignmentTable, driverList, cytobandFile)
-      #write.table(filteredDriverList, file=paste(outputDir, "labelling.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
-    }
+    matchTable <- clusterassignmentTable %>%
+      left_join(
+        data[["position"]], by = c("Mut_ID" = "mutation")
+      ) %>% 
+      mutate(
+        chrom = ifelse(is.na(chrom), sub("-.*", "", Mut_ID_processed), chrom),
+        start      = ifelse(is.na(start),
+                            sub("^[^-]+-([^-]+)-.*", "\\1", Mut_ID_processed),
+                            start),
+        end        = ifelse(is.na(end),
+                            sub(".*-", "", Mut_ID_processed),
+                            end)
+      ) %>% 
+      select(-c(Mut_ID,Mut_ID_processed))
+    filteredDriverList <- getLabels(matchTable, driverList,cytobandFile)
   }
   
   # # plot all possible trees
@@ -717,85 +725,95 @@ getDrivers <- function(ClusterAssignmentTable, driverList, cytobandFile) {
   
   return(filtered_table)
 }
-getLabels <- function(ClusterAssignmentTable, driverList, cytobandFile) {
+getLabels <- function(matchTable, driverList, cytobandFile) {
   
-  # Ensure column name consistency
-  colnames(driverList)[1] <- "mutation"
+  # Standardize column names
+  matchTable <- matchTable %>%
+    rename(match_chrom = chrom,
+           match_start = start,
+           match_end = end)
   
-  # Filter cluster assignment table for matching driver mutations
-  filtered_table <- ClusterAssignmentTable %>%
-    filter(Mut_ID %in% driverList$mutation) %>%
-    mutate(
-      # Identify if this mutation is a CNV segment
-      is_chr = str_starts(Mut_ID, "chr"),
-      chrom_start_end = ifelse(is_chr, str_extract(Mut_ID, "chr[0-9XY]+-[0-9]+-[0-9]+"), NA)
+  driverList <- driverList %>%
+    rename(driver_chrom = chr,
+           driver_start = start,
+           driver_end = end)
+  
+  # Perform interval overlap matching
+  driver_hits <- driverList %>%
+    mutate(dummy = 1) %>%
+    inner_join(matchTable %>% mutate(dummy = 1), by = "dummy",
+               relationship = "many-to-many") %>%
+    select(-dummy) %>%
+    
+    # Overlap condition:
+    filter(
+      driver_chrom == match_chrom,
+      driver_start <= match_end,
+      driver_end >= match_start
     ) %>%
-    select(Mut_ID, Cluster, chrom_start_end)
+    
+    # Output formatting
+    transmute(
+      Mut_ID = name_on_tree,
+      Cluster = Cluster,
+      chrom_start_end = paste0(driver_chrom, "-", driver_start, "-", driver_end)
+    ) %>%
+    distinct()
   
-  # If nothing matched, return NULL
-  if (nrow(filtered_table) == 0) {
-    return(NULL)
-  }
   
-  # Add cytoband info if provided
+  
   if (!is.null(cytobandFile)) {
     allowed_chromosomes <- c(paste0("chr", 1:22), "chrX", "chrY")
-    cytobandTable <- read.delim(cytobandFile, header = FALSE, stringsAsFactors = FALSE)
+    cytobandTable = read.delim(cytobandFile, header = FALSE, stringsAsFactors = FALSE)
     cytobandTable <- cytobandTable[cytobandTable[[1]] %in% allowed_chromosomes, ]
     colnames(cytobandTable) <- c("chrom", "start", "end", "cytoband", "ext")
     cytobandTable <- unique(cytobandTable)
     
     filtered_table <- filtered_table %>%
       mutate(
-        chromosome = sub("-.*", "", chrom_start_end),
-        starts = as.numeric(sub("-.*", "", sub(".*?-", "", chrom_start_end))),
-        ends = as.numeric(sub(".*-", "", chrom_start_end))
-      ) %>%
+        chromosome = sub("-.*", "", chrom_start_end),                    # Extract chromosome
+        starts = as.numeric(sub("-.*", "", sub(".*?-", "", chrom_start_end))), # Extract starts
+        ends = as.numeric(sub(".*-", "", chrom_start_end))                    # Extract ends
+      )
+    
+    filtered_table <- filtered_table %>%
       rowwise() %>%
       mutate(
         cytoband = if (!is.na(chromosome)) {
-          match_start <- which(cytobandTable$chrom == chromosome &
-                                 cytobandTable$start <= starts &
+          # Find the cytoband for the start position
+          match_start <- which(cytobandTable$chrom == chromosome & 
+                                 cytobandTable$start <= starts & 
                                  cytobandTable$end > starts)
           cytoband_start <- if (length(match_start) > 0) cytobandTable$cytoband[match_start[1]] else NA
           
-          match_end <- which(cytobandTable$chrom == chromosome &
-                               cytobandTable$start <= ends &
+          # Find the cytoband for the end position
+          match_end <- which(cytobandTable$chrom == chromosome & 
+                               cytobandTable$start <= ends & 
                                cytobandTable$end > ends)
           cytoband_end <- if (length(match_end) > 0) cytobandTable$cytoband[match_end[1]] else NA
           
+          # Combine cytobands
           if (!is.na(cytoband_start) && cytoband_start == cytoband_end) {
             cytoband_start
           } else {
             paste(na.omit(c(cytoband_start, cytoband_end)), collapse = "-")
           }
         } else {
-          NA
+          NA  # If chromosome is NA, cytoband is NA
         },
         Mut_ID = if (!is.na(cytoband)) {
-          paste(chromosome, cytoband, Mut_ID, sep = "_")
-        } else {
-          Mut_ID
-        }
-      ) %>%
-      ungroup() %>%
-      select(Mut_ID, Cluster, chrom_start_end)
-    
-  } else {
-    filtered_table <- filtered_table %>%
-      rowwise() %>%
-      mutate(
-        Mut_ID = if (!is.na(chrom_start_end)) {
-          paste(chrom_start_end, Mut_ID, sep = "_")
+          paste(chromosome,cytoband, Mut_ID, sep = "_")
         } else {
           Mut_ID
         }
       ) %>%
       ungroup()
   }
-  
-  return(filtered_table)
+  if (nrow(driver_hits) == 0) return(NULL)
+  return(driver_hits)
 }
+
+
 #' Plot all trees with the highest scores
 plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data, filteredDriverList, sampleorderFile, new_cluster_names) {
   # plot all tree with best scores

@@ -53,6 +53,62 @@ calcChainBIC <- function(chains, input.data, pattern, model_type) {
   BIC <- log(input.data$I*input.data$S)*est_K-2*lik
   return(BIC)
 }
+#' @import magrittr
+calcChainAIC <- function(chains, input.data, pattern, model_type) {
+  options(dplyr.summarise.inform = FALSE)
+  mcf <- chains$mcf_chain%>%
+    mutate(value = round(value,5),
+           Cluster = as.numeric(gsub("mcf\\[(.*),.*","\\1", Parameter)),
+           Sample = as.numeric(gsub(".*,(.*)\\]","\\1", Parameter)))%>%
+    group_by(Cluster,Sample)%>%
+    reframe(mcf = mean(value))%>%
+    ungroup()%>%
+    spread(key = Sample, value = mcf)
+  
+  ww <- writeClusterAssignmentsTable(chains$z_chain)%>%
+    mutate(Mut_ID = as.numeric(gsub("Mut","",Mut_ID)))%>%
+    arrange(Mut_ID)%>%
+    left_join(mcf, by = "Cluster")%>%
+    select(-c("Mut_ID","Cluster"))%>%
+    as.matrix()
+  
+  ww <- ww[,which(strsplit(pattern, split="")[[1]]=="1"),drop=FALSE]
+  
+  mm <- writeMultiplicityTable(chains$m_chain, chains$icn_chain)%>%
+    mutate(Mut_ID = as.numeric(gsub("Mut","",Mut_ID)))%>%
+    arrange(Mut_ID)%>%
+    select(c("Multiplicity")) %>%
+    as.matrix()
+  
+  mm <- replicate(input.data$S, mm[, 1])
+  
+  is_cn <- replicate(input.data$S, input.data$is_cn)
+  if (model_type=="type1") {
+    vaf <- ifelse(is_cn==0, ww/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
+    vaf <- ifelse(vaf<=0, 0.001, vaf)    
+    vaf <- ifelse(vaf>=1, 0.999, vaf)
+  }
+  
+  if (model_type=="type2") {
+    vaf <- ifelse(is_cn==0, (ww + (mm-1) * input.data$cncf)/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
+    vaf <- ifelse(vaf<=0, 0.001, vaf)
+    vaf <- ifelse(vaf>=1, 0.999, vaf)
+  }
+  
+  if (model_type=="type3") {
+    vaf <- ifelse(is_cn==0, (ww + (mm-1) * ww[input.data$q,,drop=FALSE])/input.data$tcn, (ww * mm + 1 - ww) / input.data$tcn)
+    vaf <- ifelse(vaf<=0, 0.001, vaf)
+    vaf <- ifelse(vaf>=1, 0.999, vaf)
+  }
+  
+  lik <- sum(dbinom(input.data$y,input.data$n,vaf,log = T))
+  
+  est_K <- estimateMCFs(chains$mcf_chain) %>% nrow(.)
+
+  AIC <- -2 * lik + 2 * est_K
+  
+  return(AIC)
+}
 
 #' @import magrittr
 calcChainSilhouette <- function(chains, input.data, pattern, model_type) {
