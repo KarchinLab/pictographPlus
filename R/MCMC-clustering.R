@@ -126,8 +126,12 @@ runMutSetMCMC <- function(temp_box,
     bic_vec <- unname(unlist(parallel::mclapply(filtered_samps_list,
                                                   function(chains) calcChainBIC(chains=chains, input.data=box_indata, pattern=temp_box$pattern, model_type),
                                                   mc.cores = mc.cores)))
+    aic_vec <- unname(unlist(parallel::mclapply(filtered_samps_list,
+                                                function(chains) calcChainAIC(chains=chains, input.data=box_indata, pattern=temp_box$pattern, model_type),
+                                                mc.cores = mc.cores)))
     bic_tb <- tibble(K_tested = K_tested,
-                     BIC = bic_vec)
+                     BIC = bic_vec,
+                     AIC = aic_vec)
     BIC_best_chains <- samps_list[[which.min(bic_vec)]]
     sc_vec <- unname(unlist(parallel::mclapply(filtered_samps_list,
                                                 function(chains) calcChainSilhouette(chains=chains, input.data=box_indata, pattern=temp_box$pattern, model_type),

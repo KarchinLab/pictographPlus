@@ -760,7 +760,7 @@ getLabels <- function(matchTable, driverList, cytobandFile) {
     ) %>%
     distinct()
   
-  if (nrow(driver_hits) == 0) return(NULL)
+  
   
   if (!is.null(cytobandFile)) {
     allowed_chromosomes <- c(paste0("chr", 1:22), "chrX", "chrY")
@@ -809,6 +809,7 @@ getLabels <- function(matchTable, driverList, cytobandFile) {
       ) %>%
       ungroup()
   }
+  if (nrow(driver_hits) == 0) return(NULL)
   return(driver_hits)
 }
 
