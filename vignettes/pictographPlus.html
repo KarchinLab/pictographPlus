@@ -49,7 +49,7 @@ overflow: visible;
 </style>
 <style type="text/css" data-origin="pandoc">
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -349,25 +349,25 @@ RNA sequencing data to:</p>
 <li>Infer Tumor Evolution</li>
 <li>Identify Transcriptional Transitions Between Clones</li>
 </ol>
-<p>The tool infers tumor clonal evolution from single or multi-region
-sequencing data by modeling the uncertainty of mutation cellular
-fraction (MCF) in small somatic mutations (SSMs) and copy number
-alterations (CNAs). Using a Bayesian hierarchical model, it assigns SSMs
-and CNAs to subclones, reconstructing tumor evolutionary trees that
-adhere to principles of lineage precedence, sum condition, and optional
-constraints based on sample presence. For deconvolution, PICTographPlus
-integrates tumor clonal tree structures with clone proportions across
-samples to resolve bulk gene expression data. It optimizes an objective
-function that minimizes discrepancies between observed and predicted
-sample-level gene expression while imposing a smoothness penalty,
-ensuring that closely related clones display greater gene expression
-similarity. Lastly, the tool conducts pathway enrichment analysis to
-identify statistically significant alterations in pathways connecting
-tumor clones.</p>
-<blockquote>
-<p><strong>Note:</strong> PICTographPlus may not work well on treated
-samples.</p>
-</blockquote>
+<p>The tool infers tumor clonal evolution from multi-region sequencing
+data from a single time point by modeling the uncertainty of mutation
+cellular fraction (MCF) in small somatic mutations (SSMs) and copy
+number alterations (CNAs). Using a Bayesian hierarchical model, it
+assigns SSMs and CNAs to subclones, reconstructing tumor evolutionary
+trees that adhere to principles of lineage precedence and sum condition.
+For high purity tumor samples sequenced at high coverage, optional
+constraints based on sample presence may be beneficial. For
+deconvolution, PICTographPlus integrates tumor clonal tree structures
+with clone proportions across samples to resolve bulk gene expression
+data. It optimizes an objective function that minimizes discrepancies
+between observed and predicted sample-level gene expression while
+imposing a smoothness penalty, ensuring that closely related clones
+display greater gene expression similarity. Lastly, the tool conducts
+pathway enrichment analysis to identify statistically significant
+alterations in pathways connecting tumor clones. PictographPlus was
+designed for modeling natural disease history of untreated samples, but
+has yielded useful results on some treated cases (Rineheart et al Nat.
+Prec. Onc. 2024).</p>
 <hr />
 </div>
 <div id="input-data-file-format" class="section level1">
@@ -375,7 +375,7 @@ samples.</p>
 <div id="input-dna-data-for-tumor-evolution-reconstruction" class="section level2">
 <h2>2.1 Input DNA data for tumor evolution reconstruction</h2>
 <p>PICTographPlus takes input data in multiple formats for flexible user
-inputs:</p>
+inputs. You can input either:</p>
 <ol style="list-style-type: decimal">
 <li>Three csv files, one each for SSMs, CNAs, and germline heterozygous
 single nucleotide variant (SNVs) (see example in section 2.1.1).</li>
@@ -392,13 +392,10 @@ heterozygous SNVs.</h3>
 without <span class="math inline">\(BAF\)</span> information.
 e.g. cnvkit.</p>
 <p>The SSM file should contain at least sample, mutation, total_reads,
-alt_reads, chrom, start, and end columns, with the purity column being
-optional. (maybe more clear: what if i know purity for some sample but
-NA for the rest? Can any value be NA or 0?)</p>
-<blockquote>
-<p><strong>Note:</strong> The default mutation naming follows the HGVS
-format.</p>
-</blockquote>
+alt_reads, chrom, start, and end columns. Tumor purity values can be
+entered but are not required. If no purity values are entered,
+PictographPlus will estimate purity. Genomic coordinates should be
+provided in the 1-based, inclusive coordinate system.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/example4_snv_with_purity.csv&#39;</span>, </span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>                          <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="co">#&gt;    sample         mutation total_reads alt_reads chrom start  end purity</span></span>
@@ -410,9 +407,14 @@ format.</p>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="co">#&gt; 6 sample1 chr1-1276-clone1         100        40  chr1  1276 1276    0.8</span></span></code></pre></div>
 <p>The CNA file should contain sample, chrom, start, end, and tcn
 columns. The total copy number (tcn) can be inferred from many copy
-number callers. In case a copy number caller outputs the <span class="math inline">\(log2\)</span> ratio of a segment, the tcn can be
-calculate using <span class="math inline">\(tcn = 2 * 2^{\log_2
-R}\)</span>.</p>
+number callers. Genomic coordinates should be provided in the 1-based,
+inclusive coordinate system. We have had success with
+<strong>CNVKit</strong> (Talevic et al. PLOS Comp Bio 2016) and
+<strong>FACETS</strong> (Shen et al. Nuc. Acids Rec 2016). However, any
+copy number calling that provides TCN should work. In case a copy number
+caller outputs the <span class="math inline">\(log2\)</span> ratio of a
+segment, the tcn can be calculated using <span class="math inline">\(tcn
+= 2 * 2^{\log_2 R}\)</span>.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/example4_cna.csv&#39;</span>, </span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>                          <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co">#&gt;    sample chrom start  end tcn</span></span>
@@ -422,7 +424,7 @@ R}\)</span>.</p>
 <span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co">#&gt; 4 sample3  chr1   401 1500 1.4</span></span>
 <span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="co">#&gt; 5 sample3  chr1  7001 7200 2.6</span></span></code></pre></div>
 <p>The SNV file contains the count of the heterozygous germline SNVs
-that has the information about the “chrom”, the “position” of the
+that have the information about the “chrom”, the “position” of the
 germline heterozygous SNV, “ref” and “alt” allele, and the reference and
 altenative reads counts in germline (normal) sample as well as all other
 samples.</p>
@@ -521,7 +523,8 @@ names in your SSM and CNA files.</p>
 <div id="two-csv-files-one-for-ssm-and-one-for-cna" class="section level3">
 <h3>2.1.2 Two csv files, one for SSM and one for CNA</h3>
 <p>When to use: if you are using a copy number caller that also includes
-<span class="math inline">\(BAF\)</span> information. e.g. facets.</p>
+<span class="math inline">\(BAF\)</span> information.
+e.g. <strong>FACETS</strong>.</p>
 <p>The SSM file should contain columns “sample”, “mutation”,
 “total_reads”, “alt_reads”, “chrom”, “start”, and “end”. The “purity”
 column with be optional.</p>
@@ -538,7 +541,7 @@ column with be optional.</p>
 “end”, “tcn” and “baf”. Depending on the copy number caller used, the
 users may need to convert the numbers to the desired format.</p>
 <p>For example, if using facets for copy number calls, users can get tcn
-by using the formula <span class="math inline">\(tcn = ploidy *
+by using the formula <span class="math inline">\(tcn =
 2^{cnlr.median.clust}\)</span>, and baf using the formula <span class="math inline">\(baf = 1 / (1 + 1 / 2 ^ {mafR.clust})\)</span></p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">read.csv</span>(<span class="fu">system.file</span>(<span class="st">&#39;extdata/examples/example3_cna.csv&#39;</span>, </span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>                          <span class="at">package =</span> <span class="st">&#39;pictographPlus&#39;</span>)))</span>
@@ -1028,88 +1031,42 @@ each column to a sample.</p>
 </div>
 <div id="selectedmutfile" class="section level2">
 <h2>6.4 <strong>SelectedMutFile</strong></h2>
-<p>A CSV file that contains mutation information or gene region
-information used for plotting by <code>runPictograph()</code>.<br />
-If you use this file to plot any mutations in certain gene region
-information on the tree, ensure that the corresponding mutation file
-follows the format <strong>gene_extraInformation</strong>, where
-<strong>gene</strong> is the actual gene name. The
-<code>gene_type</code> column can be <strong>oncogene</strong> or
-<strong>tumor_suppressor</strong> (leave blank if unknown).</p>
+<p>You can annotate the edges of the tree plot generated by
+PictographPlus by pre-selecting the mutations or copy-number-altered
+gene regions that are inferred to occur on those edges. To pre-select,
+use the <strong>runPictograph</strong> parameter
+<strong>selectedMutFile</strong> to input a plain text file that lists
+the mutations or copy number alterations of interest and their
+chromosome positions in 1-based, inclusive format. We suggest you choose
+a naming convention that will be easy to read and interpret on your
+tree.</p>
 <table>
 <thead>
 <tr class="header">
-<th align="left">gene</th>
-<th align="left">chrom</th>
+<th align="left">name_on_tree</th>
+<th align="right">chr</th>
 <th align="right">start</th>
 <th align="right">end</th>
-<th align="left">gene_type</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">KRAS</td>
-<td align="left">chr12</td>
-<td align="right">25205246</td>
-<td align="right">25250936</td>
-<td align="left">oncogene</td>
+<td align="left">mut1</td>
+<td align="right">chr1</td>
+<td align="right">100</td>
+<td align="right">100</td>
 </tr>
 <tr class="even">
-<td align="left">SMAD4</td>
-<td align="left">chr18</td>
-<td align="right">51028528</td>
-<td align="right">51085045</td>
-<td align="left">tumor_suppressor</td>
+<td align="left">mut2</td>
+<td align="right">chr2</td>
+<td align="right">500</td>
+<td align="right">500</td>
 </tr>
-</tbody>
-</table>
-<p>If you use this file to plot any specific mutations on the tree,
-ensure that all specified mutation names match mutation column in SSM
-file.</p>
-<table>
-<thead>
-<tr class="header">
-<th align="left">mutation</th>
-</tr>
-</thead>
-<tbody>
 <tr class="odd">
-<td align="left">chr1-57-clone1</td>
-</tr>
-<tr class="even">
-<td align="left">chr1-110-clone1</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div id="cytobandfile" class="section level2">
-<h2>6.5 <strong>cytobandFile</strong></h2>
-<p>A TSV file of cytoband information used for plotting by
-<code>runPictograph()</code>.</p>
-<table>
-<thead>
-<tr class="header">
-<th align="left">chr</th>
-<th align="right">start</th>
-<th align="right">end</th>
-<th align="left">band</th>
-<th align="left">stain</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">chr1</td>
-<td align="right">0</td>
-<td align="right">2300000</td>
-<td align="left">p36.33</td>
-<td align="left">gneg</td>
-</tr>
-<tr class="even">
-<td align="left">chr1</td>
-<td align="right">2300000</td>
-<td align="right">5300000</td>
-<td align="left">p36.32</td>
-<td align="left">gpos25</td>
+<td align="left">MYC AMP</td>
+<td align="right">chr8</td>
+<td align="right">128,747,000</td>
+<td align="right">128,820,000</td>
 </tr>
 </tbody>
 </table>

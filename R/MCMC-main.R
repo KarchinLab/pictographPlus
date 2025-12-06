@@ -44,7 +44,7 @@ runPictograph <- function(mutation_file,
                      sample_presence=FALSE,
                      score="BIC", # either BIC or silhouette
                      max_K = 10, 
-                     min_mutation_per_cluster=1, 
+                     min_mutation_per_cluster=5, 
                      min_cluster_thresh=0.05,
                      cluster_diff_thresh=0.05,
                      n.iter=5000, 
