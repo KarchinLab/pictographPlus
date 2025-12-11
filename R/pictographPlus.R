@@ -53,7 +53,6 @@ runPICTographPlus <- function(
     GSEA_file = NULL,
     top_K = 5,
     normalize=TRUE,
-    purityFile = NULL,
     n_permutations=10000,
     sample_presence=FALSE,
     score="BIC", # either BIC or silhouette
@@ -82,6 +81,7 @@ runPICTographPlus <- function(
     dual_model = TRUE, 
     pval = 0.05, 
     ploidy = 2,
+    usePurity = FALSE,
     sampleorderFile=NULL
 ) {
   
@@ -122,10 +122,10 @@ runPICTographPlus <- function(
   treeFile = paste(outputDir, "tree.csv", sep="/")
   proportionFile = paste(outputDir, "subclone_proportion.csv", sep="/")
   
-  # purityFile = NULL
-  # if (normalization) {
-  #   purityFile = paste(outputDir, "purity.csv", sep="/")
-  # }
+  purityFile = NULL
+  if (usePurity) {
+    purityFile = paste(outputDir, "purity.csv", sep="/")
+  }
   
   X_optimal = runDeconvolution(rna_file = rna_file,
                 treeFile = treeFile,
