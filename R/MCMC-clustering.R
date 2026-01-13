@@ -294,6 +294,7 @@ runMCMC <- function(box_input_data,
                     n.adapt=1000, 
                     n.burn=1000) {
   if (K > 1) box_input_data$K <- K
+  # if (K > 1) n.chains <- 4
   jags.m <- jags.model(jags.file,
                        box_input_data,
                        n.chains = n.chains,
@@ -301,7 +302,7 @@ runMCMC <- function(box_input_data,
                        n.adapt = n.adapt)
   if (n.burn > 0) update(jags.m, n.burn)
   samps <- coda.samples(jags.m, params, n.iter=n.iter, thin=thin)
-  
+  # samps_diag <- coda.samples(jags.m, c("mcf"), n.iter=n.iter, thin=thin)
   return(samps)
 }
 
