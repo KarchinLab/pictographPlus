@@ -49,4 +49,8 @@ Detailed tutorial can be accessed through [vignette](https://github.com/KarchinL
 library(pictographPlus)
 vignette("pictographPlus", package = "pictographPlus")
 ```
+## Data and Scripts for the manuscript
 
+All precessed data are available on Mendeley.
+
+The scripts used for the manuscript can be found at https://github.com/KarchinLab/PICTographPlus_manuscript.
