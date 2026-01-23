@@ -515,6 +515,7 @@ runPictograph <- function(mutation_file,
     write.table(filteredDriverList, file=paste(outputDir, "labelling.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   }
   # change mcfTable
+  mcfTable_2 = mcfTable
   mcfTable$Cluster <- new_cluster_names[as.character(mcfTable$Cluster)]
   mcfTable <- mcfTable %>%
     arrange(Cluster)
@@ -560,7 +561,7 @@ runPictograph <- function(mutation_file,
   dev.off()
   
   # plot all possible trees
-  plotAllTrees(outputDir, scores, all_spanning_trees, mcfTable, data, filteredDriverList, sampleorderFile, new_cluster_names)
+  plotAllTrees(outputDir, scores, all_spanning_trees, mcfTable_2, data, filteredDriverList, sampleorderFile, new_cluster_names)
 
   # save all data
   save.image(file=paste(outputDir, "PICTographPlus.RData", sep="/"))
