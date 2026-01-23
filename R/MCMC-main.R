@@ -820,36 +820,32 @@ plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data, 
   
   outputDir = paste(outputDir, "all_trees", sep = "/")
   suppressWarnings(dir.create(outputDir))
-  new_cluster_names <- c(new_cluster_names, root = "root")
-  all_spanning_trees <- lapply(all_spanning_trees, function(df) {
-    df$parent <- new_cluster_names[as.character(df$parent)]
-    df$child  <- new_cluster_names[as.character(df$child)]
-    df
-  })
   
   for (i in seq_len(length(which(scores == max(scores))))) {
     idx = which(scores == max(scores))[i]
     
     best_tree <- all_spanning_trees[[idx]]
     if (nrow(best_tree) >= 1 ) {
-      write.table(best_tree, file=paste(outputDir, "/tree", i, ".csv", sep=""), quote = FALSE, sep = ",", row.names = F)
-  
-      png(paste(outputDir, "/tree", i, ".png", sep=""), width = 1600, height = 1200, res = 300)
-      # plot tree
-      plotTree(best_tree, filteredDriverList, palette = viridis::viridis)
-      dev.off()
-  
+      subclone_props <- calcSubcloneProportions(mcf_mat, best_tree)
+      rownames(subclone_props) = mcfTable$Cluster
+      colnames(subclone_props) = colnames(data$y)
+      
       cc <- best_tree %>% filter(parent=="root") %>% select(child)
       purity <- mcfTable %>% filter(Cluster %in% cc$child) %>% summarise(across(everything(), sum)) %>% select(-Cluster)
       colnames(purity) <- colnames(data$y)
       write.table(purity, file=paste(outputDir, "/tree_", i, "_purity.csv", sep=""), quote = FALSE, sep = ",", row.names = F)
-  
-      subclone_props <- calcSubcloneProportions(mcf_mat, best_tree)
-      rownames(subclone_props) = mcfTable$Cluster
-      colnames(subclone_props) = colnames(data$y)
-  
-      write.csv(subclone_props, file=paste(outputDir, "/tree_", i, "_subclone_proportion.csv", sep=""), quote = FALSE)
       
+      best_tree = rename_tree_nodes(best_tree, new_cluster_names)
+      write.table(best_tree, file=paste(outputDir, "/tree", i, ".csv", sep=""), quote = FALSE, sep = ",", row.names = F)
+      # plot tree
+      png(paste(outputDir, "/tree", i, ".png", sep=""), width = 1600, height = 1200, res = 300)
+      plotTree(best_tree, filteredDriverList, palette = viridis::viridis)
+      dev.off()
+      
+      # change subclone_props
+      rownames(subclone_props)=new_cluster_names[rownames(subclone_props)]
+      subclone_props <- subclone_props[order(as.numeric(rownames(subclone_props))), ]
+      write.csv(subclone_props, file=paste(outputDir, "/tree_", i, "_subclone_proportion.csv", sep=""), quote = FALSE)
       if(is.null(sampleorderFile)){
         png(paste(outputDir, "/tree_", i, "_subclone_proportion.png", sep=""))
         print(plotSubclonePie(subclone_props, sample_names=colnames(input_data$y)))
@@ -858,7 +854,7 @@ plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data, 
         order_df <- read.csv(sampleorderFile)
         ordered_sample_names <- order_df$sample_name[order(order_df$order)]
         png(paste(outputDir, "/tree_", i, "_subclone_proportion.png", sep=""))
-        print(plotSubclonePie(subclone_props, sample_names=ordered_sample_names))
+        print(plotSubclonePie(subclone_props, sample_names=colnames(input_data$y),order=ordered_sample_names))
         dev.off()
       }
 
@@ -1014,6 +1010,7 @@ rename_tree_nodes <- function(tree_df, new_names) {
                            new_names[tree_df$parent], tree_df$parent)
   tree_df$child  <- ifelse(tree_df$child %in% names(new_names),
                            new_names[tree_df$child],  tree_df$child)
+  tree_df$edge <- paste0(tree_df$parent,'->',tree_df$child)
   return(tree_df)
 }
 
