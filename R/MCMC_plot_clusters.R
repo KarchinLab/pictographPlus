@@ -135,20 +135,20 @@ generateTiers <- function(w_mat, Sample_ID) {
 #' @export
 #' @param mcf_chain MCMC chain of CCF values, which is the first item in the list returned by \code{mergeSetChains}
 plotChainsMCF <- function(mcf_chain,new_cluster_names) {
+  #browser()
   cluster <- strsplit(as.character(mcf_chain$Parameter), ",") %>%
     sapply(., function(x) gsub("mcf\\[", "", x[1])) %>%
     as.numeric
   sample <- strsplit(as.character(mcf_chain$Parameter), ",") %>%
     sapply(., function(x) gsub("\\]", "", x[2])) %>%
     as.numeric
-  
-  mcf_chain <- mcf_chain %>%
-    mutate(Cluster = factor(paste0("Cluster ", cluster), 
-                            levels = paste0("Cluster ", sort(unique(cluster)))), 
-           Sample = factor(paste0("Sample ", sample),
-                           levels = paste0("Sample ", sort(unique(sample)))))
   mcf_chain <- mcf_chain %>%
     mutate(cluster = new_cluster_names[as.character(cluster)])
+  mcf_chain <- mcf_chain %>%
+    mutate(Cluster = factor(paste0("Cluster ", cluster),
+                            levels = paste0("Cluster ", sort(unique(cluster)))),
+           Sample = factor(paste0("Sample ", sample),
+                           levels = paste0("Sample ", sort(unique(sample)))))
   ggplot(mcf_chain, aes(x = Iteration, y = value)) +
     geom_line() +
     theme_light() +
