@@ -480,7 +480,7 @@ check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(
       if (toSkip) {
         to_keep_index <- c(to_keep_index, 0)
       } else {
-        if (!germline_test$p.value < pval/nrow(data)) { # proceed is germline distribution is unimodality
+        # if (!germline_test$p.value < pval/nrow(data)) { # proceed is germline distribution is unimodality
           if (data[i,]$tcn > tcn_normal_range[1] & data[i,]$tcn < tcn_normal_range[2]) { # check tcn within normal range
             if (tumor_test$p.value == 0) {
               if (LOH) {
@@ -505,7 +505,7 @@ check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(
               to_keep_index <- c(to_keep_index, 1)
               plot(density(vaf), xlim=c(0,1), main = paste(data[i,]$sample, "\n", data[i,]$chrom, ":", data[i,]$start, "-", data[i,]$end, "\n tcn: ", data[i,]$tcn, ", pval: ", tumor_test$p.value, sep=""))
             } else {
-              if (data[i,]$tcn > 3 || data[i,]$tcn < 1.4) {
+              if (data[i,]$tcn > tcn_normal_range[2] || data[i,]$tcn < tcn_normal_range[1]) {
                 to_keep_index <- c(to_keep_index, 1)
                 plot(density(vaf), xlim=c(0,1), main = paste(data[i,]$sample, "\n", data[i,]$chrom, ":", data[i,]$start, "-", data[i,]$end, "\n tcn: ", data[i,]$tcn, ", pval: ", tumor_test$p.value, sep=""))
               } else {
@@ -513,9 +513,9 @@ check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(
               }
             }
           }
-        } else { # proceed is germline distribution is not unimodality
-          to_keep_index <- c(to_keep_index, 0)
-        }
+        # } else { # proceed is germline distribution is not unimodality
+        #   to_keep_index <- c(to_keep_index, 0)
+        # }
       }
     } else { # not enough germline position; disregard
       to_keep_index <- c(to_keep_index, 0)
