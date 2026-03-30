@@ -467,25 +467,75 @@ runPictograph <- function(mutation_file,
   # scores <- calculateTreeScoreMutations(chains$mcf_chain, data, icnTable, cncfTable, multiplicityTable, clusterassignmentTable, data$purity, all_spanning_trees)
   scores <- assign("scores", scores, envir = .GlobalEnv)
   
-  driverList = NULL
-  filteredDriverList = NULL
+  # driverList = NULL
+  # filteredDriverList = NULL
+  # if (!is.null(selectedMutFile)) {
+  #   driverList <- read.csv(selectedMutFile)
+  #   matchTable <- clusterassignmentTable %>%
+  #     left_join(
+  #       data[["position"]], by = c("Mut_ID" = "mutation")
+  #     ) %>% 
+  #     mutate(
+  #       chrom = ifelse(is.na(chrom), sub("-.*", "", Mut_ID_processed), chrom),
+  #       start      = ifelse(is.na(start),
+  #                           sub("^[^-]+-([^-]+)-.*", "\\1", Mut_ID_processed),
+  #                           start),
+  #       end        = ifelse(is.na(end),
+  #                           sub(".*-", "", Mut_ID_processed),
+  #                           end)
+  #     ) %>% 
+  #     select(-c(Mut_ID,Mut_ID_processed))
+  #   filteredDriverList <- getLabels(matchTable, driverList,cytobandFile)
+  # }
+  driverList <- NULL
+  filteredDriverList <- NULL
+  
   if (!is.null(selectedMutFile)) {
-    driverList <- read.csv(selectedMutFile)
-    matchTable <- clusterassignmentTable %>%
-      left_join(
-        data[["position"]], by = c("Mut_ID" = "mutation")
-      ) %>% 
-      mutate(
-        chrom = ifelse(is.na(chrom), sub("-.*", "", Mut_ID_processed), chrom),
-        start      = ifelse(is.na(start),
-                            sub("^[^-]+-([^-]+)-.*", "\\1", Mut_ID_processed),
-                            start),
-        end        = ifelse(is.na(end),
-                            sub(".*-", "", Mut_ID_processed),
-                            end)
-      ) %>% 
-      select(-c(Mut_ID,Mut_ID_processed))
-    filteredDriverList <- getLabels(matchTable, driverList,cytobandFile)
+    driverList <- read.csv(selectedMutFile, stringsAsFactors = FALSE)
+    
+    # Only proceed if position data exists and is non-empty
+    if (!is.null(data[["position"]]) &&
+        is.data.frame(data[["position"]]) &&
+        nrow(data[["position"]]) > 0) {
+      
+      matchTable <- clusterassignmentTable %>%
+        left_join(data[["position"]], by = c("Mut_ID" = "mutation")) %>%
+        mutate(
+          chrom = ifelse(
+            is.na(chrom),
+            sub("-.*", "", Mut_ID_processed),
+            chrom
+          ),
+          start = ifelse(
+            is.na(start),
+            sub("^[^-]+-([^-]+)-.*", "\\1", Mut_ID_processed),
+            start
+          ),
+          end = ifelse(
+            is.na(end),
+            sub(".*-", "", Mut_ID_processed),
+            end
+          )
+        ) %>%
+        select(-c(Mut_ID, Mut_ID_processed))
+      
+      if (nrow(matchTable) > 0) {
+        filteredDriverList <- getLabels(matchTable, driverList, cytobandFile)
+      } else {
+        warning("matchTable is empty; skipping getLabels().")
+        filteredDriverList <- NULL
+      }
+      
+    } else {
+      warning(
+        paste0(
+          "selectedMutFile was provided, but data[['position']] is NULL or empty. ",
+          "No driver matching will be performed. ",
+          "Check whether selectedMutFile produced any usable mutation-position matches."
+        )
+      )
+      filteredDriverList <- NULL
+    }
   }
   
   # # plot all possible trees
