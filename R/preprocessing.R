@@ -105,7 +105,6 @@ importFiles <- function(mutation_file,
     mutation_data$is_cn <- c(rep(0, nrow(mutation_data$y)))
     mutation_data$cnnull <- TRUE
   }
-  
   mutation_data$y[mutation_data$is_cn==1,] <- pmax(mutation_data$y[mutation_data$is_cn==1,], mutation_data$n[mutation_data$is_cn==1,]-mutation_data$y[mutation_data$is_cn==1,])
   
   return(mutation_data)
@@ -694,6 +693,14 @@ importMutationFileOnly <- function(mutation_file, alt_reads_thresh = 0, vaf_thre
   } else {
     output_data$purity = rep(0.8, ncol(output_data$y))
   }
+  ###########################
+  mutation_position = unique(data[c("mutation", "chrom", "start", "end")])
+  if (!all(sort(unique(data[c("mutation", "chrom", "start", "end")]) %>% pull(mutation)) == sort(output_data$MutID))) {
+    warning("Some mutations may have duplicated chromosome information; keeping the first occurrence.")
+    mutation_position = mutation_position[match(unique(mutation_position$mutation), mutation_position$mutation), ]
+  }
+  
+  output_data$position = mutation_position
   
   return(output_data)
 }
