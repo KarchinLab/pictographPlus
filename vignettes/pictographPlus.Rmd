@@ -26,41 +26,37 @@ PICTographPlus is a computational tool that integrates bulk DNA and RNA sequenci
 2) Infer Tumor Evolution
 3) Identify Transcriptional Transitions Between Clones
 
-The tool infers tumor clonal evolution from multi-region sequencing data from a single time point by modeling the uncertainty of mutation cellular fraction (MCF) in small somatic mutations (SSMs) and copy number alterations (CNAs). Using a Bayesian hierarchical model, it assigns SSMs and CNAs to subclones, reconstructing tumor evolutionary trees that adhere to principles of lineage precedence and sum condition. For high purity tumor samples sequenced at high coverage, optional constraints based on sample presence may be beneficial. For deconvolution, PICTographPlus integrates tumor clonal tree structures with clone proportions across samples to resolve bulk gene expression data. It optimizes an objective function that minimizes discrepancies between observed and predicted sample-level gene expression while imposing a smoothness penalty, ensuring that closely related clones display greater gene expression similarity. Lastly, the tool conducts pathway enrichment analysis to identify statistically significant alterations in pathways connecting tumor clones. PictographPlus was designed for modeling natural disease history of untreated samples, but has yielded useful results on some treated cases (Rineheart et al Nat. Prec. Onc. 2024). 
- 
+The tool infers tumor clonal evolution from single or multi-region sequencing data by modeling the uncertainty of mutation cellular fraction (MCF) in small somatic mutations (SSMs) and copy number alterations (CNAs). Using a Bayesian hierarchical model, it assigns SSMs and CNAs to subclones, reconstructing tumor evolutionary trees that adhere to principles of lineage precedence, sum condition, and optional constraints based on sample presence. For deconvolution, PICTographPlus integrates tumor clonal tree structures with clone proportions across samples to resolve bulk gene expression data. It optimizes an objective function that minimizes discrepancies between observed and predicted sample-level gene expression while imposing a smoothness penalty, ensuring that closely related clones display greater gene expression similarity. Lastly, the tool conducts pathway enrichment analysis to identify statistically significant alterations in pathways connecting tumor clones.
+
 ------
 
 # 2. Input data file format
 
-## 2.1 Input DNA data for tumor evolution reconstruction
+## 2.1 Input data (DNA) for tumor evolution reconstruction
 
-PICTographPlus takes input data in multiple formats for flexible user inputs. You can input either:
+PICTographPlus takes input data in multiple formats for flexible user inputs:
 
-1) Three csv files, one each for SSMs, CNAs, and germline heterozygous single nucleotide variant (SNVs) (see example in section 2.1.1).
-2) Two csv files, one for SSM and one for CNA (see example in section 2.1.2).
-3) A single csv file that contains SSM and CNA information (see example in section 2.1.3).
-
+1) Three CSV files, one each for SSMs, CNAs, and germline heterozygous SNVs (section 2.1.1).
+2) Two csv files, one for SSM and one for CNA (section 2.1.2).
+3) A single csv file that contains SSM and CNA information (section 2.1.3).
 
 ### 2.1.1 Three CSV files, one each for SSMs, CNAs, and germline heterozygous SNVs.
 
-When to use: if you are using a copy number caller that only outputs $log2$ ratio or total copy number without $BAF$ information. e.g. cnvkit.
+When to use: if you are using a copy number caller that only outputs log2 ratio or total copy number without BAF information. e.g. cnvkit.
 
-The SSM file should contain at least sample, mutation, total_reads, alt_reads, chrom, start, and end columns. Tumor purity values can be entered but are not required. If no purity values are entered, PictographPlus will estimate purity. Genomic coordinates should be provided in the 1-based, inclusive coordinate system.
-
+The SSM file should contain at least sample, mutation, total_reads, alt_reads, chrom, start, and end columns, with the purity column being optional. 
 
 ```{r}
 head(read.csv(system.file('extdata/examples/example4_snv_with_purity.csv', 
                           package = 'pictographPlus')))
 ```
-The CNA file should contain sample, chrom, start, end, and tcn columns. The total copy number (tcn) can be inferred from many copy number callers. Genomic coordinates should be provided in the 1-based, inclusive coordinate system. We have had success with **CNVKit** (Talevic et al. PLOS Comp Bio 2016) and **FACETS** (Shen et al. Nuc. Acids Rec 2016). However, any copy number calling that provides TCN should work. In case a copy number caller outputs the $log2$ ratio of a segment, the tcn can be calculated using $tcn = 2 * 2^{\log_2 R}$. 
+The CNA file should contain sample, chrom, start, end, and tcn columns. The total copy number (tcn) can be inferred from many copy number callers. In case a copy number caller outputs the $log2$ ratio of a segment, the tcn can be calculate using $tcn = 2 * 2^{\log_2 R}$. 
 
 ```{r}
 head(read.csv(system.file('extdata/examples/example4_cna.csv', 
                           package = 'pictographPlus')))
 ```
-The SNV file contains the count of the heterozygous germline SNVs that have the information about the "chrom", the "position" of the germline heterozygous SNV, "ref" and "alt" allele, and the reference and altenative reads counts in germline (normal) sample as well as all other samples. 
-
-> **Note:** The sample name (`sample1`, `sample2`, ... etc.) should matched the sample name used in the SSM and CNA file. 
+The SNV file contains the count of the heterozygous germline SNVs that has the information about the "chrom", the "position" of the germline heterozygous SNV, "ref" and "alt" allele, and the reference and altenative reads counts in germline (normal) sample as well as all other samples. Note: the sample name (sample1, sample2, ... etc.) should matched the sample name used in the SSM and CNA file. 
 
 ```{r}
 head(read.csv(system.file('extdata/examples/example4_SNP.csv', 
@@ -92,7 +88,7 @@ This script creates a folder `outputDir/pileup`, which contains a `germline_het.
 
 ### 2.1.2 Two csv files, one for SSM and one for CNA
 
-When to use: if you are using a copy number caller that also includes $BAF$ information. e.g. **FACETS**.
+When to use: if you are using a copy number caller that also includes BAF information. e.g. facets.
 
 The SSM file should contain columns "sample", "mutation", "total_reads", "alt_reads", "chrom", "start", and "end". The "purity" column with be optional. 
 
@@ -103,7 +99,7 @@ head(read.csv(system.file('extdata/examples/example3_snv_with_purity.csv',
 
 The CNA file should contain columns "sample", "chrom", "start", "end", "tcn" and "baf". Depending on the copy number caller used, the users may need to convert the numbers to the desired format.
 
-For example, if using facets for copy number calls, users can get tcn by using the formula $tcn = 2^{cnlr.median.clust}$, and baf using the formula $baf = 1 / (1 + 1 / 2 ^ {mafR.clust})$
+For example, if using facets for copy number calls, users can get tcn by using the formula $tcn = ploidy * 2^{cnlr.median.clust}$, and baf using the formula $baf = 1 / (1 + 1 / 2 ^ {mafR.clust})$
 
 ```{r}
 head(read.csv(system.file('extdata/examples/example3_cna.csv', 
@@ -114,19 +110,12 @@ head(read.csv(system.file('extdata/examples/example3_cna.csv',
 
 The last option is to provide a single csv file that contains at least columns named "sample", "mutation", "total_reads", "alt_reads", "tumor_integer_copy_number", and "cncf". Set cncf to 0 if a mutation has no copy number alteration. Users can also provide an optional column "major_integer_copy_number" that provides the information of the integer copy number of the major allele. If "major_integer_copy_number" is not provided, it will be estimated using an internal function built in the package. Another optional column is "purity" column that provides the information of normal contamination of a sample. 
 
-> **Note:** using this option will generate trees with SSMs only, CNA will not be assigned to clusters but only used for VAF correction.
+NOTE: using this option will generate trees with SSMs only, CNA will not be assigned to clusters but only used for VAF correction.
 
 ```{r}
 head(read.csv(system.file('extdata/examples/example2_snv_with_purity.csv', 
                           package = 'pictographPlus')))
 ```
-
-### 2.1.3 Common formatting issues that may lead to errors
-
-- **Duplicated mutation names** within the same sample will cause errors.  
-- **Sample names** are limited to 12 characters to ensure optimal visualization in the output figures. In addition, all sample names must be consistent across all input files.
-- **Sample name consistency:** All sample names in the CNA files must match those in the SSM files. Any extra samples present in the CNA files but missing from the SSM files will result in an error.
-
 ## 2.2 Input data for bulk RNA expression
 
 The RNA file should be a csv file of columns Gene, followed by the tumor samples (tumor sample name should match that of the genomic input), and lastly the read counts of a matched normal sample (optional). The read counts should be raw counts.
@@ -142,7 +131,7 @@ head(read.csv(system.file('extdata/examples/rna_example.csv',
 
 ## 3.1 Running PICTographPlus in one step
 
-PICTographPlus can be run using the function `runPICTographPlus`, which runs both tumor evolution reconstruction and clone-specific transcriptomic profile deconvolution. The required files include files for genomic data and RNA expression data. 
+PICTographPlus can be run using the function `runPICTographPlus`, which runs both tumor evolution reconstruction and clone-specific transcriptomic profile deconvolution. The required files include files for genomic data and RNA expression data.
 
 ```bash
 runPICTographPlus(mutation_file, copy_number_file, SNV_file, rna_file, outputDir) # if using input format 2.1.1
@@ -150,35 +139,60 @@ runPICTographPlus(mutation_file, copy_number_file, rna_file, outputDir) # if usi
 runPICTographPlus(mutation_file, rna_file, outputDir) # if using input format 2.1.3
 ```
 
+The default deconvolution model is `tree_delta` (λ = 0.05), recommended for most use cases when a matched normal sample is available. To use a different model:
+
+```bash
+runPICTographPlus(mutation_file, rna_file, outputDir, model = "plain", lambda = 0.10)
+```
+
 ## 3.2 Running PICTographPlus in multiple steps
 
-Alternatively, the user can run tumor evolution reconstruction and bulk RNA deconvolution in separate steps. 
+Alternatively, the user can run tumor evolution reconstruction and bulk RNA deconvolution in separate steps.
 
 **Tumor evolution reconstruction** can be run using:
 
 ```bash
 runPictograph(mutation_file, copy_number_file, SNV_file, outputDir) # if using input format 2.1.1
-runPictograph(mutation_file, copy_number_file,outputDir) # if using input format 2.1.2
+runPictograph(mutation_file, copy_number_file, outputDir) # if using input format 2.1.2
 runPictograph(mutation_file, outputDir) # if using input format 2.1.3
 ```
 
-**Bulk RNA exression deconvolution** can be run using:
+**Bulk RNA expression deconvolution** can be run using:
 
 ```bash
 runDeconvolution(rna_file, treeFile, proportionFile, outputDir)
 ```
-where the treeFile, and proportionFile are outputs of ```runPictograph``` function. Users may also choose other tumor evolution reconstruction tools to get these information. File formats can be found in section 6.
+where the treeFile, and proportionFile are outputs of `runPictograph`. Users may also choose other tumor evolution reconstruction tools. File formats can be found in section 6.
+
+The deconvolution model and regularisation strength λ can be specified:
+
+```bash
+# Default: tree_delta, lambda = 0.05
+runDeconvolution(rna_file, treeFile, proportionFile, outputDir,
+                 model = "tree_delta", lambda = 0.05)
+
+# Plain Laplacian, optimised for Pearson recovery
+runDeconvolution(rna_file, treeFile, proportionFile, outputDir,
+                 model = "plain", lambda = 0.10)
+```
 
 **GSEA analysis using fgsea** can be run using:
 
 ```bash
-X_optimal <- read.csv(paste0(outputDir, "/clonal_expression.csv"), 
+X_optimal <- read.csv(paste0(outputDir, "/clonal_expression.csv"),
                       row.names=1, check.names=FALSE)
 
 runGSEA(X_optimal, outputDir, treeFile, GSEA_file)
 ```
 
-where GSEA_file is a text file of pathways of interest that can be obtained from resources such as [MSigDB](https://www.gsea-msigdb.org/gsea/msigdb/index.jsp).
+where `treeFile` is the DNA-derived clonal tree from `runPictograph` (`tree.csv`) and
+`GSEA_file` is a text file of pathways of interest from [MSigDB](https://www.gsea-msigdb.org/gsea/msigdb/index.jsp).
+
+> **Note:** GSEA always uses the DNA-derived clonal tree (`treeFile / tree.csv`) to define edges
+> for pathway enrichment, even when deconvolution was run with `use_star_tree = TRUE`.
+> The star topology is used only during deconvolution to avoid over-fitting to a potentially
+> mis-inferred tree; once clone expressions are estimated, the true phylogeny should guide
+> the edge-wise differential expression.
 
 ---------------------------------------------------
 
@@ -204,24 +218,52 @@ The parameters are for function ```bash runPICTographPlus``` and the indicated m
 | mc.cores | number of cores used for parallel computing; not applicable to Windows | 8 | runPictograph |
 | inits | additional parameters for JAGS | list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123) | runPictograph |
 | LOH | whether to include copy-neutral LOH event in CNA | FALSE | runPictograph |
-| selectedMutFile | list of genes or mutations used for visualization | NULL | runPictograph |
+| driverFile | list of driver genes used for visualization | NULL | runPictograph |
 | cnv_min_length | minimum length of CNA for it to be included in the analysis | 1000000 | runPictograph |
 | tcn_normal_range | range of total copy number considered as copy-neutral | c(1.75,2.3) | runPictograph |
 | filter_cnv | whether or not to filter CNAs | TRUE | runPictograph |
 | smooth_cnv | whether or not to process copy number alterations across samples to unify the segment start and end postions | TRUE | runPictograph |
 | autosome | to only include autosome | TRUE | runPictograph |
-| sampleorderFile | a csv file that defines the order of samples in the piechart | NULL | runPictograph |
 | rna_file | bulk RNA file in integer read counts; rows are samples and columns are genes | Required | runDeconvolution |
 | treeFile | tumor clone tree file | NULL | runDeconvolution runGSEA|
 | proportionFile | subclone proportion file | NULL | runDeconvolution |
 | normalize | normalize the raw count using DESeq2 | TRUE | runDeconvolution |
 | purityFile | tumor purity file | NULL | runDeconvolution |
-| lambda | lambda weight for Laplacian matrix used in deconvolution | 0.01 | runDeconvolution |
+| lambda | regularisation strength λ for deconvolution | 0.05 | runDeconvolution |
+| model | deconvolution model (see section 3.3) | "tree_delta" | runDeconvolution |
+| lambda_l2 | fixed L2 Laplacian weight for elastic_net model | 0.01 | runDeconvolution |
+| n_iter | IRLS iterations for adaptive/adaptive_v2 models | 5 | runDeconvolution |
+| verbose | print solver convergence progress | FALSE | runDeconvolution |
 | GSEA_file | geneset file in MSigDB .gmt format | NULL | runGSEA |
 | top_K | top_K significant pathways to be plotted as GSEA results | 5 | runGSEA |
 | n_permutations | number of permutations in fgsea | 10000 | runGSEA |
-
 ------
+
+## 3.3 Choosing a deconvolution model
+
+Seven deconvolution models are available. All models minimise the reconstruction
+loss ‖Y − ΠX‖² with different regularisation strategies. Benchmarking was
+performed on 320 synthetic pseudo-bulk replicates (P7 tumour, 4 purity levels ×
+4 sample counts × 20 seeds, max tree depth = 5, K = 8 clones).
+
+| Model | Description | Star-best λ | Recommended when |
+|:------|:------------|:-----------:|:-----------------|
+| `tree_delta` | Tree-delta parameterisation: X = T·Δ, group-L2 penalty on edge changes. Does not shrink true-tree LFCs. | 0.05 | **Default.** Matched normal available; best pathway F1 (synthetic edges, with-normal mode). |
+| `plain` | Closed-form Laplacian smoothing. Fastest solver. | 0.10 | Highest Pearson recovery; quick exploratory runs. |
+| `adaptive` | Iteratively reweighted Laplacian (IRLS). Down-weights edges with large true differences. | 0.50 | General-purpose alternative to plain. |
+| `adaptive_v2` | Two-phase IRLS with unbiased initial weights (phase 1: λ=0 solve). | 0.50 | **Tumor-only mode** (no normal reference). Best F1 and sensitivity without a normal anchor. |
+| `plain_debiased` | Plain Laplacian with analytic shrinkage debiasing; corrects edge LFC attenuation. | 0.50 | Matched normal; prioritise **sensitivity** (fewest missed pathways). |
+| `fused_ew` | Element-wise fused LASSO via ADMM; per-gene L1 edge penalty. Requires λ > 0. | 0.01 | **Highest precision / MCC**; fewest false-positive pathways. |
+| `elastic_net` | L2 Laplacian (fixed λ_L2 = 0.01) + per-gene L1 fused LASSO via ADMM. Requires λ > 0. | 0.01 | **External (population-average) normal only**; best F1 in with-extnorm mode. |
+
+**λ selection guidance:**
+- The star-best λ values above are derived from the benchmarking study and are
+  topology-agnostic (selected on a star topology to avoid over-fitting to a known tree).
+- If you have a matched normal sample, use `model = "tree_delta"`, `lambda = 0.05`.
+- If no normal is available, use `model = "adaptive_v2"`, `lambda = 0.50`.
+- `fused_ew` and `elastic_net` require `lambda > 0`; they will error at `lambda = 0`.
+- The cost of using star-best λ versus true-tree-best λ is at most ≈0.008 in
+  Pearson r across all models.
 
 # 5. Output files
 
@@ -267,21 +309,19 @@ A CSV file of tumor purity used by `runDeconvolution()`.
 |--------:|--------:|
 |    0.70 |    0.50 |
 
-## 6.4 **SelectedMutFile**
-You can annotate the edges of the tree plot generated by PictographPlus by pre-selecting the mutations or copy-number-altered gene regions that are inferred to occur on those edges. To pre-select, use the **runPictograph** parameter **selectedMutFile** to input a plain text file that lists the mutations or copy number alterations of interest and their chromosome positions in 1-based, inclusive format. We suggest you choose a naming convention that will be easy to read and interpret on your tree.
+## 6.4 **driverFile**
+A CSV file that contains driver mutation information used for plotting by `runPictograph()`.  
+If you use this file, ensure that the corresponding mutation file follows the format **gene_extraInformation**, where **gene** is the actual gene name. The `gene_type` column can be **oncogene** or **tumor_suppressor** (leave blank if unknown).
 
-| name_on_tree | chr | start | end |
-|:-----|------:|------:|------:|
-| mut1 | chr1  |  100 | 100 |
-| mut2 | chr2  |  500 | 500 |
-| MYC AMP | chr8 | 128,747,000 |128,820,000 |
+| gene  | chrom  |    start |     end  | gene_type        |
+|:------|:-------|---------:|---------:|:-----------------|
+| KRAS  | chr12  |  25205246 |  25250936 | oncogene         |
+| SMAD4 | chr18  |  51028528 |  51085045 | tumor_suppressor |
 
+## 6.5 **cytobandFile**
+A TSV file of cytoband information used for plotting by `runPictograph()`.
 
-
-## 6.5 **sampleorderFile**
-A csv file that defines the order of samples in the piechart, plotting by `runPictograph()`.
-
-| order  | sample_name | 
-|:-----|------:|
-| 1 | sample1 |  
-| 2 | sample2 |  
+| chr  | start | end     | band   | stain  |
+|:-----|------:|--------:|:-------|:-------|
+| chr1 |     0 |  2300000 | p36.33 | gneg   |
+| chr1 | 2300000 |  5300000 | p36.32 | gpos25 |

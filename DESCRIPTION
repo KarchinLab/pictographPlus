@@ -19,12 +19,12 @@ Imports:
   ggmcmc (>= 1.5.1),
   UpSetR (>= 1.4.0),
   cluster (>= 2.1.4),
-  fgsea (>= 1.32.0),
+  fgsea (>= 1.28.0),
   ggrepel (>= 0.9.6),
   diptest (>= 0.77-1),
   pheatmap (>= 1.0.12),
-  DESeq2 (>= 1.46.0),
+  DESeq2 (>= 1.42.0),
   purrr (>= 1.0.2),
-  GenomicRanges (>= 1.58.0),
-  IRanges (>= 2.40.1)
+  GenomicRanges (>= 1.54.0),
+  IRanges (>= 2.36.0)
 RoxygenNote: 7.3.2

@@ -819,30 +819,30 @@ getLabels <- function(matchTable, driverList, cytobandFile) {
     cytobandTable <- cytobandTable[cytobandTable[[1]] %in% allowed_chromosomes, ]
     colnames(cytobandTable) <- c("chrom", "start", "end", "cytoband", "ext")
     cytobandTable <- unique(cytobandTable)
-    
-    filtered_table <- filtered_table %>%
+
+    driver_hits <- driver_hits %>%
       mutate(
         chromosome = sub("-.*", "", chrom_start_end),                    # Extract chromosome
         starts = as.numeric(sub("-.*", "", sub(".*?-", "", chrom_start_end))), # Extract starts
         ends = as.numeric(sub(".*-", "", chrom_start_end))                    # Extract ends
       )
-    
-    filtered_table <- filtered_table %>%
+
+    driver_hits <- driver_hits %>%
       rowwise() %>%
       mutate(
         cytoband = if (!is.na(chromosome)) {
           # Find the cytoband for the start position
-          match_start <- which(cytobandTable$chrom == chromosome & 
-                                 cytobandTable$start <= starts & 
+          match_start <- which(cytobandTable$chrom == chromosome &
+                                 cytobandTable$start <= starts &
                                  cytobandTable$end > starts)
           cytoband_start <- if (length(match_start) > 0) cytobandTable$cytoband[match_start[1]] else NA
-          
+
           # Find the cytoband for the end position
-          match_end <- which(cytobandTable$chrom == chromosome & 
-                               cytobandTable$start <= ends & 
+          match_end <- which(cytobandTable$chrom == chromosome &
+                               cytobandTable$start <= ends &
                                cytobandTable$end > ends)
           cytoband_end <- if (length(match_end) > 0) cytobandTable$cytoband[match_end[1]] else NA
-          
+
           # Combine cytobands
           if (!is.na(cytoband_start) && cytoband_start == cytoband_end) {
             cytoband_start
@@ -853,12 +853,13 @@ getLabels <- function(matchTable, driverList, cytobandFile) {
           NA  # If chromosome is NA, cytoband is NA
         },
         Mut_ID = if (!is.na(cytoband)) {
-          paste(chromosome,cytoband, Mut_ID, sep = "_")
+          paste(chromosome, cytoband, Mut_ID, sep = "_")
         } else {
           Mut_ID
         }
       ) %>%
-      ungroup()
+      ungroup() %>%
+      select(-chromosome, -starts, -ends)
   }
   if (nrow(driver_hits) == 0) return(NULL)
   return(driver_hits)
