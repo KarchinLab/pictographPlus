@@ -39,6 +39,17 @@ Seven models are available in `runDeconvolution` (and `runPICTographPlus`) via t
 (P7 tumour, deep tree, K = 8 clones) using the star-topology as a conservative
 topology-agnostic λ selection criterion.
 
+#### Model Selection Quick-Reference
+
+| Scenario | Recommended model | Why |
+|:---------|:------------------|:----|
+| Default — matched normal sample available | `elastic_net` (λ=0.01) | Best synthetic F1 (0.347) and Sensitivity (0.368). |
+| With-normal, if interpretability favoured | `tree_delta` (λ=0.05) | Nearly-tied F1 (0.339) with an explicit tree-structured prior; also strongest on with_extnorm. |
+| With-normal, prioritise precision / low-FDR | `adaptive` (λ=0.50) | Highest MCC in with_normal (0.248). |
+| Tumor-only (no normal reference) | `adaptive_v2` (λ=0.50) | Best F1 (0.348), Sensitivity (0.360), MCC (0.256). |
+| External (population-average) normal only | `tree_delta` (λ=0.05) | Best F1 (0.293) and Sensitivity (0.276). |
+| Highest absolute expression recovery (Pearson r) | `plain` (λ=0.10) | Top star-topology Pearson r (0.942) among 7 models. |
+
 ---
 
 ## **Bug Fixes (2026-04-16)**
