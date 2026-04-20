@@ -246,16 +246,6 @@ loss ‖Y − ΠX‖² with different regularisation strategies. Benchmarking wa
 performed on 320 synthetic pseudo-bulk replicates (P7 tumour, 4 purity levels ×
 4 sample counts × 20 seeds, max tree depth = 5, K = 8 clones).
 
-| Model | Description | Star-best λ | Recommended when |
-|:------|:------------|:-----------:|:-----------------|
-| `tree_delta` | Tree-delta parameterisation: X = T·Δ, group-L2 penalty on edge changes. Does not shrink true-tree LFCs. | 0.05 | **Default.** Matched normal available; best pathway F1 (synthetic edges, with-normal mode). |
-| `plain` | Closed-form Laplacian smoothing. Fastest solver. | 0.10 | Highest Pearson recovery; quick exploratory runs. |
-| `adaptive` | Iteratively reweighted Laplacian (IRLS). Down-weights edges with large true differences. | 0.50 | General-purpose alternative to plain. |
-| `adaptive_v2` | Two-phase IRLS with unbiased initial weights (phase 1: λ=0 solve). | 0.50 | **Tumor-only mode** (no normal reference). Best F1 and sensitivity without a normal anchor. |
-| `plain_debiased` | Plain Laplacian with analytic shrinkage debiasing; corrects edge LFC attenuation. | 0.50 | Matched normal; prioritise **sensitivity** (fewest missed pathways). |
-| `fused_ew` | Element-wise fused LASSO via ADMM; per-gene L1 edge penalty. Requires λ > 0. | 0.01 | **Highest precision / MCC**; fewest false-positive pathways. |
-| `elastic_net` | L2 Laplacian (fixed λ_L2 = 0.01) + per-gene L1 fused LASSO via ADMM. Requires λ > 0. | 0.01 | **External (population-average) normal only**; best F1 in with-extnorm mode. |
-
 **Model selection quick-reference:**
 
 | Scenario | Recommended model | Why |

@@ -21,24 +21,6 @@ The tool infers tumor clonal evolution from single or multi-region sequencing da
 - Deconvolves bulk gene expression data using **tumor clonal tree structures** with 7 model variants.
 - Performs **pathway enrichment analysis** to highlight significant transcriptomic alterations.
 
-### **Deconvolution Models**
-
-Seven models are available in `runDeconvolution` (and `runPICTographPlus`) via the `model` parameter:
-
-| Model | Default λ | Best for |
-|:------|:---------:|:---------|
-| `tree_delta` (**default**) | 0.05 | Matched normal sample; best pathway F1 on synthetic edges |
-| `plain` | 0.10 | Highest Pearson recovery; fastest solver |
-| `adaptive` | 0.50 | General-purpose alternative to plain |
-| `adaptive_v2` | 0.50 | Tumor-only mode (no normal reference) |
-| `plain_debiased` | 0.50 | Matched normal; best sensitivity |
-| `fused_ew` | 0.01 | Highest precision / MCC; requires λ > 0 |
-| `elastic_net` | 0.01 | External normal only; requires λ > 0 |
-
-λ values are derived from benchmarking on 320 synthetic pseudo-bulk replicates
-(P7 tumour, deep tree, K = 8 clones) using the star-topology as a conservative
-topology-agnostic λ selection criterion.
-
 #### Model Selection Quick-Reference
 
 | Scenario | Recommended model | Why |
@@ -49,51 +31,6 @@ topology-agnostic λ selection criterion.
 | Tumor-only (no normal reference) | `adaptive_v2` (λ=0.50) | Best F1 (0.348), Sensitivity (0.360), MCC (0.256). |
 | External (population-average) normal only | `tree_delta` (λ=0.05) | Best F1 (0.293) and Sensitivity (0.276). |
 | Highest absolute expression recovery (Pearson r) | `plain` (λ=0.10) | Top star-topology Pearson r (0.942) among 7 models. |
-
----
-
-## **Bug Fixes (2026-04-16)**
-
-### `deconvolution.R`
-
-1. **Missing row names on `X_optimal`** — The deconvolved expression matrix
-   written to `clonal_expression.csv` lacked proper clone-ID row names. When
-   read back by `runGSEA`, GSEA comparisons (e.g. clone "0" vs clone "1")
-   silently failed because column lookups used 1-based integer names instead
-   of clone-ID strings. **Fix:** `rownames(X_optimal) <- colnames(Pi)` is now
-   set immediately after solving.
-
-2. **Dead code `tree <- read.csv(treeFile)`** — `runDeconvolution` called
-   `read.csv(treeFile)` into an unused variable `tree` before separately
-   calling `read_tree(treeFile)`. The CSV read was harmless but wasteful and
-   misleading. **Fix:** removed.
-
-3. **Single-edge matrix shape** — `read_tree()` for a single-edge tree
-   returned a 2-element vector. The caller did not guarantee matrix shape
-   before passing to the model functions. **Fix:** single-edge output is
-   coerced to a 1 × 2 integer matrix in `runDeconvolution`.
-
-4. **Gradient-descent solver replaced** — The original `optimize_X`
-   gradient-descent loop (100 000 iterations, learning rate 0.01) was slow,
-   sensitive to initialisation, and produced approximate solutions. It also
-   applied the non-spectral Laplacian from igraph, which differs from the
-   normalised form used in benchmarking. **Fix:** replaced with the efficient
-   closed-form and ADMM solvers from the validated benchmarking pipeline
-   (`shared_scripts/models.R`), now embedded directly in `deconvolution.R`.
-
-5. **`runGSEA` coercion bug** — `mapply(as.matrix(X_optimal), FUN=as.numeric)`
-   used `mapply` to coerce matrix elements, which is non-standard and fails on
-   certain matrix classes. **Fix:** replaced with `as.matrix()` +
-   `storage.mode(X) <- "numeric"`.
-
-6. **`size` deprecated in `geom_vline`** — `ggplot2` ≥ 3.4 deprecates `size`
-   for line geoms in favour of `linewidth`. **Fix:** updated to `linewidth = 1`.
-
-7. **`leadingEdgePlot` hard-coded gene filter** — `1:min(30, length(.x))`
-   used base R indexing without `seq_len`, which can produce unexpected results
-   for zero-length vectors. **Fix:** replaced with `seq_len(min(30, length(.x)))`.
-
----
 
 ## **Installation**
 
