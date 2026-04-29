@@ -3,6 +3,9 @@
 !.github/
 !.Rbuildignore
 .DS_Store
+
+# vignette tangled-R artifact (rebuilt from .Rmd by R CMD build)
+vignettes/*.R
 # History files
 .Rhistory
 .Rapp.history
