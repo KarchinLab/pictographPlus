@@ -1,3 +1,11 @@
+# pictographPlus 1.1.1
+
+* Submission-prep release for Nature Communications.
+* Add `LICENSE` file (MIT) and proper `Authors@R` block.
+* Restore missing `rjags` and `epiR` Imports; drop `tidyverse` meta-package import.
+* Move `getPileUp.py` to `inst/scripts/` and update vignette accordingly.
+* Add `tests/testthat` smoke tests, GitHub Actions `R-CMD-check` workflow, `NEWS.md`, and `inst/CITATION`.
+
 # pictographPlus 1.1.0
 
 * Added expanded set of deconvolution model variants (`elastic_net`, `tree_delta`, `adaptive`, `adaptive_v2`, `plain`) with model-selection guidance in the README.
