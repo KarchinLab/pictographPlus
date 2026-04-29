@@ -10,15 +10,16 @@ bibentry(
   ),
   year     = "2026",
   note     = paste("R package version", meta$Version),
-  url      = "https://github.com/KarchinLab/pictographPlus",
+  doi      = "10.5281/zenodo.19896732",
+  url      = "https://doi.org/10.5281/zenodo.19896732",
   textVersion = paste0(
     "Lai J, Yang Y, Karchin R (2026). pictographPlus: Reconstructing ",
     "Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing. ",
     "R package version ", meta$Version,
-    ". https://github.com/KarchinLab/pictographPlus"
+    ". Zenodo. https://doi.org/10.5281/zenodo.19896732"
   )
 )
 
-## TODO: replace with the published manuscript citation once the Nature
-## Communications paper is in press, and add a Zenodo DOI bibentry for the
-## archived software release.
+## TODO: once the Nature Communications paper is in press, add a second
+## bibentry for the published article (bibtype = "Article", with the
+## journal DOI) so citation("pictographPlus") returns both.

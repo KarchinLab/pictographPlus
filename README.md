@@ -1,5 +1,7 @@
 # **PICTographPlus**
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19896732.svg)](https://doi.org/10.5281/zenodo.19896732)
+
 ## **Overview**
 
 
@@ -58,4 +60,22 @@ Detailed tutorial can be accessed through [vignette](https://github.com/KarchinL
 library(pictographPlus)
 vignette("pictographPlus", package = "pictographPlus")
 ```
+
+---
+
+## **Citation**
+
+If you use PICTographPlus in your research, please cite the archived software release:
+
+> Lai J, Yang Y, Karchin R (2026). *pictographPlus: Reconstructing Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing.* R package version 1.1.1. Zenodo. https://doi.org/10.5281/zenodo.19896732
+
+You can also retrieve a `bibentry` from R with:
+
+```r
+citation("pictographPlus")
+```
+
+## **Data**
+
+Processed data generated in the companion study (clone-level expression matrices, inferred clonal trees, and edge-level GSEA results) are available on Mendeley Data: https://doi.org/10.17632/cv66sgfcfn.2
 
