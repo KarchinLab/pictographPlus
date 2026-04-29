@@ -4,9 +4,9 @@ bibentry(
   bibtype  = "Manual",
   title    = "pictographPlus: Reconstructing Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing",
   author   = c(
-    person("Jiaying", "Lai"),
-    person("Yi", "Yang"),
-    person("Rachel", "Karchin")
+    person("Jiaying", "Lai", comment = c(ORCID = "0000-0003-3652-1070")),
+    person("Yi", "Yang", comment = c(ORCID = "0009-0006-2462-3327")),
+    person("Rachel", "Karchin", comment = c(ORCID = "0000-0002-5069-1239"))
   ),
   year     = "2026",
   note     = paste("R package version", meta$Version),
