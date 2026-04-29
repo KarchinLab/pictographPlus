@@ -47,13 +47,13 @@ devtools::install_github("KarchinLab/pictographPlus", build_vignettes = TRUE)
 ```
 
 ### **Package versions during development**
-PICTographPlus was developed under R (4.4.2). All package versions during development can be found at [installed_packages.csv](https://github.com/KarchinLab/pictographPlus/blob/working/installed_packages.csv)
+PICTographPlus was developed under R (4.4.2). All package versions during development can be found at [installed_packages.csv](https://github.com/KarchinLab/pictographPlus/blob/main/installed_packages.csv)
 
---- 
+---
 
 ## **Access Tutorial**
 
-Detailed tutorial can be accessed through [vignette](https://github.com/KarchinLab/pictographPlus/tree/working/vignettes).
+Detailed tutorial can be accessed through [vignette](https://github.com/KarchinLab/pictographPlus/tree/main/vignettes).
 ```r
 library(pictographPlus)
 vignette("pictographPlus", package = "pictographPlus")

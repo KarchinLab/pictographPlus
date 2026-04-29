@@ -1,0 +1,8 @@
+^\.github$
+^\.Rproj\.user$
+^.*\.Rproj$
+^LICENSE\.md$
+^installed_packages\.csv$
+^run\.log$
+^getPileUp\.py$
+^claude-advice$

@@ -1,8 +1,7 @@
 .*
-test
-#Kmeans-clustering.R
-#Kmeans-main.R
-#Kmeans-process-clusters.R
+!.gitignore
+!.github/
+!.Rbuildignore
 .DS_Store
 # History files
 .Rhistory

@@ -1,18 +1,38 @@
 Package: pictographPlus
 Type: Package
-Title: Tumor evolution drives intra-tumor heterogeneity, yet functional clone-specific profiles remain poorly understood. We developed PICTographPlus, a computational tool that integrates bulk DNA and RNA sequencing to reconstruct clone-specific transcriptomic profiles and uncover functional transitions between clones, offering a powerful framework for cancer evolution studies. 
-Version: 1.0.0
-Author: Jiaying Lai
-Maintainer: The package maintainer <jlai33@jh.edu>
-Description: This package is used to perform tumor evolution reconstruction using genomic data. In addition, the tool can also estimate clone-level RNA expression from bulk-RNA data.
-License: MIT
+Title: Reconstructing Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing
+Version: 1.1.0
+Authors@R: c(
+    person("Jiaying", "Lai", email = "jlai33@jh.edu", role = c("aut", "cre")),
+    person("Yi", "Yang", role = "aut"),
+    person("Rachel", "Karchin", email = "karchin@jhu.edu", role = c("aut", "ths")))
+Description: Integrates bulk DNA and RNA sequencing data to reconstruct
+    clone-specific transcriptomic profiles, infer tumor clonal evolution, and
+    identify functional transitions between clones. Tumor evolution is inferred
+    from single- or multi-region sequencing by modeling the uncertainty of
+    mutation cellular fraction in small somatic mutations and copy number
+    alterations using a Bayesian hierarchical model. Bulk gene expression is
+    then deconvolved by integrating clone tree structure with clone proportions
+    across samples, optimizing an objective that balances reconstruction error
+    against a tree-aware smoothness penalty so closely related clones display
+    similar expression. Pathway enrichment analysis identifies statistically
+    significant alterations in pathways connecting tumor clones.
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports:
   readr (>= 2.1.4),
-  tidyverse (>= 2.0.0),
   dplyr (>= 1.1.1),
   tidyr (>= 1.3.0),
+  tibble (>= 3.2.0),
+  purrr (>= 1.0.2),
+  stringr (>= 1.5.0),
+  ggplot2 (>= 3.4.0),
+  magrittr (>= 2.0.3),
+  methods,
+  parallel,
+  rjags (>= 4-16),
+  epiR (>= 2.0.0),
   LaplacesDemon (>= 16.1.6),
   igraph (>= 2.0.1),
   viridis (>= 0.6.5),
@@ -24,7 +44,13 @@ Imports:
   diptest (>= 0.77-1),
   pheatmap (>= 1.0.12),
   DESeq2 (>= 1.42.0),
-  purrr (>= 1.0.2),
   GenomicRanges (>= 1.54.0),
   IRanges (>= 2.36.0)
+Suggests:
+  knitr,
+  rmarkdown,
+  testthat (>= 3.0.0)
+VignetteBuilder: knitr
 RoxygenNote: 7.3.2
+URL: https://github.com/KarchinLab/pictographPlus
+BugReports: https://github.com/KarchinLab/pictographPlus/issues

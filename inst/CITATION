@@ -1,0 +1,24 @@
+citHeader("To cite pictographPlus in publications, please use:")
+
+bibentry(
+  bibtype  = "Manual",
+  title    = "pictographPlus: Reconstructing Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing",
+  author   = c(
+    person("Jiaying", "Lai"),
+    person("Yi", "Yang"),
+    person("Rachel", "Karchin")
+  ),
+  year     = "2026",
+  note     = paste("R package version", meta$Version),
+  url      = "https://github.com/KarchinLab/pictographPlus",
+  textVersion = paste0(
+    "Lai J, Yang Y, Karchin R (2026). pictographPlus: Reconstructing ",
+    "Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing. ",
+    "R package version ", meta$Version,
+    ". https://github.com/KarchinLab/pictographPlus"
+  )
+)
+
+## TODO: replace with the published manuscript citation once the Nature
+## Communications paper is in press, and add a Zenodo DOI bibentry for the
+## archived software release.
