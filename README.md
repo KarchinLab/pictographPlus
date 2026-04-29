@@ -77,5 +77,18 @@ citation("pictographPlus")
 
 ## **Data**
 
-Processed data generated in the companion study (clone-level expression matrices, inferred clonal trees, and edge-level GSEA results) are available on Mendeley Data: https://doi.org/10.17632/cv66sgfcfn.2
+Processed data generated in the companion study — clone-level expression matrices, inferred clonal trees, and edge-level GSEA results — are available on Mendeley Data at https://doi.org/10.17632/cv66sgfcfn.2.
+
+The benchmarks and applications in the manuscript use the following public datasets:
+
+| Dataset | Accession |
+|---|---|
+| wellDR-seq scDNA/scRNA co-profile (benchmarking) | GEO: GSE261713 |
+| IPMN WES + RNA-seq | dbGaP: phs002225.v3.p1 |
+| TRACERx NSCLC WES | EGA: EGAD00001009825 |
+| TRACERx NSCLC RNA-seq | EGA: EGAD00001009862 |
+| PanCuRx PDAC WGS | EGA: EGAD00001004551 |
+| PanCuRx PDAC RNA-seq | EGA: EGAD00001004548 |
+
+All datasets were used in accordance with the respective data access agreements.
 
