@@ -7,7 +7,7 @@
 #' @export
 #' 
 #' @param mutation_file a csv file that include information for SSMs. See vignette for details.
-#' @param rna_file bulk RNA file in integer read counts; rows are samples and columns are genes. See vignette for details.
+#' @param rna_file bulk RNA file in integer read counts; rows are genes and columns are samples (first column = gene IDs). See vignette for details.
 #' @param copy_number_file a csv file that include information for CNA. See vignette for details.
 #' @param SNV_file a csv file that include information for germline heterozygous SNVs. See vignette for details.
 #' @param outputDir output directory for saving all files.
@@ -25,7 +25,6 @@
 #' @param LOH whether or not to include copy number segments that are copy neutral but LOH; default: FALSE
 #' @param purity_min minimum purity for tumor samples; default: 0.2
 #' @param driverFile list of driver genes used for visualization. See vignette for details.
-#' @param selectedMutFile list of genes or mutations used for visualization. See vignette for details.
 #' @param cytobandFile list of cytoband regions used for visualization. See vignette for details.
 #' @param alt_reads_thresh minimum number of alternative read count for a SSM to be included in the analysis; default: 0
 #' @param vaf_thresh minimum VAF for a SSM to be included in the analysis; default: 0
@@ -34,14 +33,19 @@
 #' @param smooth_cnv whether or not to process copy number alterations across samples to unify the segment start and end postions; default: TRUE
 #' @param autosome to only include autosomes; default: TRUE
 #' @param cnv_min_length minimum length of copy number alterations for it to be included in analysis
-#' @param lambda weights used in deconvolution step; default: 0.2
+#' @param lambda regularisation strength for deconvolution; default: 0.01 (elastic_net star-best)
+#' @param use_star_tree if TRUE (default), deconvolve with a star topology (root → all clones)
+#'   rather than the inferred tree. Recommended until topology advantage is confirmed.
+#' @param model deconvolution model; one of "elastic_net" (default), "tree_delta", "plain",
+#'   "adaptive", "adaptive_v2", "plain_debiased", "fused_ew". See \code{runDeconvolution}.
 #' @param GSEA whether to perform GSEA analysis; default is TRUE
 #' @param GSEA_file geneset file in MSigDB .gmt format; the geneset name will show up in plotting
 #' @param top_K top_K significant pathways to be plotted as GSEA results; default: 5
 #' @param n_permutations number of permutations in fgsea; default: 10000
-#' @param purityFile purity file for each sample; default: NULL
+#' @param purityFile purity file for each sample; default: NULL, in which case the
+#'   \code{purity.csv} written by \code{runPictograph} in \code{outputDir} is used
+#'   automatically if present. Supply a path to override.
 #' @param normalize normalize the raw count using DESeq2; default: TRUE
-#' @param sampleorderFile a csv file that orders samples in the piechart output
 runPICTographPlus <- function(
     mutation_file,
     rna_file,
@@ -49,10 +53,13 @@ runPICTographPlus <- function(
     copy_number_file=NULL,
     SNV_file=NULL,
     lambda=0.01,
+    use_star_tree=TRUE,
+    model="elastic_net",
     GSEA = TRUE,
     GSEA_file = NULL,
     top_K = 5,
     normalize=TRUE,
+    purityFile = NULL,
     n_permutations=10000,
     sample_presence=FALSE,
     score="BIC", # either BIC or silhouette
@@ -65,8 +72,7 @@ runPICTographPlus <- function(
     thin=10, 
     mc.cores=8, 
     inits=list(".RNG.name" = "base::Wichmann-Hill",".RNG.seed" = 123),
-    #driverFile = NULL,
-    selectedMutFile = NULL,
+    driverFile = NULL,
     cytobandFile = NULL,
     LOH = FALSE,
     purity_min=0.2, 
@@ -80,9 +86,7 @@ runPICTographPlus <- function(
     threshes = NULL,
     dual_model = TRUE, 
     pval = 0.05, 
-    ploidy = 2,
-    usePurity = FALSE,
-    sampleorderFile=NULL
+    ploidy = 2
 ) {
   
   runPictograph(mutation_file,
@@ -106,8 +110,7 @@ runPICTographPlus <- function(
            threshes=threshes,
            LOH=LOH,
            purity_min=purity_min,
-           #driverFile=driverFile,
-           selectedMutFile=selectedMutFile,
+           selectedMutFile = driverFile,
            cytobandFile = cytobandFile,
            alt_reads_thresh = alt_reads_thresh,
            vaf_thresh = vaf_thresh,
@@ -115,29 +118,35 @@ runPICTographPlus <- function(
            tcn_normal_range=tcn_normal_range,
            filter_cnv=filter_cnv,
            smooth_cnv=smooth_cnv, 
-           autosome=autosome,
-           sampleorderFile=sampleorderFile
+           autosome=autosome
   )
   
   treeFile = paste(outputDir, "tree.csv", sep="/")
   proportionFile = paste(outputDir, "subclone_proportion.csv", sep="/")
-  
-  purityFile = NULL
-  if (usePurity) {
-    purityFile = paste(outputDir, "purity.csv", sep="/")
+
+  # Default: use the purity.csv written by runPictograph (MCMC-main.R).
+  # Users can still override by passing purityFile explicitly.
+  if (is.null(purityFile)) {
+    auto_purity <- file.path(outputDir, "purity.csv")
+    if (file.exists(auto_purity)) {
+      purityFile <- auto_purity
+      message("Using purity file written by runPictograph: ", auto_purity)
+    }
   }
-  
-  X_optimal = runDeconvolution(rna_file = rna_file,
-                treeFile = treeFile,
+
+  X_optimal = runDeconvolution(rna_file       = rna_file,
+                treeFile       = if (use_star_tree) NULL else treeFile,
                 proportionFile = proportionFile,
-                normalize=normalize,
-                purityFile = purityFile,
-                outputDir = outputDir,
-                lambda=lambda)
-  
-  
+                normalize      = normalize,
+                purityFile     = purityFile,
+                outputDir      = outputDir,
+                lambda         = lambda,
+                use_star_tree  = use_star_tree,
+                model          = model)
+
   if (GSEA) {
-    # X_optimal <- read.csv(paste0(outputDir, "/clonal_expression.csv"), row.names = 1, check.names=FALSE)
+    # GSEA uses the DNA-derived tree regardless of whether deconvolution used a star tree.
+    # Edge-wise enrichment must follow the biological clonal phylogeny.
     runGSEA(X_optimal, outputDir, treeFile, GSEA_file=GSEA_file, top_K=top_K,
             n_permutations=n_permutations)
   }
