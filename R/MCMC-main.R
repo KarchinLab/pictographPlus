@@ -582,7 +582,7 @@ runPictograph <- function(mutation_file,
   write.table(clusterassignmentTable, file=paste(outputDir, "clusterAssign.csv", sep="/"), quote = FALSE, sep = ",", row.names = F)
   # change subclone_props
   rownames(subclone_props)=new_cluster_names[rownames(subclone_props)]
-  subclone_props <- subclone_props[order(as.numeric(rownames(subclone_props))), ]
+  subclone_props <- subclone_props[order(as.numeric(rownames(subclone_props))), , drop = FALSE]
   write.csv(subclone_props, file=paste(outputDir, "subclone_proportion.csv", sep="/"), quote = FALSE)
   if(is.null(sampleorderFile)){
     png(paste(outputDir, "subclone_props.png", sep="/"))
@@ -896,7 +896,7 @@ plotAllTrees <- function(outputDir, scores, all_spanning_trees, mcfTable, data, 
       
       # change subclone_props
       rownames(subclone_props)=new_cluster_names[rownames(subclone_props)]
-      subclone_props <- subclone_props[order(as.numeric(rownames(subclone_props))), ]
+      subclone_props <- subclone_props[order(as.numeric(rownames(subclone_props))), , drop = FALSE]
       write.csv(subclone_props, file=paste(outputDir, "/tree_", i, "_subclone_proportion.csv", sep=""), quote = FALSE)
       if(is.null(sampleorderFile)){
         png(paste(outputDir, "/tree_", i, "_subclone_proportion.png", sep=""))
