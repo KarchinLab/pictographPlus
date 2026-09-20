@@ -77,7 +77,11 @@ runDeconvolution <- function(rna_file,
     proportionDF <- propData
     proportionDF <- rbind(proportionDF, 0)
   } else {
-    purityData   <- read.csv(purityFile)
+    purityData <- read.csv(purityFile)
+    # purityData[1, ] is matched to propData's columns by POSITION (as.numeric()
+    # drops names); assert the order actually agrees instead of silently
+    # multiplying the wrong purity onto the wrong sample (see case_config.R).
+    stopifnot(identical(colnames(purityData), colnames(propData)))
     proportionDF <- t(t(propData) * as.numeric(purityData[1, ]))
     proportionDF <- rbind(proportionDF, 1 - purityData)
   }
@@ -95,7 +99,11 @@ runDeconvolution <- function(rna_file,
 
   proportionDF <- round(proportionDF, 4)
   proportionDF <- proportionDF[, colnames(rnaData), drop = FALSE]
-  proportionDF <- proportionDF[order(rownames(proportionDF)), , drop = FALSE]
+  # Numeric sort: rownames are clone-id strings ("0" = normal), and a
+  # lexicographic sort misorders them once there are >=10 tumor clones
+  # (e.g. "10" before "2"), which silently mis-indexes edges built from
+  # treeFile for use_star_tree = FALSE.
+  proportionDF <- proportionDF[order(as.integer(rownames(proportionDF))), , drop = FALSE]
 
   # Build 0-based edge list (star tree or from file)
   if (use_star_tree) {
@@ -326,48 +334,163 @@ debias_laplacian <- function(X_pen, Pi, edges, lambda, ridge = 1e-8,
 }
 
 
+# ---- Shared X-subproblem solver (validated_admm_solver_v3.R) -------
+#
+# Each ADMM model below solves the same kind of X-subproblem each outer
+# iteration: min_{X>=0} X'HX - 2 B'X for a fixed PSD H. The historical
+# implementation computed the unconstrained minimizer H^{-1}B and clipped
+# negative entries with pmax(.,0) -- not the constrained minimizer unless H
+# is diagonal, and on real panels this stopped at an objective >2x worse
+# than the correct solve (analysis/AUDIT_2026-09-15_TECHNICAL_VALIDATION.md).
+# `.projected_qp` instead solves it by projected FISTA, with an active-set
+# KKT polish and a recorded KKT residual so callers can confirm convergence.
+.projected_qp <- function(H, B, X0 = NULL, tol = 1e-8, max_iter = 5000L, kkt_tol = 1e-5) {
+  K <- nrow(H)
+  X <- if (is.null(X0)) matrix(0, K, ncol(B)) else pmax(X0, 0)
+  Yk <- X
+  tk <- 1
+  lipschitz <- max(eigen(H, symmetric = TRUE, only.values = TRUE)$values)
+  if (!is.finite(lipschitz) || lipschitz <= 0) stop("X-subproblem Hessian is not positive definite")
+  converged <- FALSE
+  rel_change <- Inf
+  for (it in seq_len(max_iter)) {
+    Xnew <- pmax(Yk - (H %*% Yk - B) / lipschitz, 0)
+    rel_change <- norm(Xnew - X, "F") / (norm(X, "F") + 1e-12)
+    if (rel_change < tol) {
+      grad_new <- H %*% Xnew - B
+      kkt_new <- max(abs(ifelse(Xnew > 1e-10, grad_new, pmin(grad_new, 0))))
+      if (kkt_new > kkt_tol) {
+        active <- Xnew > 1e-10
+        groups <- split(seq_len(ncol(B)), apply(active, 2, paste0, collapse = ""))
+        for (cols in groups) {
+          free <- which(active[, cols[1]])
+          candidate <- matrix(0, K, length(cols))
+          if (length(free)) {
+            sol <- tryCatch(solve(H[free, free, drop = FALSE], B[free, cols, drop = FALSE]),
+                            error = function(e) NULL)
+            if (is.null(sol)) next
+            candidate[free, ] <- sol
+          }
+          cg <- H %*% candidate - B[, cols, drop = FALSE]
+          ck <- apply(abs(ifelse(candidate > 1e-10, cg, pmin(cg, 0))), 2, max)
+          accept <- colSums(candidate < 0) == 0 & is.finite(ck) & ck <= kkt_tol
+          if (any(accept)) Xnew[, cols[accept]] <- candidate[, accept, drop = FALSE]
+        }
+        grad_new <- H %*% Xnew - B
+        kkt_new <- max(abs(ifelse(Xnew > 1e-10, grad_new, pmin(grad_new, 0))))
+      }
+      if (kkt_new <= kkt_tol) { X <- Xnew; converged <- TRUE; break }
+    }
+    tnew <- (1 + sqrt(1 + 4 * tk^2)) / 2
+    Yk <- Xnew + ((tk - 1) / tnew) * (Xnew - X)
+    X <- Xnew
+    tk <- tnew
+  }
+  grad <- H %*% X - B
+  kkt <- max(abs(ifelse(X > 1e-10, grad, pmin(grad, 0))))
+  list(X = X, iterations = it, converged = converged,
+       rel_change = rel_change, kkt_residual = kkt)
+}
+
+
 # ---- Model 5: Element-wise fused LASSO via ADMM --------------------
 
 fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
-                                              rho = 1.0, max_iter = 5000,
-                                              tol = 1e-3, ridge = 1e-8,
+                                              rho = 1.0, max_iter = 15000L,
+                                              tol = 1e-4, ridge = 1e-8,
+                                              adaptive_rho = TRUE,
+                                              rho_mu = 10.0, rho_tau = 2.0,
+                                              x_tol = 1e-8, x_max_iter = 5000L,
+                                              kkt_tol = 1e-5,
                                               verbose = FALSE) {
+  # `adaptive_rho` turns on Boyd 2011 sec 3.4.1 residual balancing: every 25
+  # iterations (and only in the first half of the run), if the primal / dual
+  # residuals have drifted > `rho_mu`x apart, rho is nudged by `rho_tau` (bounded,
+  # <=40 total changes) and the scaled dual u rescaled with it. Without it the
+  # fixed-rho iteration stalls with a flat dual residual on under-determined Pi
+  # and hits max_iter without tripping `tol` (see analysis/case_study_model_switch/,
+  # test c), which invents spurious distal-edge GSEA signal. Updating rho only
+  # periodically (not every iteration) lets ADMM equilibrate between changes.
+  # The X-update is the KKT-checked non-negative solve (`.projected_qp` above);
+  # `tol` sets both the absolute and relative Boyd stopping tolerance for the
+  # outer ADMM primal/dual residuals, which must also clear the X-subproblem's
+  # own KKT gate (`kkt_tol`) before an iteration counts as converged.
+  # `adaptive_rho = FALSE` + `max_iter = 5000` + `tol = 1e-3` reproduces the
+  # pre-2026-09 iteration budget, not the historical fits (those clipped
+  # instead of solving the X-subproblem; see the header note above).
   K       <- max(edges) + 1L
   n_genes <- ncol(Y)
   n_edges <- nrow(edges)
   D       <- build_incidence(edges, K)
+  Dt      <- t(D)
+  DtD     <- Dt %*% D
+  PtP2    <- 2.0 * t(Pi) %*% Pi
+  PtY2    <- 2.0 * t(Pi) %*% Y
 
-  A     <- 2.0 * t(Pi) %*% Pi + rho * t(D) %*% D + ridge * diag(K)
-  A_inv <- tryCatch(solve(A),
-                    error = function(e) qr.solve(A, diag(K)))
+  make_H <- function(r) PtP2 + r * DtD + ridge * diag(K)
+  H <- make_H(rho)
 
   X <- matrix(0.0, K, n_genes)
   Z <- matrix(0.0, n_edges, n_genes)
   u <- matrix(0.0, n_edges, n_genes)
-  tau   <- lambda / rho
   iters <- 0L
+  converged <- FALSE
+  p_res <- d_res <- NA_real_
+  n_rho_upd  <- 0L
+  rho_lo     <- rho / 64; rho_hi <- rho * 64
+  rho_freeze <- as.integer(max_iter * 0.5)
+  X_ref <- X; chk_every <- 200L; x_stall_tol <- 1e-6   # objective-plateau early stop
+  xinfo <- NULL
 
   for (iter in seq_len(max_iter)) {
     iters  <- iter
-    X_new  <- pmax(A_inv %*% (2.0 * t(Pi) %*% Y + rho * t(D) %*% (Z - u)), 0)
+    xinfo  <- .projected_qp(H, PtY2 + rho * Dt %*% (Z - u), X,
+                            tol = x_tol, max_iter = x_max_iter, kkt_tol = kkt_tol)
+    X_new  <- xinfo$X
     V      <- D %*% X_new + u
-    Z_new  <- sign(V) * pmax(abs(V) - tau, 0)
+    Z_new  <- sign(V) * pmax(abs(V) - lambda / rho, 0)
     resid  <- D %*% X_new - Z_new
     u      <- u + resid
 
     DX_n   <- norm(D %*% X_new, "F"); Zn <- norm(Z_new, "F")
-    d_res  <- norm(rho * t(D) %*% (Z_new - Z), "F")
-    d_scl  <- norm(rho * t(D) %*% u, "F") + 1e-10
-    rel_p  <- norm(resid, "F") / (max(DX_n, Zn) + 1e-10)
-    rel_d  <- d_res / d_scl
+    p_res  <- norm(resid, "F")
+    d_res  <- norm(rho * Dt %*% (Z_new - Z), "F")
+    eps_pri  <- sqrt(length(resid)) * tol + tol * max(DX_n, Zn)
+    eps_dual <- sqrt(length(X_new)) * tol + tol * norm(rho * Dt %*% u, "F")
     Z <- Z_new; X <- X_new
 
     if (verbose && iter %% 100 == 0)
-      cat(sprintf("  fused_ew ADMM iter %d: rel_p=%.2e rel_d=%.2e\n",
-                  iter, rel_p, rel_d))
-    if (rel_p < tol && rel_d < tol) break
+      cat(sprintf("  fused_ew ADMM iter %d: r=%.2e/%.2e s=%.2e/%.2e xKKT=%.2e rho=%.3g\n",
+                  iter, p_res, eps_pri, d_res, eps_dual, xinfo$kkt_residual, rho))
+    if (p_res <= eps_pri && d_res <= eps_dual && xinfo$kkt_residual <= kkt_tol) {
+      converged <- TRUE; break
+    }
+    # once the primal constraint holds, the dual can crawl in the Pi null space
+    # for a very long time while X is already stationary -- stop then.
+    if (iter %% chk_every == 0L) {
+      if (norm(X - X_ref, "F") / (norm(X_ref, "F") + 1e-12) < x_stall_tol) {
+        converged <- TRUE; break
+      }
+      X_ref <- X
+    }
+
+    if (adaptive_rho && iter %% 25L == 0L && iter >= 100L && iter <= rho_freeze && n_rho_upd < 40L) {
+      new_rho <- if (p_res > rho_mu * d_res) min(rho * rho_tau, rho_hi)
+                 else if (d_res > rho_mu * p_res) max(rho / rho_tau, rho_lo)
+                 else rho
+      if (new_rho != rho) {
+        u <- u * (rho / new_rho); rho <- new_rho
+        H <- make_H(rho)
+        n_rho_upd <- n_rho_upd + 1L
+      }
+    }
   }
-  list(X = X, residual_norm = norm(Y - Pi %*% X, "F"), iterations = iters)
+  if (verbose && !converged)
+    cat(sprintf("  fused_ew ADMM: hit max_iter=%d (r=%.2e s=%.2e xKKT=%.2e)\n",
+                max_iter, p_res, d_res, xinfo$kkt_residual))
+  list(X = X, residual_norm = norm(Y - Pi %*% X, "F"),
+       iterations = iters, rho_final = rho, converged = converged,
+       x_kkt_residual = xinfo$kkt_residual)
 }
 
 
@@ -375,46 +498,89 @@ fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
 
 fit_elastic_net_tree <- function(Y, Pi, edges, lambda1 = 0.01, lambda2 = 0.01,
                                   ridge = 1e-8, normalize = "spectral",
-                                  max_iter = 5000, tol = 1e-3,
+                                  max_iter = 15000L, tol = 1e-4,
+                                  adaptive_rho = TRUE,
+                                  rho_mu = 10.0, rho_tau = 2.0,
+                                  x_tol = 1e-8, x_max_iter = 5000L,
+                                  kkt_tol = 1e-5,
                                   verbose = FALSE) {
+  # See fit_elementwise_fused_lasso_admm for `adaptive_rho`, the X-subproblem
+  # solve (`.projected_qp`), and what `tol`/`kkt_tol` gate. The L2 Laplacian
+  # term here already conditions the ADMM system, so this solver converged even
+  # under fixed rho; residual balancing mainly speeds it up.
   K       <- max(edges) + 1L
   n_genes <- ncol(Y)
   n_edges <- nrow(edges)
   L       <- build_laplacian(edges, K, normalize = normalize)
   D       <- build_incidence(edges, K)
+  Dt      <- t(D)
+  DtD     <- Dt %*% D
+  PtP2    <- 2.0 * t(Pi) %*% Pi
+  PtY2    <- 2.0 * t(Pi) %*% Y
 
   rho   <- 1.0
-  A     <- 2.0 * t(Pi) %*% Pi + lambda1 * L + rho * t(D) %*% D + ridge * diag(K)
-  A_inv <- tryCatch(solve(A),
-                    error = function(e) qr.solve(A, diag(K)))
+  make_H <- function(r) PtP2 + lambda1 * L + r * DtD + ridge * diag(K)
+  H <- make_H(rho)
 
   X <- matrix(0.0, K, n_genes)
   Z <- matrix(0.0, n_edges, n_genes)
   u <- matrix(0.0, n_edges, n_genes)
-  tau   <- lambda2 / rho
   iters <- 0L
+  converged <- FALSE
+  p_res <- d_res <- NA_real_
+  n_rho_upd  <- 0L
+  rho_lo     <- rho / 64; rho_hi <- rho * 64
+  rho_freeze <- as.integer(max_iter * 0.5)
+  X_ref <- X; chk_every <- 200L; x_stall_tol <- 1e-6
+  xinfo <- NULL
 
   for (iter in seq_len(max_iter)) {
     iters  <- iter
-    X_new  <- pmax(A_inv %*% (2.0 * t(Pi) %*% Y + rho * t(D) %*% (Z - u)), 0)
+    xinfo  <- .projected_qp(H, PtY2 + rho * Dt %*% (Z - u), X,
+                            tol = x_tol, max_iter = x_max_iter, kkt_tol = kkt_tol)
+    X_new  <- xinfo$X
     V      <- D %*% X_new + u
-    Z_new  <- sign(V) * pmax(abs(V) - tau, 0)
+    Z_new  <- sign(V) * pmax(abs(V) - lambda2 / rho, 0)
     resid  <- D %*% X_new - Z_new
     u      <- u + resid
 
     DX_n  <- norm(D %*% X_new, "F"); Zn <- norm(Z_new, "F")
-    d_res <- norm(rho * t(D) %*% (Z_new - Z), "F")
-    d_scl <- norm(rho * t(D) %*% u, "F") + 1e-10
-    rel_p <- norm(resid, "F") / (max(DX_n, Zn) + 1e-10)
-    rel_d <- d_res / d_scl
+    p_res <- norm(resid, "F")
+    d_res <- norm(rho * Dt %*% (Z_new - Z), "F")
+    eps_pri  <- sqrt(length(resid)) * tol + tol * max(DX_n, Zn)
+    eps_dual <- sqrt(length(X_new)) * tol + tol * norm(rho * Dt %*% u, "F")
     Z <- Z_new; X <- X_new
 
     if (verbose && iter %% 100 == 0)
-      cat(sprintf("  elastic_net ADMM iter %d: rel_p=%.2e rel_d=%.2e\n",
-                  iter, rel_p, rel_d))
-    if (rel_p < tol && rel_d < tol) break
+      cat(sprintf("  elastic_net ADMM iter %d: r=%.2e/%.2e s=%.2e/%.2e xKKT=%.2e rho=%.3g\n",
+                  iter, p_res, eps_pri, d_res, eps_dual, xinfo$kkt_residual, rho))
+    if (p_res <= eps_pri && d_res <= eps_dual && xinfo$kkt_residual <= kkt_tol) {
+      converged <- TRUE; break
+    }
+    if (iter %% chk_every == 0L) {
+      if (norm(X - X_ref, "F") / (norm(X_ref, "F") + 1e-12) < x_stall_tol) {
+        converged <- TRUE; break
+      }
+      X_ref <- X
+    }
+
+    if (adaptive_rho && iter %% 25L == 0L && iter >= 100L && iter <= rho_freeze && n_rho_upd < 40L) {
+      new_rho <- if (p_res > rho_mu * d_res) min(rho * rho_tau, rho_hi)
+                 else if (d_res > rho_mu * p_res) max(rho / rho_tau, rho_lo)
+                 else rho
+      if (new_rho != rho) {
+        u <- u * (rho / new_rho); rho <- new_rho
+        H <- make_H(rho)
+        n_rho_upd <- n_rho_upd + 1L
+      }
+    }
   }
-  list(X = X, residual_norm = norm(Y - Pi %*% X, "F"), iterations = iters)
+  if (verbose && !converged)
+    cat(sprintf("  elastic_net ADMM: hit max_iter=%d (r=%.2e s=%.2e xKKT=%.2e)\n",
+                max_iter, p_res, d_res, xinfo$kkt_residual))
+  list(X = X, residual_norm = norm(Y - Pi %*% X, "F"),
+       iterations = iters, rho_final = rho, converged = converged,
+       x_kkt_residual = xinfo$kkt_residual)
 }
 
 
@@ -452,66 +618,106 @@ build_path_matrix <- function(edges, K) {
 }
 
 fit_tree_delta_admm <- function(Y, Pi, edges, lambda = 0.05,
-                                 rho = 1.0, max_iter = 3000, tol = 1e-4,
-                                 ridge = 1e-8, verbose = FALSE) {
+                                 rho = 1.0, max_iter = 15000L, tol = 1e-4,
+                                 ridge = 1e-8, adaptive_rho = TRUE,
+                                 rho_mu = 10.0, rho_tau = 2.0,
+                                 x_tol = 1e-8, x_max_iter = 5000L,
+                                 kkt_tol = 1e-5, verbose = FALSE) {
+  # See fit_elementwise_fused_lasso_admm for `adaptive_rho` and the X-subproblem
+  # solve (`.projected_qp`). On a rooted tree, an edge's row of D %*% X is
+  # exactly delta_e (child expression minus parent expression), so the group-L2
+  # penalty is solved directly in X coordinates via the shared ADMM/QP machinery
+  # instead of the historical Delta/T_mat reparameterisation, whose closed-form
+  # (lambda = 0) branch and post-hoc `pmax(T_mat %*% Delta, 0)` projection never
+  # solved the constrained problem (on a real P8 panel: objective 27604.9
+  # historical vs 30.5 corrected; see
+  # analysis/case_study_model_switch/results/real_benchmark_admm_validation.csv).
+  # `Delta`/`T_mat` are still returned (some callers persist `Delta_opt.rds`),
+  # recovered from the converged X: `T_mat` is invertible for any rooted tree,
+  # so `Delta = solve(T_mat, X)` recovers root expression (row 1) and each
+  # edge's delta (row 1+e, matching `edges`' row order) exactly.
   K       <- max(edges) + 1L
   n_genes <- ncol(Y)
   n_edges <- nrow(edges)
+  T_mat   <- build_path_matrix(edges, K)
+  D       <- build_incidence(edges, K)
+  Dt      <- t(D)
+  DtD     <- Dt %*% D
+  PtP2    <- 2.0 * t(Pi) %*% Pi
+  PtY2    <- 2.0 * t(Pi) %*% Y
 
-  T_mat    <- build_path_matrix(edges, K)
-  Pi_tilde <- Pi %*% T_mat
-  PtP      <- t(Pi_tilde) %*% Pi_tilde
-  PtY      <- t(Pi_tilde) %*% Y
+  make_H <- function(r) PtP2 + r * DtD + ridge * diag(K)
+  H <- make_H(rho)
 
-  if (lambda == 0) {
-    A     <- PtP + ridge * diag(K)
-    Delta <- tryCatch(solve(A, PtY), error = function(e) qr.solve(A, PtY))
-    X     <- pmax(T_mat %*% Delta, 0)
-    return(list(X = X, Delta = Delta, T_mat = T_mat,
-                residual_norm = norm(Y - Pi %*% X, "F"), iterations = 0L))
-  }
-
-  C    <- diag(c(0.0, rep(1.0, n_edges)))
-  A    <- 2.0 * PtP + rho * C + ridge * diag(K)
-  Ainv <- tryCatch(solve(A),
-                   error = function(e) qr.solve(A, diag(K)))
-
-  Delta <- matrix(0.0, K, n_genes)
-  V     <- matrix(0.0, n_edges, n_genes)
-  U     <- matrix(0.0, n_edges, n_genes)
-  tau   <- lambda / rho
+  X <- matrix(0.0, K, n_genes)
+  Z <- matrix(0.0, n_edges, n_genes)
+  u <- matrix(0.0, n_edges, n_genes)
   iters <- 0L
+  converged <- FALSE
+  p_res <- d_res <- NA_real_
+  n_rho_upd  <- 0L
+  rho_lo     <- rho / 64; rho_hi <- rho * 64
+  rho_freeze <- as.integer(max_iter * 0.5)
+  X_ref <- X; chk_every <- 200L; x_stall_tol <- 1e-6
+  xinfo <- NULL
 
   for (iter in seq_len(max_iter)) {
     iters <- iter
-    RHS              <- 2.0 * PtY
-    RHS[2L:K, ]     <- RHS[2L:K, ] + rho * (V - U)
-    Delta_new        <- Ainv %*% RHS
+    xinfo <- .projected_qp(H, PtY2 + rho * Dt %*% (Z - u), X,
+                           tol = x_tol, max_iter = x_max_iter, kkt_tol = kkt_tol)
+    X_new <- xinfo$X
 
-    delta_e <- Delta_new[2L:K, , drop = FALSE]
-    W       <- delta_e + U
-    V_new   <- matrix(0.0, n_edges, n_genes)
-    for (e in seq_len(n_edges)) {
-      wn <- sqrt(sum(W[e, ]^2))
-      if (wn > tau) V_new[e, ] <- W[e, ] * (1.0 - tau / wn)
-    }
+    V     <- D %*% X_new + u
+    Z_new <- matrix(0.0, n_edges, n_genes)
+    vn    <- sqrt(rowSums(V^2))
+    active <- vn > lambda / rho
+    if (any(active))
+      Z_new[active, ] <- V[active, , drop = FALSE] * (1 - lambda / rho / vn[active])
 
-    resid <- delta_e - V_new
-    U_new <- U + resid
-    rms_p <- norm(resid, "F") / sqrt(n_edges * n_genes)
-    d_res <- norm(rho * (V_new - V), "F")
+    resid <- D %*% X_new - Z_new
+    u     <- u + resid
 
-    V <- V_new; U <- U_new; Delta <- Delta_new
+    DX_n  <- norm(D %*% X_new, "F"); Zn <- norm(Z_new, "F")
+    p_res <- norm(resid, "F")
+    d_res <- norm(rho * Dt %*% (Z_new - Z), "F")
+    rms_p <- p_res / sqrt(n_edges * n_genes)
+    eps_pri  <- sqrt(length(resid)) * tol + tol * max(DX_n, Zn)
+    eps_dual <- sqrt(length(X_new)) * tol + tol * norm(rho * Dt %*% u, "F")
+
+    Z <- Z_new; X <- X_new
 
     if (verbose && iter %% 100L == 0L)
-      cat(sprintf("  tree_delta ADMM iter %d: rms_p=%.2e dual=%.2e\n",
-                  iter, rms_p, d_res))
-    if (rms_p < tol) break
-  }
+      cat(sprintf("  tree_delta ADMM iter %d: rms_p=%.2e r=%.2e/%.2e xKKT=%.2e rho=%.3g\n",
+                  iter, rms_p, p_res, eps_pri, xinfo$kkt_residual, rho))
+    if (p_res <= eps_pri && d_res <= eps_dual && xinfo$kkt_residual <= kkt_tol) {
+      converged <- TRUE; break
+    }
+    if (iter %% chk_every == 0L) {
+      if (norm(X - X_ref, "F") / (norm(X_ref, "F") + 1e-12) < x_stall_tol) {
+        converged <- TRUE; break
+      }
+      X_ref <- X
+    }
 
-  X <- pmax(T_mat %*% Delta, 0)
+    if (adaptive_rho && iter %% 25L == 0L && iter >= 100L && iter <= rho_freeze && n_rho_upd < 40L) {
+      new_rho <- if (p_res > rho_mu * d_res) min(rho * rho_tau, rho_hi)
+                 else if (d_res > rho_mu * p_res) max(rho / rho_tau, rho_lo)
+                 else rho
+      if (new_rho != rho) {
+        u <- u * (rho / new_rho); rho <- new_rho
+        H <- make_H(rho)
+        n_rho_upd <- n_rho_upd + 1L
+      }
+    }
+  }
+  if (verbose && !converged)
+    cat(sprintf("  tree_delta ADMM: hit max_iter=%d (rms_p=%.2e xKKT=%.2e)\n",
+                max_iter, p_res / sqrt(n_edges * n_genes), xinfo$kkt_residual))
+
+  Delta <- tryCatch(solve(T_mat, X), error = function(e) qr.solve(T_mat, X))
   list(X = X, Delta = Delta, T_mat = T_mat,
-       residual_norm = norm(Y - Pi %*% X, "F"), iterations = iters)
+       residual_norm = norm(Y - Pi %*% X, "F"), iterations = iters,
+       rho_final = rho, converged = converged, x_kkt_residual = xinfo$kkt_residual)
 }
 
 
