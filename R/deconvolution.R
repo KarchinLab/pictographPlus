@@ -435,6 +435,11 @@ fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
   u <- matrix(0.0, n_edges, n_genes)
   iters <- 0L
   converged <- FALSE
+  exit_reason <- NA_character_  # "kkt_gate" (primal/dual/KKT all in tolerance) or "x_stall" (X
+                                 # plateaued but the KKT gate was not necessarily met) or NA (hit
+                                 # max_iter) -- readiness-review finding 2, 2026-09-21: callers must
+                                 # be able to tell which exit fired, since only "kkt_gate" is the
+                                 # strict convergence certificate other gated pipelines use.
   p_res <- d_res <- NA_real_
   n_rho_upd  <- 0L
   rho_lo     <- rho / 64; rho_hi <- rho * 64
@@ -463,13 +468,13 @@ fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
       cat(sprintf("  fused_ew ADMM iter %d: r=%.2e/%.2e s=%.2e/%.2e xKKT=%.2e rho=%.3g\n",
                   iter, p_res, eps_pri, d_res, eps_dual, xinfo$kkt_residual, rho))
     if (p_res <= eps_pri && d_res <= eps_dual && xinfo$kkt_residual <= kkt_tol) {
-      converged <- TRUE; break
+      converged <- TRUE; exit_reason <- "kkt_gate"; break
     }
     # once the primal constraint holds, the dual can crawl in the Pi null space
     # for a very long time while X is already stationary -- stop then.
     if (iter %% chk_every == 0L) {
       if (norm(X - X_ref, "F") / (norm(X_ref, "F") + 1e-12) < x_stall_tol) {
-        converged <- TRUE; break
+        converged <- TRUE; exit_reason <- "x_stall"; break
       }
       X_ref <- X
     }
@@ -490,7 +495,9 @@ fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
                 max_iter, p_res, d_res, xinfo$kkt_residual))
   list(X = X, residual_norm = norm(Y - Pi %*% X, "F"),
        iterations = iters, rho_final = rho, converged = converged,
-       x_kkt_residual = xinfo$kkt_residual)
+       exit_reason = exit_reason, x_kkt_residual = xinfo$kkt_residual,
+       primal_residual = p_res, dual_residual = d_res,
+       eps_primal = eps_pri, eps_dual = eps_dual)
 }
 
 
@@ -527,6 +534,11 @@ fit_elastic_net_tree <- function(Y, Pi, edges, lambda1 = 0.01, lambda2 = 0.01,
   u <- matrix(0.0, n_edges, n_genes)
   iters <- 0L
   converged <- FALSE
+  exit_reason <- NA_character_  # "kkt_gate" (primal/dual/KKT all in tolerance) or "x_stall" (X
+                                 # plateaued but the KKT gate was not necessarily met) or NA (hit
+                                 # max_iter) -- readiness-review finding 2, 2026-09-21: callers must
+                                 # be able to tell which exit fired, since only "kkt_gate" is the
+                                 # strict convergence certificate other gated pipelines use.
   p_res <- d_res <- NA_real_
   n_rho_upd  <- 0L
   rho_lo     <- rho / 64; rho_hi <- rho * 64
@@ -555,11 +567,11 @@ fit_elastic_net_tree <- function(Y, Pi, edges, lambda1 = 0.01, lambda2 = 0.01,
       cat(sprintf("  elastic_net ADMM iter %d: r=%.2e/%.2e s=%.2e/%.2e xKKT=%.2e rho=%.3g\n",
                   iter, p_res, eps_pri, d_res, eps_dual, xinfo$kkt_residual, rho))
     if (p_res <= eps_pri && d_res <= eps_dual && xinfo$kkt_residual <= kkt_tol) {
-      converged <- TRUE; break
+      converged <- TRUE; exit_reason <- "kkt_gate"; break
     }
     if (iter %% chk_every == 0L) {
       if (norm(X - X_ref, "F") / (norm(X_ref, "F") + 1e-12) < x_stall_tol) {
-        converged <- TRUE; break
+        converged <- TRUE; exit_reason <- "x_stall"; break
       }
       X_ref <- X
     }
@@ -580,7 +592,9 @@ fit_elastic_net_tree <- function(Y, Pi, edges, lambda1 = 0.01, lambda2 = 0.01,
                 max_iter, p_res, d_res, xinfo$kkt_residual))
   list(X = X, residual_norm = norm(Y - Pi %*% X, "F"),
        iterations = iters, rho_final = rho, converged = converged,
-       x_kkt_residual = xinfo$kkt_residual)
+       exit_reason = exit_reason, x_kkt_residual = xinfo$kkt_residual,
+       primal_residual = p_res, dual_residual = d_res,
+       eps_primal = eps_pri, eps_dual = eps_dual)
 }
 
 
@@ -654,6 +668,11 @@ fit_tree_delta_admm <- function(Y, Pi, edges, lambda = 0.05,
   u <- matrix(0.0, n_edges, n_genes)
   iters <- 0L
   converged <- FALSE
+  exit_reason <- NA_character_  # "kkt_gate" (primal/dual/KKT all in tolerance) or "x_stall" (X
+                                 # plateaued but the KKT gate was not necessarily met) or NA (hit
+                                 # max_iter) -- readiness-review finding 2, 2026-09-21: callers must
+                                 # be able to tell which exit fired, since only "kkt_gate" is the
+                                 # strict convergence certificate other gated pipelines use.
   p_res <- d_res <- NA_real_
   n_rho_upd  <- 0L
   rho_lo     <- rho / 64; rho_hi <- rho * 64
@@ -690,11 +709,11 @@ fit_tree_delta_admm <- function(Y, Pi, edges, lambda = 0.05,
       cat(sprintf("  tree_delta ADMM iter %d: rms_p=%.2e r=%.2e/%.2e xKKT=%.2e rho=%.3g\n",
                   iter, rms_p, p_res, eps_pri, xinfo$kkt_residual, rho))
     if (p_res <= eps_pri && d_res <= eps_dual && xinfo$kkt_residual <= kkt_tol) {
-      converged <- TRUE; break
+      converged <- TRUE; exit_reason <- "kkt_gate"; break
     }
     if (iter %% chk_every == 0L) {
       if (norm(X - X_ref, "F") / (norm(X_ref, "F") + 1e-12) < x_stall_tol) {
-        converged <- TRUE; break
+        converged <- TRUE; exit_reason <- "x_stall"; break
       }
       X_ref <- X
     }
@@ -717,7 +736,9 @@ fit_tree_delta_admm <- function(Y, Pi, edges, lambda = 0.05,
   Delta <- tryCatch(solve(T_mat, X), error = function(e) qr.solve(T_mat, X))
   list(X = X, Delta = Delta, T_mat = T_mat,
        residual_norm = norm(Y - Pi %*% X, "F"), iterations = iters,
-       rho_final = rho, converged = converged, x_kkt_residual = xinfo$kkt_residual)
+       rho_final = rho, converged = converged, exit_reason = exit_reason,
+       x_kkt_residual = xinfo$kkt_residual, primal_residual = p_res, dual_residual = d_res,
+       eps_primal = eps_pri, eps_dual = eps_dual)
 }
 
 
@@ -832,12 +853,21 @@ leadingEdgePlot <- function(X, sample1, sample2, GSEA_dir) {
 
 
 GSEA_diff <- function(expr_matrix, sample1, sample2, gene_list, GSEA_dir,
-                       n_permutations = 10000, n = 5) {
+                       n_permutations = 10000, n = 5, thresh = 10,
+                       minSize = 15, maxSize = 500, eps = 1e-3) {
+  # thresh/minSize/maxSize/eps match the documented edge test (response_letter.md
+  # R1-M4) and analysis/09_uncertainty_layer's bootstrap scorer: genes expressed
+  # (X > thresh) in at least one of the two clones on this edge, tested with the same
+  # fgseaMultilevel tolerances, so baseline and bootstrap pathway calls agree.
+  keep <- expr_matrix[, sample1] > thresh | expr_matrix[, sample2] > thresh
+  expr_matrix <- expr_matrix[keep, , drop = FALSE]
+
   log2_diff    <- log2((expr_matrix[, sample2] + 1) /
                        (expr_matrix[, sample1] + 1))
   ranked_genes <- sort(log2_diff, decreasing = TRUE)
 
-  gsea_results <- fgseaMultilevel(pathways = gene_list, stats = ranked_genes)
+  gsea_results <- fgseaMultilevel(pathways = gene_list, stats = ranked_genes,
+                                   minSize = minSize, maxSize = maxSize, eps = eps)
   gsea_results$Log10padj <- -log10(gsea_results$padj)
 
   top_up   <- gsea_results %>% arrange(desc(NES)) %>% slice_head(n = n)
