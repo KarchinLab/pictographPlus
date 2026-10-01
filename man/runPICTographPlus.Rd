@@ -11,6 +11,8 @@ runPICTographPlus(
   copy_number_file = NULL,
   SNV_file = NULL,
   lambda = 0.01,
+  use_star_tree = TRUE,
+  model = "elastic_net",
   GSEA = TRUE,
   GSEA_file = NULL,
   top_K = 5,
@@ -18,9 +20,9 @@ runPICTographPlus(
   purityFile = NULL,
   n_permutations = 10000,
   sample_presence = FALSE,
-  score = "silhouette",
+  score = "BIC",
   max_K = 10,
-  min_mutation_per_cluster = 5,
+  min_mutation_per_cluster = 1,
   min_cluster_thresh = 0.05,
   cluster_diff_thresh = 0.05,
   n.iter = 5000,
@@ -42,13 +44,15 @@ runPICTographPlus(
   threshes = NULL,
   dual_model = TRUE,
   pval = 0.05,
-  ploidy = 2
+  ploidy = 2,
+  preprocessing_seed = 123,
+  kmeans_nstart = 50
 )
 }
 \arguments{
 \item{mutation_file}{a csv file that include information for SSMs. See vignette for details.}
 
-\item{rna_file}{bulk RNA file in integer read counts; rows are samples and columns are genes. See vignette for details.}
+\item{rna_file}{bulk RNA file in integer read counts; rows are genes and columns are samples (first column = gene IDs). See vignette for details.}
 
 \item{outputDir}{output directory for saving all files.}
 
@@ -56,7 +60,13 @@ runPICTographPlus(
 
 \item{SNV_file}{a csv file that include information for germline heterozygous SNVs. See vignette for details.}
 
-\item{lambda}{weights used in deconvolution step; default: 0.2}
+\item{lambda}{regularisation strength for deconvolution; default: 0.01 (elastic_net star-best)}
+
+\item{use_star_tree}{if TRUE (default), deconvolve with a star topology (root → all clones)
+rather than the inferred tree. Recommended until topology advantage is confirmed.}
+
+\item{model}{deconvolution model; one of "elastic_net" (default), "tree_delta", "plain",
+"adaptive", "adaptive_v2", "plain_debiased", "fused_ew". See \code{runDeconvolution}.}
 
 \item{GSEA}{whether to perform GSEA analysis; default is TRUE}
 
@@ -66,7 +76,9 @@ runPICTographPlus(
 
 \item{normalize}{normalize the raw count using DESeq2; default: TRUE}
 
-\item{purityFile}{purity file for each sample; default: NULL}
+\item{purityFile}{purity file for each sample; default: NULL, in which case the
+\code{purity.csv} written by \code{runPictograph} in \code{outputDir} is used
+automatically if present. Supply a path to override.}
 
 \item{n_permutations}{number of permutations in fgsea; default: 10000}
 
@@ -113,6 +125,12 @@ runPICTographPlus(
 \item{smooth_cnv}{whether or not to process copy number alterations across samples to unify the segment start and end postions; default: TRUE}
 
 \item{autosome}{to only include autosomes; default: TRUE}
+
+\item{preprocessing_seed}{integer seed for the k-means step that infers allele-specific copy number from
+heterozygous SNVs (\code{SNV_file} given, no \code{baf} column). Applied locally; separate from the JAGS
+seed in \code{inits}; NULL = global stream (not reproducible); default: 123}
+
+\item{kmeans_nstart}{number of random starts for that k-means step; default: 50}
 }
 \description{
 Tumor evolution drives intra-tumor heterogeneity, yet functional clone-specific profiles remain poorly understood. 

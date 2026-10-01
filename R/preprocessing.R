@@ -17,6 +17,11 @@
 #' @param smooth_cnv whether or not to process copy number alterations across samples to unify the segment start and end positions
 #' @param autosome to only include autosomes
 #' @param pval placeholder
+#' @param preprocessing_seed integer seed for the k-means step that infers allele-specific copy number from
+#'   heterozygous SNVs (used only when \code{SNV_file} is given and the copy number file has no \code{baf}
+#'   column). It is applied locally and does not change the global random number stream. It is separate from the
+#'   JAGS seed in \code{inits}. NULL uses the current global stream (not reproducible); default: 123
+#' @param kmeans_nstart number of random starts for that k-means step; default: 50
 
 importFiles <- function(mutation_file, 
                         copy_number_file=NULL, 
@@ -32,7 +37,9 @@ importFiles <- function(mutation_file,
                         smooth_cnv= T,
                         autosome=T,
                         pval=0.05,
-                        depth=NULL
+                        depth=NULL,
+                        preprocessing_seed=123,
+                        kmeans_nstart=50
                         ) {
   
   # set output directory to current directory if outputDir is NULL
@@ -57,7 +64,9 @@ importFiles <- function(mutation_file,
                                             filter_cnv,
                                             smooth_cnv, 
                                             autosome, 
-                                            pval)
+                                            pval,
+                                            preprocessing_seed,
+                                            kmeans_nstart)
     
     if (is.null(copy_number_data)) {
       
@@ -259,7 +268,8 @@ reSegCNV <- function(data, cnv_min_length) {
 importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL, 
                                  LOH=FALSE, name_order=NULL, cnv_min_length=1000000, 
                                  tcn_normal_range=c(1.75, 2.3), filter_cnv = T, 
-                                 smooth_cnv=F, autosome=T, pval=0.05) {
+                                 smooth_cnv=F, autosome=T, pval=0.05,
+                                 preprocessing_seed=123, kmeans_nstart=50) {
   
   data <- read_csv(copy_number_file, show_col_types = FALSE) # read copy number csv file
   
@@ -300,7 +310,8 @@ importCopyNumberFile <- function(copy_number_file, outputDir, SNV_file=NULL,
     message("inferring allele-specific copy number using heterozygous SNVs")
     
     # check unimodality in both normal and tumor sample
-    data <- check_sample_CNA(data, outputDir, SNV_file, LOH, tcn_normal_range=tcn_normal_range, pval=pval) 
+    data <- check_sample_CNA(data, outputDir, SNV_file, LOH, tcn_normal_range=tcn_normal_range, pval=pval,
+                             preprocessing_seed=preprocessing_seed, kmeans_nstart=kmeans_nstart) 
     if (filter_cnv) {
       data <- data[data$to_keep==1,] # keep rows is to_keep is 1
     }
@@ -415,12 +426,34 @@ add_missing_column <- function(name_order, output_data, val) {
   return(output_data)
 }
 
+#' k-means with a local, fixed seed
+#'
+#' Runs \code{stats::kmeans} with \code{nstart} random starts under a fixed seed, then restores the caller's
+#' random number state, so results do not depend on (and do not change) the global stream. Unseeded
+#' single-start k-means here made MK74's processed copy-number input vary from run to run.
+#' @param x numeric vector or matrix to cluster
+#' @param centers number of clusters
+#' @param seed integer seed; NULL uses the current global stream (not reproducible)
+#' @param nstart number of random starts
+kmeans_seeded <- function(x, centers, seed = 123, nstart = 50) {
+  if (is.null(seed)) return(stats::kmeans(x, centers = centers, nstart = nstart))
+  genv <- globalenv()
+  had_seed <- exists(".Random.seed", envir = genv, inherits = FALSE)
+  if (had_seed) old_seed <- get(".Random.seed", envir = genv, inherits = FALSE)
+  on.exit(if (had_seed) assign(".Random.seed", old_seed, envir = genv)
+          else if (exists(".Random.seed", envir = genv, inherits = FALSE)) rm(".Random.seed", envir = genv))
+  # fix the generator too, so the result does not depend on the session's RNGkind()
+  set.seed(seed, kind = "Mersenne-Twister", normal.kind = "Inversion", sample.kind = "Rejection")
+  stats::kmeans(x, centers = centers, nstart = nstart)
+}
+
 #' copy number quality check
 #' 
 #' Check if a copy-neutral segment is a LOH event by checking the distribution of germline heterozygous mutations
 #' @import LaplacesDemon parallel diptest
 #' 
-check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(1.75, 2.3), pval=0.05) {
+check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(1.75, 2.3), pval=0.05,
+                             preprocessing_seed=123, kmeans_nstart=50) {
 
   SNV_data <- read_csv(SNV_file)
   
@@ -461,12 +494,12 @@ check_sample_CNA <- function(data, outputDir, SNV_file, LOH, tcn_normal_range=c(
         tcn_alt[i] = mean(SNV_temp[[alt]])
         tcn_ref[i] = mean(SNV_temp[[ref]])
       } else if (is.trimodal(vaf)) { # else, cluster the vaf into two and take one cluster
-        kmeans_result <- kmeans(vaf, centers = 3)
+        kmeans_result <- kmeans_seeded(vaf, centers = 3, seed = preprocessing_seed, nstart = kmeans_nstart)
         cluster_number = which.max(kmeans_result$centers)
         tcn_alt[i] = mean(SNV_temp[[alt]][kmeans_result$cluster == cluster_number])
         tcn_ref[i] = mean(SNV_temp[[ref]][kmeans_result$cluster == cluster_number])
       } else if (is.bimodal(vaf)) {
-        kmeans_result <- kmeans(vaf, centers = 2)
+        kmeans_result <- kmeans_seeded(vaf, centers = 2, seed = preprocessing_seed, nstart = kmeans_nstart)
         cluster_number = which.max(kmeans_result$centers)
         tcn_alt[i] = mean(SNV_temp[[alt]][kmeans_result$cluster == cluster_number])
         tcn_ref[i] = mean(SNV_temp[[ref]][kmeans_result$cluster == cluster_number])

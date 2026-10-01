@@ -46,6 +46,10 @@
 #'   \code{purity.csv} written by \code{runPictograph} in \code{outputDir} is used
 #'   automatically if present. Supply a path to override.
 #' @param normalize normalize the raw count using DESeq2; default: TRUE
+#' @param preprocessing_seed integer seed for the k-means step that infers allele-specific copy number from
+#'   heterozygous SNVs (\code{SNV_file} given, no \code{baf} column). Applied locally; separate from the JAGS
+#'   seed in \code{inits}; NULL = global stream (not reproducible); default: 123
+#' @param kmeans_nstart number of random starts for that k-means step; default: 50
 runPICTographPlus <- function(
     mutation_file,
     rna_file,
@@ -86,7 +90,9 @@ runPICTographPlus <- function(
     threshes = NULL,
     dual_model = TRUE, 
     pval = 0.05, 
-    ploidy = 2
+    ploidy = 2,
+    preprocessing_seed = 123,
+    kmeans_nstart = 50
 ) {
   
   runPictograph(mutation_file,
@@ -118,7 +124,9 @@ runPICTographPlus <- function(
            tcn_normal_range=tcn_normal_range,
            filter_cnv=filter_cnv,
            smooth_cnv=smooth_cnv, 
-           autosome=autosome
+           autosome=autosome,
+           preprocessing_seed=preprocessing_seed,
+           kmeans_nstart=kmeans_nstart
   )
   
   treeFile = paste(outputDir, "tree.csv", sep="/")

@@ -10,7 +10,7 @@ runPictograph(
   SNV_file = NULL,
   outputDir = NULL,
   sample_presence = FALSE,
-  score = "silhouette",
+  score = "BIC",
   max_K = 10,
   min_mutation_per_cluster = 5,
   min_cluster_thresh = 0.05,
@@ -22,7 +22,7 @@ runPictograph(
   inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 123),
   LOH = FALSE,
   purity_min = 0.2,
-  driverFile = NULL,
+  selectedMutFile = NULL,
   cytobandFile = NULL,
   alt_reads_thresh = 0,
   vaf_thresh = 0,
@@ -35,7 +35,10 @@ runPictograph(
   dual_model = TRUE,
   ploidy = 2,
   pval = 0.05,
-  threshes = NULL
+  threshes = NULL,
+  sampleorderFile = NULL,
+  preprocessing_seed = 123,
+  kmeans_nstart = 50
 )
 }
 \arguments{
@@ -73,7 +76,7 @@ runPictograph(
 
 \item{purity_min}{minimum purity for tumor samples; default: 0.2}
 
-\item{driverFile}{list of driver genes used for visualization. See vignette for details.}
+\item{selectedMutFile}{list of genes or mutations used for visualization. See vignette for details.}
 
 \item{cytobandFile}{list of cytoband regions used for visualization. See vignette for details.}
 
@@ -92,6 +95,16 @@ runPictograph(
 \item{smooth_cnv}{whether or not to process copy number alterations across samples to unify the segment start and end postions; default: TRUE}
 
 \item{autosome}{to only include autosomes; default: TRUE}
+
+\item{sampleorderFile}{a csv file that orders samples in the piechart output}
+
+\item{preprocessing_seed}{integer seed for the k-means step that infers allele-specific copy number from
+heterozygous SNVs (\code{SNV_file} given, no \code{baf} column). Applied locally; separate from the JAGS
+seed in \code{inits}; NULL = global stream (not reproducible); default: 123}
+
+\item{kmeans_nstart}{number of random starts for that k-means step; default: 50}
+
+\item{driverFile}{list of driver genes used for visualization. See vignette for details.}
 }
 \description{
 run MCMC chains to  infer the clonal evolution of tumors from single or multi-region sequencing data. 

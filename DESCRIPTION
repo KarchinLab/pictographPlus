@@ -27,4 +27,9 @@ Imports:
   purrr (>= 1.0.2),
   GenomicRanges (>= 1.54.0),
   IRanges (>= 2.36.0)
+Suggests:
+  testthat (>= 3.0.0),
+  withr,
+  tibble
+Config/testthat/edition: 3
 RoxygenNote: 7.3.2

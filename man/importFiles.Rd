@@ -19,7 +19,9 @@ importFiles(
   smooth_cnv = T,
   autosome = T,
   pval = 0.05,
-  depth = NULL
+  depth = NULL,
+  preprocessing_seed = 123,
+  kmeans_nstart = 50
 )
 }
 \arguments{
@@ -50,6 +52,13 @@ importFiles(
 \item{autosome}{to only include autosomes}
 
 \item{pval}{placeholder}
+
+\item{preprocessing_seed}{integer seed for the k-means step that infers allele-specific copy number from
+heterozygous SNVs (used only when \code{SNV_file} is given and the copy number file has no \code{baf}
+column). It is applied locally and does not change the global random number stream. It is separate from the
+JAGS seed in \code{inits}. NULL uses the current global stream (not reproducible); default: 123}
+
+\item{kmeans_nstart}{number of random starts for that k-means step; default: 50}
 }
 \description{
 read input data file and store in required format

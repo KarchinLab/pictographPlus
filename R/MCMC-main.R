@@ -36,6 +36,10 @@
 #' @param cnv_min_length minimum length of copy number alterations for it to be included in analysis
 #' @param depth total_read counts to fill in if missing from the input
 #' @param sampleorderFile a csv file that orders samples in the piechart output
+#' @param preprocessing_seed integer seed for the k-means step that infers allele-specific copy number from
+#'   heterozygous SNVs (\code{SNV_file} given, no \code{baf} column). Applied locally; separate from the JAGS
+#'   seed in \code{inits}; NULL = global stream (not reproducible); default: 123
+#' @param kmeans_nstart number of random starts for that k-means step; default: 50
 #' @export
 runPictograph <- function(mutation_file,
                      copy_number_file=NULL,
@@ -69,7 +73,9 @@ runPictograph <- function(mutation_file,
                      ploidy=2,
                      pval=0.05,
                      threshes=NULL,
-                     sampleorderFile=NULL
+                     sampleorderFile=NULL,
+                     preprocessing_seed=123,
+                     kmeans_nstart=50
                      ) {
   
   data <- importFiles(mutation_file=mutation_file, 
@@ -86,12 +92,27 @@ runPictograph <- function(mutation_file,
                       smooth_cnv=smooth_cnv,
                       autosome=autosome, 
                       pval=pval,
-                      depth=depth)
+                      depth=depth,
+                      preprocessing_seed=preprocessing_seed,
+                      kmeans_nstart=kmeans_nstart)
   
   # use working directory to save outputs if outputDir is not provided
   if (is.null(outputDir)) {
     outputDir = getwd()
   }
+  
+  # record what is needed to reproduce this run: both seeds, the RNG, and versions
+  run_info <- data.frame(
+    item = c("pictographPlus_version", "R_version", "RNGkind", "preprocessing_seed", "kmeans_nstart",
+             "jags_RNG_name", "jags_RNG_seed", "n.iter", "n.burn", "thin", "score", "run_date"),
+    value = c(as.character(utils::packageVersion("pictographPlus")), R.version.string,
+              paste(RNGkind(), collapse = "/"),
+              if (is.null(preprocessing_seed)) "NULL (unseeded)" else as.character(preprocessing_seed),
+              as.character(kmeans_nstart),
+              if (is.null(inits[[".RNG.name"]])) "NA" else as.character(inits[[".RNG.name"]]),
+              if (is.null(inits[[".RNG.seed"]])) "NA" else as.character(inits[[".RNG.seed"]]),
+              n.iter, n.burn, thin, score, format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
+  write.csv(run_info, file.path(outputDir, "run_info.csv"), row.names = FALSE, quote = FALSE)
   
   # save upset plot if more than one sample
   if (ncol(data$y) > 1) {

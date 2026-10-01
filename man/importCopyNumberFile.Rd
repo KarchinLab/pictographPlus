@@ -15,7 +15,9 @@ importCopyNumberFile(
   filter_cnv = T,
   smooth_cnv = F,
   autosome = T,
-  pval = 0.05
+  pval = 0.05,
+  preprocessing_seed = 123,
+  kmeans_nstart = 50
 )
 }
 \description{
