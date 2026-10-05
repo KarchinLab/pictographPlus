@@ -25,8 +25,8 @@ The tool infers tumor clonal evolution from single or multi-region sequencing da
 
 | Scenario | Recommended model | Why |
 |:---------|:------------------|:----|
-| Default — matched normal sample available | `elastic_net` (λ=0.01) | Best synthetic F1 (0.347) and Sensitivity (0.368). |
-| With-normal, if interpretability favoured | `tree_delta` (λ=0.05) | Nearly-tied F1 (0.339) with an explicit tree-structured prior; also strongest on with_extnorm. |
+| Default — matched normal sample available | `tree_delta` (λ=0.01, star) | In the eight-patient wellDR-seq benchmark, beats same-input NNLS on edge-level pathway F1 and clone-specific recovery with either graph; most robust in operating-limit simulations. Slower on large panels. |
+| Matched normal, faster fits | `elastic_net` (λ=0.01) | Similar pathway F1 on the star graph and fast, reliable convergence, but lower clone-specific recovery (previous default). |
 | With-normal, prioritise precision / low-FDR | `adaptive` (λ=0.50) | Highest MCC in with_normal (0.248). |
 | Tumor-only (no normal reference) | `adaptive_v2` (λ=0.50) | Best F1 (0.348), Sensitivity (0.360), MCC (0.256). |
 | External (population-average) normal only | `tree_delta` (λ=0.05) | Best F1 (0.293) and Sensitivity (0.276). |

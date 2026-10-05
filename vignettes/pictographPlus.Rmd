@@ -229,7 +229,7 @@ The parameters are for function ```bash runPICTographPlus``` and the indicated m
 | proportionFile | subclone proportion file | NULL | runDeconvolution |
 | normalize | normalize the raw count using DESeq2 | TRUE | runDeconvolution |
 | purityFile | tumor purity file | NULL | runDeconvolution |
-| lambda | regularisation strength λ for deconvolution | 0.05 | runDeconvolution |
+| lambda | regularisation strength λ for deconvolution | 0.01 | runDeconvolution |
 | model | deconvolution model (see section 3.3) | "tree_delta" | runDeconvolution |
 | lambda_l2 | fixed L2 Laplacian weight for elastic_net model | 0.01 | runDeconvolution |
 | n_iter | IRLS iterations for adaptive/adaptive_v2 models | 5 | runDeconvolution |
@@ -241,7 +241,7 @@ The parameters are for function ```bash runPICTographPlus``` and the indicated m
 
 ## 3.3 Choosing a deconvolution model
 
-Seven deconvolution models are available. All models minimise the reconstruction
+Seven deconvolution models are available; the default is `tree_delta`, λ = 0.01, on the star graph. All models minimise the reconstruction
 loss ‖Y − ΠX‖² with different regularisation strategies. Benchmarking was
 performed on 320 synthetic pseudo-bulk replicates (P7 tumour, 4 purity levels ×
 4 sample counts × 20 seeds, max tree depth = 5, K = 8 clones).
@@ -250,8 +250,8 @@ performed on 320 synthetic pseudo-bulk replicates (P7 tumour, 4 purity levels ×
 
 | Scenario | Recommended model | Why |
 |:---------|:------------------|:----|
-| Default — matched normal sample available | `elastic_net` (λ=0.01) | Best synthetic F1 (0.347) and Sensitivity (0.368). |
-| With-normal, if interpretability favoured | `tree_delta` (λ=0.05) | Nearly-tied F1 (0.339) with an explicit tree-structured prior; also strongest on with_extnorm. |
+| Default — matched normal sample available | `tree_delta` (λ=0.01, star) | In the eight-patient wellDR-seq benchmark, beats same-input NNLS on edge-level pathway F1 and clone-specific recovery with either graph; most robust in operating-limit simulations. Slower on large panels. |
+| Matched normal, faster fits | `elastic_net` (λ=0.01) | Similar pathway F1 on the star graph and fast, reliable convergence, but lower clone-specific recovery (previous default). |
 | With-normal, prioritise precision / low-FDR | `adaptive` (λ=0.50) | Highest MCC in with_normal (0.248). |
 | Tumor-only (no normal reference) | `adaptive_v2` (λ=0.50) | Best F1 (0.348), Sensitivity (0.360), MCC (0.256). |
 | External (population-average) normal only | `tree_delta` (λ=0.05) | Best F1 (0.293) and Sensitivity (0.276). |
@@ -260,7 +260,7 @@ performed on 320 synthetic pseudo-bulk replicates (P7 tumour, 4 purity levels ×
 **λ selection guidance:**
 - The star-best λ values above are derived from the benchmarking study and are
   topology-agnostic (selected on a star topology to avoid over-fitting to a known tree).
-- If you have a matched normal sample, use `model = "elastic_net"`, `lambda = 0.01`; for interpretability prefer `model = "tree_delta"`, `lambda = 0.05`.
+- If you have a matched normal sample, use the default `model = "tree_delta"`, `lambda = 0.01`; use `model = "elastic_net"`, `lambda = 0.01` when run time matters.
 - If no normal is available, use `model = "adaptive_v2"`, `lambda = 0.50`.
 - `fused_ew` and `elastic_net` require `lambda > 0`; they will error at `lambda = 0`.
 - The cost of using star-best λ versus true-tree-best λ is at most ≈0.008 in

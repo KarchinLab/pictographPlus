@@ -12,7 +12,7 @@ runPICTographPlus(
   SNV_file = NULL,
   lambda = 0.01,
   use_star_tree = TRUE,
-  model = "elastic_net",
+  model = "tree_delta",
   GSEA = TRUE,
   GSEA_file = NULL,
   top_K = 5,
@@ -60,12 +60,12 @@ runPICTographPlus(
 
 \item{SNV_file}{a csv file that include information for germline heterozygous SNVs. See vignette for details.}
 
-\item{lambda}{regularisation strength for deconvolution; default: 0.01 (elastic_net star-best)}
+\item{lambda}{regularisation strength for deconvolution; default: 0.01}
 
 \item{use_star_tree}{if TRUE (default), deconvolve with a star topology (root → all clones)
 rather than the inferred tree. Recommended until topology advantage is confirmed.}
 
-\item{model}{deconvolution model; one of "elastic_net" (default), "tree_delta", "plain",
+\item{model}{deconvolution model; one of "tree_delta" (default), "elastic_net", "plain",
 "adaptive", "adaptive_v2", "plain_debiased", "fused_ew". See \code{runDeconvolution}.}
 
 \item{GSEA}{whether to perform GSEA analysis; default is TRUE}
