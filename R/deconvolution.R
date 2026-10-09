@@ -827,6 +827,9 @@ fit_tree_delta_admm <- function(Y, Pi, edges, lambda = 0.05,
 
 #' GSEA analysis using fgsea
 #'
+#' @param seed Random seed for fgsea's adaptive multilevel p-value estimation,
+#'   set before each edge's test so results are reproducible and do not depend
+#'   on edge order; default 1. \code{NULL} leaves the RNG untouched.
 #' @export
 #' @import ggplot2 fgsea ggrepel pheatmap DESeq2
 runGSEA <- function(X_optimal,
@@ -834,7 +837,8 @@ runGSEA <- function(X_optimal,
                     treeFile,
                     GSEA_file     = NULL,
                     top_K         = 5,
-                    n_permutations = 10000) {
+                    n_permutations = 10000,
+                    seed          = 1L) {
 
   GSEA_dir <- file.path(outputDir, "GSEA")
   suppressWarnings(dir.create(GSEA_dir))
@@ -862,7 +866,7 @@ runGSEA <- function(X_optimal,
       sample2 <- as.character(edge_list[1, 2])
     }
     gsea_results_list[[1]] <- GSEA_diff(X, sample1, sample2, gene_list,
-                                         GSEA_dir, n_permutations, top_K)
+                                         GSEA_dir, n_permutations, top_K, seed = seed)
     leadingEdgePlot(log2(X + 1), sample1, sample2, GSEA_dir)
   } else {
     edge_list <- apply(edge_list, 2, as.character)
@@ -870,7 +874,7 @@ runGSEA <- function(X_optimal,
       sample1 <- edge_list[i, 1]
       sample2 <- edge_list[i, 2]
       gsea_results_list[[i]] <- GSEA_diff(X, sample1, sample2, gene_list,
-                                           GSEA_dir, n_permutations, top_K)
+                                           GSEA_dir, n_permutations, top_K, seed = seed)
       leadingEdgePlot(log2(X + 1), sample1, sample2, GSEA_dir)
     }
   }
@@ -935,7 +939,7 @@ leadingEdgePlot <- function(X, sample1, sample2, GSEA_dir) {
 
 GSEA_diff <- function(expr_matrix, sample1, sample2, gene_list, GSEA_dir,
                        n_permutations = 10000, n = 5, thresh = 10,
-                       minSize = 15, maxSize = 500, eps = 1e-3) {
+                       minSize = 15, maxSize = 500, eps = 1e-3, seed = NULL) {
   # thresh/minSize/maxSize/eps match the documented edge test (response_letter.md
   # R1-M4) and analysis/09_uncertainty_layer's bootstrap scorer: genes expressed
   # (X > thresh) in at least one of the two clones on this edge, tested with the same
@@ -947,6 +951,9 @@ GSEA_diff <- function(expr_matrix, sample1, sample2, gene_list, GSEA_dir,
                        (expr_matrix[, sample1] + 1))
   ranked_genes <- sort(log2_diff, decreasing = TRUE)
 
+  # fgseaMultilevel draws its sampling seeds from R's RNG; without a seed, ~3-6% of
+  # padj < 0.05 calls change between reruns on the same input (2026-10-09 check)
+  if (!is.null(seed)) set.seed(seed)
   gsea_results <- fgseaMultilevel(pathways = gene_list, stats = ranked_genes,
                                    minSize = minSize, maxSize = maxSize, eps = eps)
   gsea_results$Log10padj <- -log10(gsea_results$padj)

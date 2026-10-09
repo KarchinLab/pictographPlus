@@ -10,8 +10,14 @@ runGSEA(
   treeFile,
   GSEA_file = NULL,
   top_K = 5,
-  n_permutations = 10000
+  n_permutations = 10000,
+  seed = 1L
 )
+}
+\arguments{
+\item{seed}{Random seed for fgsea's adaptive multilevel p-value estimation,
+set before each edge's test so results are reproducible and do not depend
+on edge order; default 1. \code{NULL} leaves the RNG untouched.}
 }
 \description{
 GSEA analysis using fgsea
