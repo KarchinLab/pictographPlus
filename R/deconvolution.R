@@ -157,6 +157,16 @@ runDeconvolution <- function(rna_file,
   colnames(X_optimal) <- colnames(Y)    # gene names as column names
 
   write.csv(X_optimal, file = file.path(outputDir, "clonal_expression.csv"))
+  # Solver record (ADMM models report convergence; closed-form models leave these NA).
+  fit_info <- data.frame(model = model, lambda = lambda, use_star_tree = use_star_tree,
+                         n_samples = nrow(Y), n_clones = ncol(Pi), n_genes = ncol(Y),
+                         converged = if (is.null(fit$converged)) NA else fit$converged,
+                         exit_reason = if (is.null(fit$exit_reason)) NA else fit$exit_reason,
+                         iterations = if (is.null(fit$iterations)) NA else fit$iterations,
+                         x_kkt_residual = if (is.null(fit$x_kkt_residual)) NA else fit$x_kkt_residual)
+  write.csv(fit_info, file = file.path(outputDir, "deconvolution_fit_info.csv"), row.names = FALSE)
+  if (isFALSE(fit$converged))
+    warning(sprintf("%s did not converge within max_iter; see deconvolution_fit_info.csv", model))
   return(X_optimal)
 }
 
@@ -398,26 +408,91 @@ debias_laplacian <- function(X_pen, Pi, edges, lambda, ridge = 1e-8,
        rel_change = rel_change, kkt_residual = kkt)
 }
 
+# `.exact_qp` solves the same X-subproblem exactly, column by column, by block
+# principal pivoting NNLS (Kim & Park 2011, SIAM J Sci Comput 33:3261), warm-
+# started from the previous ADMM iteration's passive set `F0` (logical K x n).
+# Columns sharing a passive set share one Cholesky solve. It is what the ADMM
+# fits below use: same iterates as `.projected_qp`, 10-25x faster per
+# iteration on the case studies, and exact where FISTA stalls on ill-conditioned
+# H (analysis/solver_speed_2026-10-08/). Any column that does not settle within
+# `max_it` pivots falls back to `.projected_qp`.
+.exact_qp <- function(H, B, F0, max_it = 50L, kkt_tol = 1e-5,
+                      x_tol = 1e-8, x_max_iter = 5000L) {
+  K <- nrow(H); n <- ncol(B)
+  w <- 2^(seq_len(K) - 1)
+  F <- F0
+  X <- matrix(0, K, n)
+  solve_cols <- function(cols) {
+    code <- colSums(F[, cols, drop = FALSE] * w)
+    for (cc in unique(code)) {
+      cj <- cols[code == cc]; free <- which(F[, cj[1]])
+      X[, cj] <<- 0
+      if (length(free)) {
+        R <- tryCatch(chol(H[free, free, drop = FALSE]), error = function(e) NULL)
+        X[free, cj] <<- if (is.null(R)) qr.solve(H[free, free, drop = FALSE], B[free, cj, drop = FALSE])
+                        else backsolve(R, forwardsolve(t(R), B[free, cj, drop = FALSE]))
+      }
+    }
+  }
+  solve_cols(seq_len(n))
+  # gradient tolerance for "active and optimal"; kept well below kkt_tol so the
+  # outer KKT gate can pass on large-count data (max|B| ~ 1e8)
+  ytol <- min(1e-12 * max(1, max(abs(B))), 0.01 * kkt_tol)
+  alpha <- rep(3L, n); beta <- rep(K + 1L, n)
+  todo <- seq_len(n)
+  for (it in seq_len(max_it)) {
+    Xt <- X[, todo, drop = FALSE]; Ft <- F[, todo, drop = FALSE]
+    G  <- H %*% Xt - B[, todo, drop = FALSE]
+    inf <- (Ft & Xt < 0) | (!Ft & G < -ytol)
+    ninf <- colSums(inf)
+    todo_new <- todo[ninf > 0]
+    if (!length(todo_new)) { todo <- integer(0); break }
+    inf <- inf[, ninf > 0, drop = FALSE]; ninf <- ninf[ninf > 0]
+    full <- ninf < beta[todo_new] | alpha[todo_new] >= 1L
+    dec  <- ninf < beta[todo_new]
+    beta[todo_new[dec]]  <- ninf[dec]; alpha[todo_new[dec]] <- 3L
+    nd <- !dec & full; alpha[todo_new[nd]] <- alpha[todo_new[nd]] - 1L
+    flip <- inf
+    if (any(!full)) {   # backup rule: flip only the largest infeasible index
+      for (j in which(!full)) { r <- max(which(inf[, j])); flip[, j] <- FALSE; flip[r, j] <- TRUE }
+    }
+    Fsub <- F[, todo_new, drop = FALSE]; Fsub[flip] <- !Fsub[flip]; F[, todo_new] <- Fsub
+    todo <- todo_new
+    solve_cols(todo)
+  }
+  if (length(todo)) {
+    fb <- .projected_qp(H, B[, todo, drop = FALSE], pmax(X[, todo, drop = FALSE], 0),
+                        tol = x_tol, max_iter = x_max_iter, kkt_tol = kkt_tol)
+    X[, todo] <- fb$X
+  }
+  X <- pmax(X, 0)       # clears -0 / 1e-17 round-off on the passive set
+  grad <- H %*% X - B
+  list(X = X, F = X > 0, n_fallback = length(todo),
+       kkt_residual = max(abs(ifelse(X > 1e-10, grad, pmin(grad, 0)))))
+}
+
 
 # ---- Model 5: Element-wise fused LASSO via ADMM --------------------
 
 fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
-                                              rho = 1.0, max_iter = 15000L,
-                                              tol = 1e-4, ridge = 1e-8,
+                                              rho = 1.0, max_iter = 60000L,
+                                              tol = 1e-6, ridge = 1e-8,
                                               adaptive_rho = TRUE,
                                               rho_mu = 10.0, rho_tau = 2.0,
                                               x_tol = 1e-8, x_max_iter = 5000L,
-                                              kkt_tol = 1e-5,
+                                              kkt_tol = 1e-5, x_stall_tol = 0,
                                               verbose = FALSE) {
   # `adaptive_rho` turns on Boyd 2011 sec 3.4.1 residual balancing: every 25
-  # iterations (and only in the first half of the run), if the primal / dual
-  # residuals have drifted > `rho_mu`x apart, rho is nudged by `rho_tau` (bounded,
-  # <=40 total changes) and the scaled dual u rescaled with it. Without it the
+  # iterations from iteration 100, if the primal / dual residuals have drifted
+  # > `rho_mu`x apart, rho is nudged by `rho_tau` and the scaled dual u rescaled
+  # with it. rho is not bounded and adaptation never freezes: the earlier
+  # [rho0/64, rho0*64] bounds, 50% freeze and 40-change cap kept under-determined
+  # tree_delta fits from converging (analysis/solver_speed_2026-10-08/). Without it the
   # fixed-rho iteration stalls with a flat dual residual on under-determined Pi
   # and hits max_iter without tripping `tol` (see analysis/case_study_model_switch/,
   # test c), which invents spurious distal-edge GSEA signal. Updating rho only
   # periodically (not every iteration) lets ADMM equilibrate between changes.
-  # The X-update is the KKT-checked non-negative solve (`.projected_qp` above);
+  # The X-update is the exact non-negative solve (`.exact_qp` above);
   # `tol` sets both the absolute and relative Boyd stopping tolerance for the
   # outer ADMM primal/dual residuals, which must also clear the X-subproblem's
   # own KKT gate (`kkt_tol`) before an iteration counts as converged.
@@ -448,15 +523,15 @@ fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
                                  # strict convergence certificate other gated pipelines use.
   p_res <- d_res <- NA_real_
   n_rho_upd  <- 0L
-  rho_lo     <- rho / 64; rho_hi <- rho * 64
-  rho_freeze <- as.integer(max_iter * 0.5)
-  X_ref <- X; chk_every <- 200L; x_stall_tol <- 1e-6   # objective-plateau early stop
+  Fset <- matrix(TRUE, K, n_genes)   # warm-start passive set for .exact_qp
+  X_ref <- X; chk_every <- 200L   # objective-plateau early stop (x_stall_tol <= 0, the default, disables it: only the primal/dual/KKT gate stops the fit)
   xinfo <- NULL
 
   for (iter in seq_len(max_iter)) {
     iters  <- iter
-    xinfo  <- .projected_qp(H, PtY2 + rho * Dt %*% (Z - u), X,
-                            tol = x_tol, max_iter = x_max_iter, kkt_tol = kkt_tol)
+    xinfo  <- .exact_qp(H, PtY2 + rho * Dt %*% (Z - u), Fset, kkt_tol = kkt_tol,
+                        x_tol = x_tol, x_max_iter = x_max_iter)
+    Fset <- xinfo$F
     X_new  <- xinfo$X
     V      <- D %*% X_new + u
     Z_new  <- sign(V) * pmax(abs(V) - lambda / rho, 0)
@@ -478,16 +553,16 @@ fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
     }
     # once the primal constraint holds, the dual can crawl in the Pi null space
     # for a very long time while X is already stationary -- stop then.
-    if (iter %% chk_every == 0L) {
+    if (x_stall_tol > 0 && iter %% chk_every == 0L) {
       if (norm(X - X_ref, "F") / (norm(X_ref, "F") + 1e-12) < x_stall_tol) {
         converged <- TRUE; exit_reason <- "x_stall"; break
       }
       X_ref <- X
     }
 
-    if (adaptive_rho && iter %% 25L == 0L && iter >= 100L && iter <= rho_freeze && n_rho_upd < 40L) {
-      new_rho <- if (p_res > rho_mu * d_res) min(rho * rho_tau, rho_hi)
-                 else if (d_res > rho_mu * p_res) max(rho / rho_tau, rho_lo)
+    if (adaptive_rho && iter %% 25L == 0L && iter >= 100L) {
+      new_rho <- if (p_res > rho_mu * d_res) rho * rho_tau
+                 else if (d_res > rho_mu * p_res) rho / rho_tau
                  else rho
       if (new_rho != rho) {
         u <- u * (rho / new_rho); rho <- new_rho
@@ -511,14 +586,14 @@ fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
 
 fit_elastic_net_tree <- function(Y, Pi, edges, lambda1 = 0.01, lambda2 = 0.01,
                                   ridge = 1e-8, normalize = "spectral",
-                                  max_iter = 15000L, tol = 1e-4,
+                                  max_iter = 60000L, tol = 1e-6,
                                   adaptive_rho = TRUE,
                                   rho_mu = 10.0, rho_tau = 2.0,
                                   x_tol = 1e-8, x_max_iter = 5000L,
-                                  kkt_tol = 1e-5,
+                                  kkt_tol = 1e-5, x_stall_tol = 0,
                                   verbose = FALSE) {
   # See fit_elementwise_fused_lasso_admm for `adaptive_rho`, the X-subproblem
-  # solve (`.projected_qp`), and what `tol`/`kkt_tol` gate. The L2 Laplacian
+  # solve (`.exact_qp`), and what `tol`/`kkt_tol` gate. The L2 Laplacian
   # term here already conditions the ADMM system, so this solver converged even
   # under fixed rho; residual balancing mainly speeds it up.
   K       <- max(edges) + 1L
@@ -547,15 +622,15 @@ fit_elastic_net_tree <- function(Y, Pi, edges, lambda1 = 0.01, lambda2 = 0.01,
                                  # strict convergence certificate other gated pipelines use.
   p_res <- d_res <- NA_real_
   n_rho_upd  <- 0L
-  rho_lo     <- rho / 64; rho_hi <- rho * 64
-  rho_freeze <- as.integer(max_iter * 0.5)
-  X_ref <- X; chk_every <- 200L; x_stall_tol <- 1e-6
+  Fset <- matrix(TRUE, K, n_genes)   # warm-start passive set for .exact_qp
+  X_ref <- X; chk_every <- 200L
   xinfo <- NULL
 
   for (iter in seq_len(max_iter)) {
     iters  <- iter
-    xinfo  <- .projected_qp(H, PtY2 + rho * Dt %*% (Z - u), X,
-                            tol = x_tol, max_iter = x_max_iter, kkt_tol = kkt_tol)
+    xinfo  <- .exact_qp(H, PtY2 + rho * Dt %*% (Z - u), Fset, kkt_tol = kkt_tol,
+                        x_tol = x_tol, x_max_iter = x_max_iter)
+    Fset <- xinfo$F
     X_new  <- xinfo$X
     V      <- D %*% X_new + u
     Z_new  <- sign(V) * pmax(abs(V) - lambda2 / rho, 0)
@@ -575,16 +650,16 @@ fit_elastic_net_tree <- function(Y, Pi, edges, lambda1 = 0.01, lambda2 = 0.01,
     if (p_res <= eps_pri && d_res <= eps_dual && xinfo$kkt_residual <= kkt_tol) {
       converged <- TRUE; exit_reason <- "kkt_gate"; break
     }
-    if (iter %% chk_every == 0L) {
+    if (x_stall_tol > 0 && iter %% chk_every == 0L) {
       if (norm(X - X_ref, "F") / (norm(X_ref, "F") + 1e-12) < x_stall_tol) {
         converged <- TRUE; exit_reason <- "x_stall"; break
       }
       X_ref <- X
     }
 
-    if (adaptive_rho && iter %% 25L == 0L && iter >= 100L && iter <= rho_freeze && n_rho_upd < 40L) {
-      new_rho <- if (p_res > rho_mu * d_res) min(rho * rho_tau, rho_hi)
-                 else if (d_res > rho_mu * p_res) max(rho / rho_tau, rho_lo)
+    if (adaptive_rho && iter %% 25L == 0L && iter >= 100L) {
+      new_rho <- if (p_res > rho_mu * d_res) rho * rho_tau
+                 else if (d_res > rho_mu * p_res) rho / rho_tau
                  else rho
       if (new_rho != rho) {
         u <- u * (rho / new_rho); rho <- new_rho
@@ -638,13 +713,13 @@ build_path_matrix <- function(edges, K) {
 }
 
 fit_tree_delta_admm <- function(Y, Pi, edges, lambda = 0.05,
-                                 rho = 1.0, max_iter = 15000L, tol = 1e-4,
+                                 rho = 1.0, max_iter = 60000L, tol = 1e-6,
                                  ridge = 1e-8, adaptive_rho = TRUE,
                                  rho_mu = 10.0, rho_tau = 2.0,
                                  x_tol = 1e-8, x_max_iter = 5000L,
-                                 kkt_tol = 1e-5, verbose = FALSE) {
+                                 kkt_tol = 1e-5, x_stall_tol = 0, verbose = FALSE) {
   # See fit_elementwise_fused_lasso_admm for `adaptive_rho` and the X-subproblem
-  # solve (`.projected_qp`). On a rooted tree, an edge's row of D %*% X is
+  # solve (`.exact_qp`). On a rooted tree, an edge's row of D %*% X is
   # exactly delta_e (child expression minus parent expression), so the group-L2
   # penalty is solved directly in X coordinates via the shared ADMM/QP machinery
   # instead of the historical Delta/T_mat reparameterisation, whose closed-form
@@ -681,15 +756,15 @@ fit_tree_delta_admm <- function(Y, Pi, edges, lambda = 0.05,
                                  # strict convergence certificate other gated pipelines use.
   p_res <- d_res <- NA_real_
   n_rho_upd  <- 0L
-  rho_lo     <- rho / 64; rho_hi <- rho * 64
-  rho_freeze <- as.integer(max_iter * 0.5)
-  X_ref <- X; chk_every <- 200L; x_stall_tol <- 1e-6
+  Fset <- matrix(TRUE, K, n_genes)   # warm-start passive set for .exact_qp
+  X_ref <- X; chk_every <- 200L
   xinfo <- NULL
 
   for (iter in seq_len(max_iter)) {
     iters <- iter
-    xinfo <- .projected_qp(H, PtY2 + rho * Dt %*% (Z - u), X,
-                           tol = x_tol, max_iter = x_max_iter, kkt_tol = kkt_tol)
+    xinfo <- .exact_qp(H, PtY2 + rho * Dt %*% (Z - u), Fset, kkt_tol = kkt_tol,
+                       x_tol = x_tol, x_max_iter = x_max_iter)
+    Fset <- xinfo$F
     X_new <- xinfo$X
 
     V     <- D %*% X_new + u
@@ -717,16 +792,16 @@ fit_tree_delta_admm <- function(Y, Pi, edges, lambda = 0.05,
     if (p_res <= eps_pri && d_res <= eps_dual && xinfo$kkt_residual <= kkt_tol) {
       converged <- TRUE; exit_reason <- "kkt_gate"; break
     }
-    if (iter %% chk_every == 0L) {
+    if (x_stall_tol > 0 && iter %% chk_every == 0L) {
       if (norm(X - X_ref, "F") / (norm(X_ref, "F") + 1e-12) < x_stall_tol) {
         converged <- TRUE; exit_reason <- "x_stall"; break
       }
       X_ref <- X
     }
 
-    if (adaptive_rho && iter %% 25L == 0L && iter >= 100L && iter <= rho_freeze && n_rho_upd < 40L) {
-      new_rho <- if (p_res > rho_mu * d_res) min(rho * rho_tau, rho_hi)
-                 else if (d_res > rho_mu * p_res) max(rho / rho_tau, rho_lo)
+    if (adaptive_rho && iter %% 25L == 0L && iter >= 100L) {
+      new_rho <- if (p_res > rho_mu * d_res) rho * rho_tau
+                 else if (d_res > rho_mu * p_res) rho / rho_tau
                  else rho
       if (new_rho != rho) {
         u <- u * (rho / new_rho); rho <- new_rho
