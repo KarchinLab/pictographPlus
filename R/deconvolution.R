@@ -952,8 +952,16 @@ GSEA_diff <- function(expr_matrix, sample1, sample2, gene_list, GSEA_dir,
   ranked_genes <- sort(log2_diff, decreasing = TRUE)
 
   # fgseaMultilevel draws its sampling seeds from R's RNG; without a seed, ~3-6% of
-  # padj < 0.05 calls change between reruns on the same input (2026-10-09 check)
-  if (!is.null(seed)) set.seed(seed)
+  # padj < 0.05 calls change between reruns on the same input (2026-10-09 check).
+  # As kmeans_seeded(): fix the generator too, and leave the caller's RNG state untouched.
+  if (!is.null(seed)) {
+    genv <- globalenv()
+    had_seed <- exists(".Random.seed", envir = genv, inherits = FALSE)
+    if (had_seed) old_seed <- get(".Random.seed", envir = genv, inherits = FALSE)
+    on.exit(if (had_seed) assign(".Random.seed", old_seed, envir = genv)
+            else if (exists(".Random.seed", envir = genv, inherits = FALSE)) rm(".Random.seed", envir = genv))
+    set.seed(seed, kind = "Mersenne-Twister", normal.kind = "Inversion", sample.kind = "Rejection")
+  }
   gsea_results <- fgseaMultilevel(pathways = gene_list, stats = ranked_genes,
                                    minSize = minSize, maxSize = maxSize, eps = eps)
   gsea_results$Log10padj <- -log10(gsea_results$padj)

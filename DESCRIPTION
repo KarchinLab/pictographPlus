@@ -1,7 +1,7 @@
 Package: pictographPlus
 Type: Package
 Title: Tumor evolution drives intra-tumor heterogeneity, yet functional clone-specific profiles remain poorly understood. We developed PICTographPlus, a computational tool that integrates bulk DNA and RNA sequencing to reconstruct clone-specific transcriptomic profiles and uncover functional transitions between clones, offering a powerful framework for cancer evolution studies. 
-Version: 1.0.0
+Version: 1.1.0
 Author: Jiaying Lai
 Maintainer: The package maintainer <jlai33@jh.edu>
 Description: This package is used to perform tumor evolution reconstruction using genomic data. In addition, the tool can also estimate clone-level RNA expression from bulk-RNA data.
