@@ -475,7 +475,7 @@ debias_laplacian <- function(X_pen, Pi, edges, lambda, ridge = 1e-8,
 # ---- Model 5: Element-wise fused LASSO via ADMM --------------------
 
 fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
-                                              rho = 1.0, max_iter = 60000L,
+                                              rho = 1.0, max_iter = 200000L,
                                               tol = 1e-6, ridge = 1e-8,
                                               adaptive_rho = TRUE,
                                               rho_mu = 10.0, rho_tau = 2.0,
@@ -586,7 +586,7 @@ fit_elementwise_fused_lasso_admm <- function(Y, Pi, edges, lambda = 0.01,
 
 fit_elastic_net_tree <- function(Y, Pi, edges, lambda1 = 0.01, lambda2 = 0.01,
                                   ridge = 1e-8, normalize = "spectral",
-                                  max_iter = 60000L, tol = 1e-6,
+                                  max_iter = 200000L, tol = 1e-6,
                                   adaptive_rho = TRUE,
                                   rho_mu = 10.0, rho_tau = 2.0,
                                   x_tol = 1e-8, x_max_iter = 5000L,
@@ -713,7 +713,7 @@ build_path_matrix <- function(edges, K) {
 }
 
 fit_tree_delta_admm <- function(Y, Pi, edges, lambda = 0.05,
-                                 rho = 1.0, max_iter = 60000L, tol = 1e-6,
+                                 rho = 1.0, max_iter = 200000L, tol = 1e-6,
                                  ridge = 1e-8, adaptive_rho = TRUE,
                                  rho_mu = 10.0, rho_tau = 2.0,
                                  x_tol = 1e-8, x_max_iter = 5000L,

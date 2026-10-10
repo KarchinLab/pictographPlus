@@ -3,8 +3,9 @@
 ## Deconvolution solver (`runDeconvolution()`, models `tree_delta`, `fused_ew`, `elastic_net`)
 
 * The ADMM fits now stop only when the full convergence check passes (primal and dual residuals within
-  `tol = 1e-6`, and the X-subproblem's KKT residual within `kkt_tol = 1e-5`), with up to `max_iter = 60000`
-  iterations. Previously `tol = 1e-4` and `max_iter = 15000`, which on problems with fewer samples than clones
+  `tol = 1e-6`, and the X-subproblem's KKT residual within `kkt_tol = 1e-5`), with up to `max_iter = 200000`
+  iterations (most fits need far fewer: every benchmark fit converged within 60,000; a few under-determined
+  real-case fits need just over 60,000). Previously `tol = 1e-4` and `max_iter = 15000`, which on problems with fewer samples than clones
   could stop before the optimum. The X-plateau early exit is now an argument, `x_stall_tol`, off by default.
 * The X-subproblem (a non-negative least-squares problem per gene) is solved exactly by block principal pivoting
   (Kim & Park 2011), warm-started between iterations, instead of projected gradient descent. Results are the same;
