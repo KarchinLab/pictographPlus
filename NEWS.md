@@ -1,3 +1,21 @@
+# pictographPlus (development version)
+
+## Non-tumor contamination screen (`screenNonTumor()`)
+
+* New function `screenNonTumor()`. The deconvolution represents all non-tumor cells with one profile (clone "0"),
+  so non-tumor content that differs between samples in step with a clone can be assigned to that clone. The screen
+  reports, per tumor clone, marker genes of immune, stromal, vascular and (optional `sites`) site-parenchymal cell
+  types, and, per edge pathway call, the fraction of leading-edge genes specific to non-tumor cell types (Human
+  Protein Atlas single-cell types; `inst/extdata/nontumor_genes.csv`, built by `data-raw/nontumor_reference.R`).
+  It flags; it does not correct.
+
+## Edge resolvability (`edgeResolvability()`)
+
+* New function `edgeResolvability()`: from the proportions alone (no expression data), how well the samples
+  determine each tree edge's clone contrast. It reports the estimable fraction of the contrast (below 1 when part of
+  the edge's difference is set by regularization, not data) and a noise multiplier (1 when each clone has a pure
+  sample; larger as the two clones' proportions move together).
+
 # pictographPlus 1.1.0
 
 ## Deconvolution solver (`runDeconvolution()`, models `tree_delta`, `fused_ew`, `elastic_net`)
