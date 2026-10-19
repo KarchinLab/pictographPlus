@@ -18,10 +18,24 @@
 #'     and grows as the two clones' proportions become similar across samples.
 #' }
 #' An edge is flagged \code{resolvable = FALSE} when \code{estimable_fraction < min_estimable} or
-#' \code{noise_multiplier > max_noise}. In the eight-patient wellDR benchmark, signed precision of tumor-to-tumor
-#' pathway calls (tree-delta, star graph) was 0.06, 0.18 and 0.49 for edges < 80\%, 80-95\% and >= 95\% estimable,
-#' which sets the default \code{min_estimable = 0.95}. The noise multiplier could not be calibrated there (the
-#' benchmark mixtures carry no count noise), so by default it is reported but not used for the flag.
+#' \code{noise_multiplier > max_noise}.
+#'
+#' Calibration (tree-delta, star graph, lambda = 0.01, 3-5 tumor samples and a normal sample; signed precision of
+#' tumor-to-tumor pathway calls at padj < 0.05, i.e. pathway and direction both right; Roerink rows pooled over calls):
+#' \tabular{lccc}{
+#'   estimable fraction \tab < 0.8 \tab 0.8-0.95 \tab >= 0.95 \cr
+#'   wellDR breast cancer, 8 patients (tree edges; subclones that differ little) \tab 0.06 \tab 0.18 \tab 0.49 \cr
+#'   Roerink colorectal organoids, 3 patients (all 64 clone pairs; chance 0.18-0.27) \tab 0.41 \tab 0.67 \tab 0.76 \cr
+#'   Roerink, calls with padj < 0.001 \tab 0.51 \tab 0.79 \tab 0.82 \cr
+#' }
+#' In both data sets precision rises with the estimable fraction. Where the true clone difference is small (wellDR),
+#' calls on contrasts below 80\% estimable are almost all false; where clones differ strongly (Roerink), they are
+#' still right more often than chance but less often than well-determined calls. This sets the default
+#' \code{min_estimable = 0.95}: report calls on edges >= 0.95, report calls on 0.8-0.95 edges with a caveat, and treat
+#' calls on edges < 0.8 as unsupported by the design. In the Roerink data (Poisson count noise), the noise multiplier
+#' also mattered among edges >= 0.95 estimable: precision was 0.90, 0.78 and 0.51 for multipliers <= 20, 20-100 and
+#' > 100. By default it is reported but not used for the flag (\code{max_noise = Inf}); \code{max_noise = 100}
+#' applies this cut-off.
 #'
 #' @param proportionFile,purityFile,treeFile As for \code{runDeconvolution()} (\code{treeFile}: the DNA tree whose
 #'   edges are tested by \code{runGSEA()}).

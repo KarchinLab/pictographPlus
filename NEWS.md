@@ -9,12 +9,23 @@
   Protein Atlas single-cell types; `inst/extdata/nontumor_genes.csv`, built by `data-raw/nontumor_reference.R`).
   It flags; it does not correct.
 
+## Pathway analysis (`runGSEA()`): edge test restored to the benchmarked settings
+
+* The edge test again keeps genes expressed (> 10) in ANY clone and uses fgseaMultilevel's default eps (1e-50),
+  the settings of the benchmark behind the paper's accuracy numbers. The settings introduced on 2026-10-01 (genes
+  > 10 in the edge's two clones only, eps 1e-3) lowered benchmark tumor-to-tumor edge F1 from 0.25 to 0.05, mainly
+  through eps: p-values stopped at about 1e-3. Pathway tables (padj values, some calls) change accordingly.
+
 ## Edge resolvability (`edgeResolvability()`)
 
 * New function `edgeResolvability()`: from the proportions alone (no expression data), how well the samples
   determine each tree edge's clone contrast. It reports the estimable fraction of the contrast (below 1 when part of
   the edge's difference is set by regularization, not data) and a noise multiplier (1 when each clone has a pure
   sample; larger as the two clones' proportions move together).
+* Calibrated on two benchmarks with ground truth (wellDR breast cancer; Roerink colorectal organoids): signed
+  precision of tumor-to-tumor pathway calls rises with the estimable fraction (Roerink 0.41 / 0.67 / 0.76 for
+  < 0.8 / 0.8-0.95 / >= 0.95; wellDR 0.06 / 0.18 / 0.49), which sets the default `min_estimable = 0.95`. The help
+  page gives both tables and a suggested `max_noise = 100`.
 
 # pictographPlus 1.1.0
 

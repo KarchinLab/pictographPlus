@@ -939,12 +939,13 @@ leadingEdgePlot <- function(X, sample1, sample2, GSEA_dir) {
 
 GSEA_diff <- function(expr_matrix, sample1, sample2, gene_list, GSEA_dir,
                        n_permutations = 10000, n = 5, thresh = 10,
-                       minSize = 15, maxSize = 500, eps = 1e-3, seed = NULL) {
-  # thresh/minSize/maxSize/eps match the documented edge test (response_letter.md
-  # R1-M4) and analysis/09_uncertainty_layer's bootstrap scorer: genes expressed
-  # (X > thresh) in at least one of the two clones on this edge, tested with the same
-  # fgseaMultilevel tolerances, so baseline and bootstrap pathway calls agree.
-  keep <- expr_matrix[, sample1] > thresh | expr_matrix[, sample2] > thresh
+                       minSize = 15, maxSize = 500, eps = 1e-50, seed = NULL) {
+  # Same edge test as the benchmark behind the paper's accuracy numbers (2026-10-13):
+  # genes expressed (X > thresh) in ANY clone, and fgseaMultilevel's default eps (1e-50).
+  # The 2026-10-01 settings (genes > thresh in the edge's two clones only, eps = 1e-3)
+  # cut benchmark tumor-to-tumor edge F1 from 0.25 to 0.05: eps = 1e-3 stops p-values
+  # at ~1e-3, so strong pathways tie and many drop out after multiple-testing correction.
+  keep <- rowSums(expr_matrix > thresh) > 0
   expr_matrix <- expr_matrix[keep, , drop = FALSE]
 
   log2_diff    <- log2((expr_matrix[, sample2] + 1) /

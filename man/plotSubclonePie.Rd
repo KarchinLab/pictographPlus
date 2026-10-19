@@ -9,7 +9,8 @@ plotSubclonePie(
   palette = viridis::viridis,
   sample_names = NULL,
   title_size = 18,
-  legend_size = 14
+  legend_size = 14,
+  order = NULL
 )
 }
 \arguments{
