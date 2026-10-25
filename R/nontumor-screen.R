@@ -22,6 +22,12 @@
 #' The screen flags; it does not correct. Removing these genes before the pathway test does not remove the
 #' contamination, because non-tumor cells change the expression of many genes beyond their markers.
 #'
+#' In a benchmark with non-tumor composition that tracks one clone (eight wellDR-seq patients, matched normal sample),
+#' calls flagged by the pathway check under immune contamination were correct 20-24\% of the time, against 51-54\% for
+#' calls with at most a quarter non-tumor genes. Stromal contamination rarely pushed a call past \code{flag_fraction},
+#' so for stroma the per-clone marker check is the relevant signal: treat calls on edges next to a clone flagged for
+#' stromal markers with caution even when the call itself is not flagged.
+#'
 #' @param X_optimal Clone x gene matrix from \code{runDeconvolution()} (row "0" = non-tumor), or the path of its
 #'   \code{clonal_expression.csv}.
 #' @param GSEA_dir Directory with \code{runGSEA()} outputs (\code{clone<child>_<parent>_GSEA_diff.csv}); NULL skips

@@ -10,7 +10,7 @@ edgeResolvability(
   purityFile = NULL,
   normal_samples = character(0),
   min_estimable = 0.95,
-  max_noise = Inf
+  max_noise = 100
 )
 }
 \arguments{
@@ -19,7 +19,7 @@ edges are tested by \code{runGSEA()}).}
 
 \item{normal_samples}{Names of RNA samples that are pure normal tissue (not in \code{proportionFile}).}
 
-\item{min_estimable, max_noise}{Flag thresholds (defaults 0.95 and \code{Inf}).}
+\item{min_estimable, max_noise}{Flag thresholds (defaults 0.95 and 100).}
 }
 \value{
 A data.frame with one row per edge.
@@ -52,7 +52,9 @@ calls on contrasts below 80\% estimable are almost all false; where clones diffe
 still right more often than chance but less often than well-determined calls. This sets the default
 \code{min_estimable = 0.95}: report calls on edges >= 0.95, report calls on 0.8-0.95 edges with a caveat, and treat
 calls on edges < 0.8 as unsupported by the design. In the Roerink data (Poisson count noise), the noise multiplier
-also mattered among edges >= 0.95 estimable: precision was 0.90, 0.78 and 0.51 for multipliers <= 20, 20-100 and
-> 100. By default it is reported but not used for the flag (\code{max_noise = Inf}); \code{max_noise = 100}
-applies this cut-off.
+also mattered among edges >= 0.95 estimable: precision was 0.89, 0.78 and 0.51 for multipliers <= 20, 20-100 and
+> 100 (in wellDR, without count noise, it did not change precision). This sets the default \code{max_noise = 100},
+the cut-off used in the paper's tiers; \code{max_noise = Inf} reports the multiplier without using it for the flag.
+For an edge that is not fully estimable, the noise multiplier covers only the estimable part of the contrast and is
+therefore a lower bound.
 }

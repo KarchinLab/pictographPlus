@@ -25,7 +25,12 @@
 * Calibrated on two benchmarks with ground truth (wellDR breast cancer; Roerink colorectal organoids): signed
   precision of tumor-to-tumor pathway calls rises with the estimable fraction (Roerink 0.41 / 0.67 / 0.76 for
   < 0.8 / 0.8-0.95 / >= 0.95; wellDR 0.06 / 0.18 / 0.49), which sets the default `min_estimable = 0.95`. The help
-  page gives both tables and a suggested `max_noise = 100`.
+  page gives both tables.
+* The default noise cut-off is now `max_noise = 100` (was `Inf`): on the Roerink organoids, among edges >= 0.95
+  estimable, precision fell from 0.89 / 0.78 to 0.51 above a multiplier of 100. The flag now matches the tiers used
+  in the paper. Use `max_noise = Inf` for the previous behavior.
+* `screenNonTumor()` help page: benchmark precision of flagged calls, and why stroma needs the per-clone marker
+  check rather than the pathway flag.
 
 # pictographPlus 1.1.0
 
