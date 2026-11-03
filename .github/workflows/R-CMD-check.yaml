@@ -34,10 +34,6 @@ jobs:
           extra-packages: |
             any::rcmdcheck
             any::testthat
-            bioc::DESeq2
-            bioc::fgsea
-            bioc::GenomicRanges
-            bioc::IRanges
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
