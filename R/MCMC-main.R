@@ -1061,6 +1061,9 @@ computePosteriorTable <- function(all_set_results) {
 }
 
 #' Rename clusters by the order in the tree
+#' @param tree_df Data frame with \code{parent} and \code{child} columns.
+#' @param root Name of the root node.
+#' @return Named integer vector: new cluster number (depth-first order), named by old cluster name.
 rename_by_depth <- function(tree_df, root = "root") {
   adj <- split(tree_df$child, tree_df$parent)
   dfs_order <- c()
@@ -1077,7 +1080,10 @@ rename_by_depth <- function(tree_df, root = "root") {
   new_names <- setNames(seq_along(dfs_order), dfs_order)
   return(new_names)
 }
-#' generate new best_tree with new cluster names 
+#' generate new best_tree with new cluster names
+#' @param tree_df Data frame with \code{parent} and \code{child} columns.
+#' @param new_names Named vector from \code{rename_by_depth()}.
+#' @return \code{tree_df} with renamed nodes and an updated \code{edge} column.
 rename_tree_nodes <- function(tree_df, new_names) {
   tree_df$parent <- ifelse(tree_df$parent %in% names(new_names),
                            new_names[tree_df$parent], tree_df$parent)

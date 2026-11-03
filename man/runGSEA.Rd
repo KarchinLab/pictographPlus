@@ -15,10 +15,28 @@ runGSEA(
 )
 }
 \arguments{
+\item{X_optimal}{Clone x gene expression matrix returned by
+\code{runDeconvolution()} (rows are clones, row "0" = non-tumor).}
+
+\item{outputDir}{Output directory; results are written to its \code{GSEA}
+subdirectory.}
+
+\item{treeFile}{Tree file whose edges are tested (e.g. \code{tree.csv} from
+\code{runPictograph()}; see \code{read_tree()}).}
+
+\item{GSEA_file}{Gene-set file in GMT format; default (\code{NULL}) uses the
+bundled MSigDB hallmark gene sets.}
+
+\item{top_K}{Number of top significant pathways to plot per edge.}
+
+\item{n_permutations}{Number of permutations passed to fgsea.}
+
 \item{seed}{Random seed for fgsea's adaptive multilevel p-value estimation,
 set before each edge's test so results are reproducible and do not depend
 on edge order; default 1. \code{NULL} leaves the RNG untouched.}
 }
 \description{
-GSEA analysis using fgsea
+For each edge of the tree, compares the two clones' deconvolved expression
+profiles with fgsea and writes \code{clone<child>_<parent>_GSEA_diff.csv},
+bar plots and leading-edge heatmaps to \code{<outputDir>/GSEA}.
 }

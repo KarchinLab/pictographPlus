@@ -140,12 +140,12 @@ head(read.csv(system.file('extdata/examples/rna_example.csv',
 PICTographPlus can be run using the function `runPICTographPlus`, which runs both tumor evolution reconstruction and clone-specific transcriptomic profile deconvolution. The required files include files for genomic data and RNA expression data.
 
 ```bash
-runPICTographPlus(mutation_file, copy_number_file, SNV_file, rna_file, outputDir) # if using input format 2.1.1
-runPICTographPlus(mutation_file, copy_number_file, rna_file, outputDir) # if using input format 2.1.2
+runPICTographPlus(mutation_file, rna_file, outputDir, copy_number_file = copy_number_file, SNV_file = SNV_file) # if using input format 2.1.1
+runPICTographPlus(mutation_file, rna_file, outputDir, copy_number_file = copy_number_file) # if using input format 2.1.2
 runPICTographPlus(mutation_file, rna_file, outputDir) # if using input format 2.1.3
 ```
 
-The default deconvolution model is `tree_delta` (λ = 0.05), recommended for most use cases when a matched normal sample is available. To use a different model:
+The default deconvolution model is `tree_delta` (λ = 0.01), recommended for most use cases when a matched normal sample is available. To use a different model:
 
 ```bash
 runPICTographPlus(mutation_file, rna_file, outputDir, model = "plain", lambda = 0.10)
@@ -159,8 +159,8 @@ Alternatively, the user can run tumor evolution reconstruction and bulk RNA deco
 
 ```bash
 runPictograph(mutation_file, copy_number_file, SNV_file, outputDir) # if using input format 2.1.1
-runPictograph(mutation_file, copy_number_file, outputDir) # if using input format 2.1.2
-runPictograph(mutation_file, outputDir) # if using input format 2.1.3
+runPictograph(mutation_file, copy_number_file, outputDir = outputDir) # if using input format 2.1.2
+runPictograph(mutation_file, outputDir = outputDir) # if using input format 2.1.3
 ```
 
 **Bulk RNA expression deconvolution** can be run using:
@@ -173,9 +173,9 @@ where the treeFile, and proportionFile are outputs of `runPictograph`. Users may
 The deconvolution model and regularisation strength λ can be specified:
 
 ```bash
-# Default: tree_delta, lambda = 0.05
+# Default: tree_delta, lambda = 0.01
 runDeconvolution(rna_file, treeFile, proportionFile, outputDir,
-                 model = "tree_delta", lambda = 0.05)
+                 model = "tree_delta", lambda = 0.01)
 
 # Plain Laplacian, optimised for Pearson recovery
 runDeconvolution(rna_file, treeFile, proportionFile, outputDir,

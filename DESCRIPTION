@@ -48,10 +48,13 @@ Imports:
   pheatmap (>= 1.0.12),
   DESeq2 (>= 1.42.0),
   GenomicRanges (>= 1.54.0),
-  IRanges (>= 2.36.0)
+  IRanges (>= 2.36.0),
+  scales
 Suggests:
   knitr,
   rmarkdown,
+  GGally,
+  network,
   testthat (>= 3.0.0),
   withr
 VignetteBuilder: knitr

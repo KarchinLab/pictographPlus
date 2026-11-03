@@ -6,6 +6,14 @@
 \usage{
 rename_tree_nodes(tree_df, new_names)
 }
+\arguments{
+\item{tree_df}{Data frame with \code{parent} and \code{child} columns.}
+
+\item{new_names}{Named vector from \code{rename_by_depth()}.}
+}
+\value{
+\code{tree_df} with renamed nodes and an updated \code{edge} column.
+}
 \description{
 generate new best_tree with new cluster names
 }

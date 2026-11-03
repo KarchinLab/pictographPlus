@@ -6,6 +6,14 @@
 \usage{
 read_tree(treeFile)
 }
+\arguments{
+\item{treeFile}{CSV tree file with a header row whose 2nd and 3rd columns
+are parent and child (e.g. \code{tree.csv} from \code{runPictograph()});
+a node named "root" is coded as 0.}
+}
+\value{
+Integer matrix with one row per edge: parent, child.
+}
 \description{
 Read tree edge list (0-based integer matrix)
 }

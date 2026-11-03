@@ -6,6 +6,14 @@
 \usage{
 rename_by_depth(tree_df, root = "root")
 }
+\arguments{
+\item{tree_df}{Data frame with \code{parent} and \code{child} columns.}
+
+\item{root}{Name of the root node.}
+}
+\value{
+Named integer vector: new cluster number (depth-first order), named by old cluster name.
+}
 \description{
 Rename clusters by the order in the tree
 }

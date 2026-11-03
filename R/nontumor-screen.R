@@ -44,6 +44,7 @@
 #' @return A list with \code{markers} (cell type x clone, with flags) and \code{pathways} (one row per
 #'   significant call, with the non-tumor fraction overall and per group, and a flag), invisibly; a summary is
 #'   printed.
+#' @importFrom utils read.csv write.csv
 #' @export
 screenNonTumor <- function(X_optimal, GSEA_dir = NULL, sites = character(0), outputDir = NULL,
                            padj_cutoff = 0.05, flag_fraction = 0.5, marker_min = 100, marker_ratio = 1) {
@@ -58,6 +59,8 @@ screenNonTumor <- function(X_optimal, GSEA_dir = NULL, sites = character(0), out
   # 1. markers per clone
   mk <- read.csv(system.file("extdata", "nontumor_markers.csv", package = "pictographPlus"), stringsAsFactors = FALSE)
   mk <- mk[mk$group %in% groups & mk$gene %in% colnames(X), ]
+  if (!nrow(mk)) stop("none of the marker genes are columns of X_optimal; screenNonTumor() expects HGNC gene ",
+                      "symbols (e.g. CD3E, COL1A1), not Ensembl IDs")
   markers <- do.call(rbind, lapply(split(mk, factor(mk$cell_type, levels = unique(mk$cell_type))), function(m) {
     lev <- rowMeans(X[, m$gene, drop = FALSE])
     data.frame(cell_type = m$cell_type[1], group = m$group[1], genes = paste(m$gene, collapse = ";"),

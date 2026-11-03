@@ -187,6 +187,10 @@ normalize_RNA <- function(rnaData) {
 # ---- Tree I/O -------------------------------------------------------
 
 #' Read tree edge list (0-based integer matrix)
+#' @param treeFile CSV tree file with a header row whose 2nd and 3rd columns
+#'   are parent and child (e.g. \code{tree.csv} from \code{runPictograph()});
+#'   a node named "root" is coded as 0.
+#' @return Integer matrix with one row per edge: parent, child.
 #' @export
 read_tree <- function(treeFile) {
   edges <- list()
@@ -827,6 +831,20 @@ fit_tree_delta_admm <- function(Y, Pi, edges, lambda = 0.05,
 
 #' GSEA analysis using fgsea
 #'
+#' For each edge of the tree, compares the two clones' deconvolved expression
+#' profiles with fgsea and writes \code{clone<child>_<parent>_GSEA_diff.csv},
+#' bar plots and leading-edge heatmaps to \code{<outputDir>/GSEA}.
+#'
+#' @param X_optimal Clone x gene expression matrix returned by
+#'   \code{runDeconvolution()} (rows are clones, row "0" = non-tumor).
+#' @param outputDir Output directory; results are written to its \code{GSEA}
+#'   subdirectory.
+#' @param treeFile Tree file whose edges are tested (e.g. \code{tree.csv} from
+#'   \code{runPictograph()}; see \code{read_tree()}).
+#' @param GSEA_file Gene-set file in GMT format; default (\code{NULL}) uses the
+#'   bundled MSigDB hallmark gene sets.
+#' @param top_K Number of top significant pathways to plot per edge.
+#' @param n_permutations Number of permutations passed to fgsea.
 #' @param seed Random seed for fgsea's adaptive multilevel p-value estimation,
 #'   set before each edge's test so results are reproducible and do not depend
 #'   on edge order; default 1. \code{NULL} leaves the RNG untouched.

@@ -44,6 +44,8 @@
 #' @param normal_samples Names of RNA samples that are pure normal tissue (not in \code{proportionFile}).
 #' @param min_estimable,max_noise Flag thresholds (defaults 0.95 and 100).
 #' @return A data.frame with one row per edge.
+#' @importFrom utils read.csv
+#' @importFrom stats setNames
 #' @export
 edgeResolvability <- function(proportionFile, treeFile, purityFile = NULL, normal_samples = character(0),
                               min_estimable = 0.95, max_noise = 100) {
