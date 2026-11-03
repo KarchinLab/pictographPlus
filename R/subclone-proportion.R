@@ -39,6 +39,13 @@ calcSubcloneProportions <- function(w_mat, tree_edges) {
 #' @param sample_names (Optional) Vector of sample names. Should be in the order of columns of subclone_props
 #' @export
 plotSubclonePie <- function(subclone_props, palette=viridis::viridis, sample_names = NULL, title_size=18, legend_size=14,order=NULL) {
+  # Restore a dropped dimension: a K x 1 subclone_props can arrive as a plain
+  # vector (e.g. matrix subsetting with default drop=TRUE in a single-sample
+  # run), which breaks ncol()/nrow() and the tibble construction below.
+  if (is.null(dim(subclone_props))) {
+    subclone_props <- matrix(subclone_props, ncol = 1,
+                             dimnames = list(names(subclone_props), NULL))
+  }
   if (is.null(sample_names)) sample_names <- paste0("Sample ", 1:ncol(subclone_props))
   if (is.null(dim(subclone_props))) {
     props_tb <- subclone_props %>% as_tibble_row() %>%

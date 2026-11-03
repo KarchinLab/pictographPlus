@@ -1,5 +1,7 @@
 # **PICTographPlus**
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19896732.svg)](https://doi.org/10.5281/zenodo.19896732)
+
 ## **Overview**
 
 
@@ -47,15 +49,46 @@ devtools::install_github("KarchinLab/pictographPlus", build_vignettes = TRUE)
 ```
 
 ### **Package versions during development**
-PICTographPlus was developed under R (4.4.2). All package versions during development can be found at [installed_packages.csv](https://github.com/KarchinLab/pictographPlus/blob/working/installed_packages.csv)
+PICTographPlus was developed under R (4.4.2). All package versions during development can be found at [installed_packages.csv](https://github.com/KarchinLab/pictographPlus/blob/main/installed_packages.csv)
 
---- 
+---
 
 ## **Access Tutorial**
 
-Detailed tutorial can be accessed through [vignette](https://github.com/KarchinLab/pictographPlus/tree/working/vignettes).
+Detailed tutorial can be accessed through [vignette](https://github.com/KarchinLab/pictographPlus/tree/main/vignettes).
 ```r
 library(pictographPlus)
 vignette("pictographPlus", package = "pictographPlus")
 ```
+
+---
+
+## **Citation**
+
+If you use PICTographPlus in your research, please cite the archived software release:
+
+> Lai J, Yang Y, Karchin R (2026). *pictographPlus: Reconstructing Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing.* R package version 1.1.1. Zenodo. https://doi.org/10.5281/zenodo.19896732
+
+You can also retrieve a `bibentry` from R with:
+
+```r
+citation("pictographPlus")
+```
+
+## **Data**
+
+Processed data generated in the companion study — clone-level expression matrices, inferred clonal trees, and edge-level GSEA results — are available on Mendeley Data at https://doi.org/10.17632/cv66sgfcfn.2.
+
+The benchmarks and applications in the manuscript use the following public datasets:
+
+| Dataset | Accession |
+|---|---|
+| wellDR-seq scDNA/scRNA co-profile (benchmarking) | GEO: GSE261713 |
+| IPMN WES + RNA-seq | dbGaP: phs002225.v3.p1 |
+| TRACERx NSCLC WES | EGA: EGAD00001009825 |
+| TRACERx NSCLC RNA-seq | EGA: EGAD00001009862 |
+| PanCuRx PDAC WGS | EGA: EGAD00001004551 |
+| PanCuRx PDAC RNA-seq | EGA: EGAD00001004548 |
+
+All datasets were used in accordance with the respective data access agreements.
 

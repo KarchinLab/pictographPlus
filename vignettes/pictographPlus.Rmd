@@ -66,11 +66,17 @@ head(read.csv(system.file('extdata/examples/example4_SNP.csv',
 
 The heterozygous germline positions can be obtained using tools such as **GATK HaplotypeCaller**. The reference and alternative read counts for each tumor sample can be retrieved using **samtools mpileup**.
 
-We provide a Python script, `getPileUp.py`, to help generate the desired SNV file:
+We provide a Python script, `getPileUp.py`, bundled with the package, to help generate the desired SNV file. Locate the installed copy with:
+
+```{r, eval=FALSE}
+system.file("scripts", "getPileUp.py", package = "pictographPlus")
+```
+
+and invoke it from the shell (substitute the path printed above for `<path>`):
 
 ```bash
-python getPileUp.py -v haplotype.vcf -b sample1.bam sample2.bam ... 
-                    -o outputDir -f hg38.fa [--minreads] [--vaf]
+python <path>/getPileUp.py -v haplotype.vcf -b sample1.bam sample2.bam ... \
+                           -o outputDir -f hg38.fa [--minreads] [--vaf]
 ```
 
 | Parameter   | Description                                                   | Option                 |

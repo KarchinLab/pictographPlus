@@ -3,9 +3,9 @@
 #' infer tumor evolution using SNV and CNA
 #' 
 #' @import readr
-#' @import tidyverse
 #' @import dplyr
 #' @import tidyr
+#' @import tibble
 #' @import rjags
 #' @import ggmcmc
 #' @import magrittr

@@ -1,0 +1,25 @@
+citHeader("To cite pictographPlus in publications, please use:")
+
+bibentry(
+  bibtype  = "Manual",
+  title    = "pictographPlus: Reconstructing Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing",
+  author   = c(
+    person("Jiaying", "Lai", comment = c(ORCID = "0000-0003-3652-1070")),
+    person("Yi", "Yang", comment = c(ORCID = "0009-0006-2462-3327")),
+    person("Rachel", "Karchin", comment = c(ORCID = "0000-0002-5069-1239"))
+  ),
+  year     = "2026",
+  note     = paste("R package version", meta$Version),
+  doi      = "10.5281/zenodo.19896732",
+  url      = "https://doi.org/10.5281/zenodo.19896732",
+  textVersion = paste0(
+    "Lai J, Yang Y, Karchin R (2026). pictographPlus: Reconstructing ",
+    "Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing. ",
+    "R package version ", meta$Version,
+    ". Zenodo. https://doi.org/10.5281/zenodo.19896732"
+  )
+)
+
+## TODO: once the Nature Communications paper is in press, add a second
+## bibentry for the published article (bibtype = "Article", with the
+## journal DOI) so citation("pictographPlus") returns both.

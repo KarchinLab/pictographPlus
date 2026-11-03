@@ -1,4 +1,4 @@
-# pictographPlus (development version)
+# pictographPlus 1.2.0
 
 ## Non-tumor contamination screen (`screenNonTumor()`)
 
@@ -8,13 +8,6 @@
   types, and, per edge pathway call, the fraction of leading-edge genes specific to non-tumor cell types (Human
   Protein Atlas single-cell types; `inst/extdata/nontumor_genes.csv`, built by `data-raw/nontumor_reference.R`).
   It flags; it does not correct.
-
-## Pathway analysis (`runGSEA()`): edge test restored to the benchmarked settings
-
-* The edge test again keeps genes expressed (> 10) in ANY clone and uses fgseaMultilevel's default eps (1e-50),
-  the settings of the benchmark behind the paper's accuracy numbers. The settings introduced on 2026-10-01 (genes
-  > 10 in the edge's two clones only, eps 1e-3) lowered benchmark tumor-to-tumor edge F1 from 0.25 to 0.05, mainly
-  through eps: p-values stopped at about 1e-3. Pathway tables (padj values, some calls) change accordingly.
 
 ## Edge resolvability (`edgeResolvability()`)
 
@@ -31,8 +24,6 @@
   in the paper. Use `max_noise = Inf` for the previous behavior.
 * `screenNonTumor()` help page: benchmark precision of flagged calls, and why stroma needs the per-clone marker
   check rather than the pathway flag.
-
-# pictographPlus 1.1.0
 
 ## Deconvolution solver (`runDeconvolution()`, models `tree_delta`, `fused_ew`, `elastic_net`)
 
@@ -55,14 +46,40 @@
 * New argument `seed` (default 1): each edge's fgsea test is seeded, so pathway calls are reproducible (unseeded,
   about 3-6% of padj < 0.05 calls changed between reruns on identical input). The caller's random-number state is
   left unchanged. `seed = NULL` restores the old behaviour.
-* The edge test keeps genes expressed (> 10) in either clone of that edge, with fgseaMultilevel minSize 15,
-  maxSize 500, eps 1e-3.
+* The edge test itself is unchanged: genes expressed (> 10) in ANY clone, fgseaMultilevel's default eps (1e-50),
+  as in the benchmark behind the paper's accuracy numbers. (An interim change on the development branch -- genes
+  > 10 in the edge's two clones only, eps 1e-3 -- lowered benchmark tumor-to-tumor edge F1 from 0.25 to 0.05 and
+  was reverted.)
 
 ## Preprocessing
 
 * The allele-specific copy-number k-means step is seeded (`kmeans_seeded()`), so identical inputs give identical
   copy-number calls and trees.
 
+# pictographPlus 1.1.1
+
+* Submission-prep release for Nature Communications.
+* Add `LICENSE` file (MIT) and proper `Authors@R` block.
+* Restore missing `rjags` and `epiR` Imports; drop `tidyverse` meta-package import.
+* Move `getPileUp.py` to `inst/scripts/` and update vignette accordingly.
+* Add `tests/testthat` smoke tests, GitHub Actions `R-CMD-check` workflow, `NEWS.md`, and `inst/CITATION`.
+
+# pictographPlus 1.1.0
+
+* Added expanded set of deconvolution model variants (`elastic_net`, `tree_delta`, `adaptive`, `adaptive_v2`, `plain`) with model-selection guidance in the README.
+* Improved single-clone handling in `plotSubclone` plotting routines.
+* Updates to `runDeconvolution`, `MCMC-main`, `MCMC-clustering`, and `MCMC_plot_clusters` for stability and edge-case handling.
+
 # pictographPlus 1.0.0
 
-* Version used for the original submission.
+* First public release accompanying the manuscript submission.
+* Three core modules: `runPictograph` (Bayesian tumor evolution inference), `runDeconvolution` (clone-resolved bulk RNA deconvolution), `runGSEA` (pathway enrichment between clones).
+* Vignette with end-to-end example.
+
+# pictographPlus 0.2.0
+
+* Pre-release internal version.
+
+# pictographPlus 0.1.0
+
+* Initial development version.
