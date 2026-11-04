@@ -10,7 +10,9 @@ check_sample_CNA(
   SNV_file,
   LOH,
   tcn_normal_range = c(1.75, 2.3),
-  pval = 0.05
+  pval = 0.05,
+  preprocessing_seed = 123,
+  kmeans_nstart = 50
 )
 }
 \description{

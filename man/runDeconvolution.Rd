@@ -2,18 +2,79 @@
 % Please edit documentation in R/deconvolution.R
 \name{runDeconvolution}
 \alias{runDeconvolution}
-\title{bulk RNA deconvolution using tumor evolution information}
+\title{Bulk RNA deconvolution using tumor evolution information}
 \usage{
 runDeconvolution(
   rna_file,
-  treeFile,
+  treeFile = NULL,
   proportionFile,
   outputDir,
   normalize = TRUE,
   purityFile = NULL,
-  lambda = 0.01
+  lambda = 0.01,
+  use_star_tree = TRUE,
+  model = "tree_delta",
+  lambda_l2 = 0.01,
+  n_iter = 5,
+  verbose = FALSE
 )
 }
+\arguments{
+\item{rna_file}{CSV of raw gene counts; rows = genes, columns = samples.
+An optional normal sample column (not present in proportionFile) is
+automatically handled.}
+
+\item{treeFile}{CSV tree file from \code{runPictograph} (or external tool).}
+
+\item{proportionFile}{CSV subclone proportions from \code{runPictograph}.}
+
+\item{outputDir}{Output directory for clonal_expression.csv.}
+
+\item{normalize}{Normalize counts with DESeq2 size factors; default TRUE.}
+
+\item{purityFile}{Optional purity CSV for tumor purity correction.}
+
+\item{lambda}{Regularisation strength; default 0.01.}
+
+\item{use_star_tree}{If TRUE (default), ignore \code{treeFile} and use a
+star topology (root directly connected to all clones). Recommended when
+the inferred tree topology does not improve performance. When FALSE,
+\code{treeFile} must be supplied.}
+
+\item{model}{Deconvolution model. One of:
+\itemize{
+  \item \code{"tree_delta"} (default) — group-L2 penalty on each edge's
+    child-minus-parent difference, via ADMM. In the eight-patient wellDR-seq
+    benchmark (lambda = 0.01, matched normal) it was the only model besides
+    fused_ew to beat same-input NNLS on both edge-level pathway F1 and
+    clone-specific (centered) recovery, with either the star or the true
+    tree, and it was the most robust model in the operating-limit
+    simulations. Slower than elastic_net on large panels (hours for six
+    clones x 27k genes).
+  \item \code{"elastic_net"} — L2 Laplacian + L1 fused LASSO via ADMM.
+    Fast and reliably convergent; similar pathway F1 to tree_delta on the
+    star graph but lower clone-specific recovery. The default before
+    October 2026; requires lambda > 0.
+  \item \code{"adaptive"} — iteratively reweighted Laplacian (IRLS).
+    Highest MCC (0.248) in with-normal mode; use for low-FDR pathway calls.
+  \item \code{"adaptive_v2"} — two-phase IRLS with unbiased initial
+    weights. Best F1/sensitivity in tumor-only mode (no normal reference).
+  \item \code{"plain"} — closed-form Laplacian smoothing. Best raw
+    Pearson expression recovery.
+  \item \code{"plain_debiased"} — plain Laplacian with shrinkage debiasing.
+  \item \code{"fused_ew"} — element-wise fused LASSO via ADMM. Highest
+    precision / MCC; conservative; requires lambda > 0.
+}}
+
+\item{lambda_l2}{Fixed L2 Laplacian weight for \code{"elastic_net"} model;
+default 0.01.}
+
+\item{n_iter}{Number of IRLS iterations for adaptive models; default 5.}
+
+\item{verbose}{Print solver convergence progress; default FALSE.}
+}
 \description{
-bulk RNA deconvolution using tumor evolution information
+Deconvolves bulk RNA expression into clone-level profiles by integrating
+tumor clonal tree structure and clone proportions. Seven model variants
+are available; see the \code{model} parameter for details.
 }

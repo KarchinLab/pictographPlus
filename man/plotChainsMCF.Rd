@@ -4,7 +4,7 @@
 \alias{plotChainsMCF}
 \title{Plot CCF chain trace}
 \usage{
-plotChainsMCF(mcf_chain)
+plotChainsMCF(mcf_chain, new_cluster_names)
 }
 \arguments{
 \item{mcf_chain}{MCMC chain of CCF values, which is the first item in the list returned by \code{mergeSetChains}}

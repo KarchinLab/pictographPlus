@@ -33,10 +33,10 @@
 #' @param smooth_cnv whether or not to process copy number alterations across samples to unify the segment start and end postions; default: TRUE
 #' @param autosome to only include autosomes; default: TRUE
 #' @param cnv_min_length minimum length of copy number alterations for it to be included in analysis
-#' @param lambda regularisation strength for deconvolution; default: 0.01 (elastic_net star-best)
+#' @param lambda regularisation strength for deconvolution; default: 0.01
 #' @param use_star_tree if TRUE (default), deconvolve with a star topology (root → all clones)
 #'   rather than the inferred tree. Recommended until topology advantage is confirmed.
-#' @param model deconvolution model; one of "elastic_net" (default), "tree_delta", "plain",
+#' @param model deconvolution model; one of "tree_delta" (default), "elastic_net", "plain",
 #'   "adaptive", "adaptive_v2", "plain_debiased", "fused_ew". See \code{runDeconvolution}.
 #' @param GSEA whether to perform GSEA analysis; default is TRUE
 #' @param GSEA_file geneset file in MSigDB .gmt format; the geneset name will show up in plotting
@@ -46,6 +46,10 @@
 #'   \code{purity.csv} written by \code{runPictograph} in \code{outputDir} is used
 #'   automatically if present. Supply a path to override.
 #' @param normalize normalize the raw count using DESeq2; default: TRUE
+#' @param preprocessing_seed integer seed for the k-means step that infers allele-specific copy number from
+#'   heterozygous SNVs (\code{SNV_file} given, no \code{baf} column). Applied locally; separate from the JAGS
+#'   seed in \code{inits}; NULL = global stream (not reproducible); default: 123
+#' @param kmeans_nstart number of random starts for that k-means step; default: 50
 runPICTographPlus <- function(
     mutation_file,
     rna_file,
@@ -54,7 +58,7 @@ runPICTographPlus <- function(
     SNV_file=NULL,
     lambda=0.01,
     use_star_tree=TRUE,
-    model="elastic_net",
+    model="tree_delta",
     GSEA = TRUE,
     GSEA_file = NULL,
     top_K = 5,
@@ -86,7 +90,9 @@ runPICTographPlus <- function(
     threshes = NULL,
     dual_model = TRUE, 
     pval = 0.05, 
-    ploidy = 2
+    ploidy = 2,
+    preprocessing_seed = 123,
+    kmeans_nstart = 50
 ) {
   
   runPictograph(mutation_file,
@@ -118,7 +124,9 @@ runPICTographPlus <- function(
            tcn_normal_range=tcn_normal_range,
            filter_cnv=filter_cnv,
            smooth_cnv=smooth_cnv, 
-           autosome=autosome
+           autosome=autosome,
+           preprocessing_seed=preprocessing_seed,
+           kmeans_nstart=kmeans_nstart
   )
   
   treeFile = paste(outputDir, "tree.csv", sep="/")

@@ -1,0 +1,48 @@
+cell_type,group,gene
+T/NK cell,immune,CD3E
+T/NK cell,immune,CD3D
+T/NK cell,immune,CD2
+T/NK cell,immune,NKG7
+B cell,immune,MS4A1
+B cell,immune,CD79A
+B cell,immune,CD19
+plasma cell,immune,JCHAIN
+plasma cell,immune,MZB1
+myeloid,immune,CD68
+myeloid,immune,CD14
+myeloid,immune,LYZ
+myeloid,immune,CD163
+neutrophil,immune,FCGR3B
+neutrophil,immune,CSF3R
+fibroblast,stroma,COL1A1
+fibroblast,stroma,COL1A2
+fibroblast,stroma,DCN
+fibroblast,stroma,LUM
+pericyte/smooth muscle,stroma,RGS5
+pericyte/smooth muscle,stroma,MYH11
+endothelial,vascular,PECAM1
+endothelial,vascular,VWF
+endothelial,vascular,CDH5
+erythroid,bone_marrow,HBB
+erythroid,bone_marrow,HBA1
+hepatocyte,liver,ALB
+hepatocyte,liver,APOA1
+hepatocyte,liver,FGB
+hepatocyte,liver,SERPINA1
+hepatocyte,liver,TF
+alveolar,lung,SFTPC
+alveolar,lung,SFTPB
+alveolar,lung,AGER
+acinar,pancreas,PRSS1
+acinar,pancreas,CPA1
+acinar,pancreas,CELA3A
+acinar,pancreas,PNLIP
+islet,pancreas,INS
+islet,pancreas,GCG
+glia/neuron,brain,GFAP
+glia/neuron,brain,MBP
+glia/neuron,brain,SNAP25
+renal tubule,kidney,UMOD
+renal tubule,kidney,SLC34A1
+adrenal cortex,adrenal,STAR
+adrenal cortex,adrenal,CYP11B1

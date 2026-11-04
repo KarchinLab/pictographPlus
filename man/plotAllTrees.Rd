@@ -10,7 +10,9 @@ plotAllTrees(
   all_spanning_trees,
   mcfTable,
   data,
-  filteredDriverList
+  filteredDriverList,
+  sampleorderFile,
+  new_cluster_names
 )
 }
 \description{
