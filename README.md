@@ -1,6 +1,6 @@
 # **PICTographPlus**
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19896732.svg)](https://doi.org/10.5281/zenodo.19896732)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19896731.svg)](https://doi.org/10.5281/zenodo.19896731)
 
 ## **Overview**
 
@@ -25,14 +25,15 @@ The tool infers tumor clonal evolution from single or multi-region sequencing da
 
 #### Model Selection Quick-Reference
 
-| Scenario | Recommended model | Why |
-|:---------|:------------------|:----|
-| Default — matched normal sample available | `tree_delta` (λ=0.01, star) | In the eight-patient wellDR-seq benchmark, beats same-input NNLS on edge-level pathway F1 and clone-specific recovery with either graph; most robust in operating-limit simulations. Slower on large panels. |
-| Matched normal, faster fits | `elastic_net` (λ=0.01) | Similar pathway F1 on the star graph and fast, reliable convergence, but lower clone-specific recovery (previous default). |
-| With-normal, prioritise precision / low-FDR | `adaptive` (λ=0.50) | Highest MCC in with_normal (0.248). |
-| Tumor-only (no normal reference) | `adaptive_v2` (λ=0.50) | Best F1 (0.348), Sensitivity (0.360), MCC (0.256). |
-| External (population-average) normal only | `tree_delta` (λ=0.05) | Best F1 (0.293) and Sensitivity (0.276). |
-| Highest absolute expression recovery (Pearson r) | `plain` (λ=0.10) | Top star-topology Pearson r (0.942) among 7 models. |
+| Scenario | Recommended model | Evidence (companion study) |
+|:---------|:------------------|:---------------------------|
+| Default: matched normal sample available, tree uncertain | `tree_delta` on the star graph (λ = 0.01; package default) | Higher clone-specific recovery than same-input NNLS in 7 of 8 wellDR-seq patients. Aggregate recovery is similar to minimum-norm least squares, so the gain over NNLS is not attributed to the graph penalty alone. |
+| Tree confidently known (e.g., stable across MCMC chains) | Consider `tree_delta` or `fused_ew` on the inferred DNA tree (`use_star_tree = FALSE`) | Higher recovery with the benchmark reference tree in some comparisons. |
+| As many samples as clones or more, noisy data | `elastic_net` or `plain` (star graph) | More shrinkage stabilized the estimate under count noise when there were at least as many samples as clones. |
+| Clone compositions similar across samples (ill-conditioned proportions) | `elastic_net`; run `edgeResolvability()` first | Most robust in the operating-limits simulation when the proportion matrix was ill-conditioned. |
+| No matched normal sample | Any model; do not interpret normal-to-tumor edges | Normal-to-tumor edge F1 was near zero without a normal anchor. |
+| Only an unmatched (population-average) normal available | Assess reference compatibility before interpreting normal-to-tumor shifts | The tested atlas-derived normal reduced recovery at low purity; this does not establish the performance of other external references. |
+| Any tumor-to-tumor claim | Report by `edgeResolvability()` tier; screen with `screenNonTumor()` | In organoid calibration, signed precision was stratified by tier and recall was low; tier precision is benchmark-specific. |
 
 ## **Installation**
 
@@ -65,9 +66,9 @@ vignette("pictographPlus", package = "pictographPlus")
 
 ## **Citation**
 
-If you use PICTographPlus in your research, please cite the archived software release:
+If you use PICTographPlus in your research, please cite the archived software release (the DOI below always resolves to the latest archived version):
 
-> Lai J, Yang Y, Karchin R (2026). *pictographPlus: Reconstructing Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing.* R package version 1.1.1. Zenodo. https://doi.org/10.5281/zenodo.19896732
+> Lai J, Yang Y, Karchin R (2026). *pictographPlus: Reconstructing Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing.* R package version 1.2.0. Zenodo. https://doi.org/10.5281/zenodo.19896731
 
 You can also retrieve a `bibentry` from R with:
 
@@ -77,7 +78,7 @@ citation("pictographPlus")
 
 ## **Data**
 
-Processed data generated in the companion study — clone-level expression matrices, inferred clonal trees, and edge-level GSEA results — are available on Mendeley Data at https://doi.org/10.17632/cv66sgfcfn.2.
+Processed data generated in the companion study — clone-level expression matrices, inferred clonal trees, and edge-level GSEA results — are available on Mendeley Data at https://doi.org/10.17632/cv66sgfcfn.1.
 
 The benchmarks and applications in the manuscript use the following public datasets:
 
