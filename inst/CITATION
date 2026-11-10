@@ -10,13 +10,13 @@ bibentry(
   ),
   year     = "2026",
   note     = paste("R package version", meta$Version),
-  doi      = "10.5281/zenodo.19896732",
-  url      = "https://doi.org/10.5281/zenodo.19896732",
+  doi      = "10.5281/zenodo.19896731",
+  url      = "https://doi.org/10.5281/zenodo.19896731",
   textVersion = paste0(
     "Lai J, Yang Y, Karchin R (2026). pictographPlus: Reconstructing ",
     "Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing. ",
     "R package version ", meta$Version,
-    ". Zenodo. https://doi.org/10.5281/zenodo.19896732"
+    ". Zenodo. https://doi.org/10.5281/zenodo.19896731"
   )
 )
 
