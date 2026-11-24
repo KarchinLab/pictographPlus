@@ -10,7 +10,6 @@
 #' @import ggmcmc
 #' @import magrittr
 #' @import methods
-#' @importFrom epiR epi.betabuster
 #' @import ggplot2
 #' @importFrom stringr str_replace
 #' @import viridis

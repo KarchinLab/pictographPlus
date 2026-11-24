@@ -14,6 +14,10 @@
 * `options(pictographPlus.vaf_clamp = "bounded")` uses the bounded model for every fit, reproducing 1.2.0.
 * `run_info.csv` records the clamp policy (`vaf_clamp`).
 
+## Dependencies
+
+* `epiR` is no longer imported. Its only use was an `importFrom` of `epi.betabuster()`, which no code calls.
+
 # pictographPlus 1.2.0
 
 ## Non-tumor contamination screen (`screenNonTumor()`)

@@ -35,7 +35,6 @@ Imports:
   methods,
   parallel,
   rjags (>= 4-16),
-  epiR (>= 2.0.0),
   LaplacesDemon (>= 16.1.6),
   igraph (>= 2.0.1),
   viridis (>= 0.6.5),
