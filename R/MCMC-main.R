@@ -104,14 +104,17 @@ runPictograph <- function(mutation_file,
   # record what is needed to reproduce this run: both seeds, the RNG, and versions
   run_info <- data.frame(
     item = c("pictographPlus_version", "R_version", "RNGkind", "preprocessing_seed", "kmeans_nstart",
-             "jags_RNG_name", "jags_RNG_seed", "n.iter", "n.burn", "thin", "score", "run_date"),
+             "jags_RNG_name", "jags_RNG_seed", "n.iter", "n.burn", "thin", "score", "vaf_clamp", "run_date"),
     value = c(as.character(utils::packageVersion("pictographPlus")), R.version.string,
               paste(RNGkind(), collapse = "/"),
               if (is.null(preprocessing_seed)) "NULL (unseeded)" else as.character(preprocessing_seed),
               as.character(kmeans_nstart),
               if (is.null(inits[[".RNG.name"]])) "NA" else as.character(inits[[".RNG.name"]]),
               if (is.null(inits[[".RNG.seed"]])) "NA" else as.character(inits[[".RNG.seed"]]),
-              n.iter, n.burn, thin, score, format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
+              n.iter, n.burn, thin, score,
+              if (identical(getOption("pictographPlus.vaf_clamp", "legacy"), "bounded")) "bounded (all fits)"
+              else "legacy (bounded fallback if JAGS cannot initialize; see messages)",
+              format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
   write.csv(run_info, file.path(outputDir, "run_info.csv"), row.names = FALSE, quote = FALSE)
   
   # save upset plot if more than one sample

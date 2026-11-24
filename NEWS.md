@@ -1,3 +1,19 @@
+# pictographPlus 1.2.1
+
+## JAGS VAF clamp: original behavior restored by default
+
+* 1.2.0 changed the clamp on the modeled variant allele fraction in every `type*.jags` model from one-sided
+  (VAF < 0 -> 0, VAF > 1 -> 0.99) to bounded ([1e-6, 0.999999]) to fix a start-up crash on some multi-region data
+  (#52). Besides the endpoints, the bounded version maps VAF > 1 to 0.999999 instead of 0.99, which can change the
+  fitted clusters, most visibly for copy-number gains. With identical inputs and seeds, 1.2.0 gave a different tree for
+  a published multi-region case, whereas restoring the original model files reproduced it byte for byte.
+* The default model files (`type*.jags`) are again the original ones, so analyses run before 1.2.0 reproduce exactly.
+  If JAGS cannot initialize a fit ("Node inconsistent with parents", the #52 crash), that fit is retried once with the
+  bounded model (`type*_bounded.jags`, identical to the 1.2.0 files) and a message names the model and K. Data that hit
+  the crash could not be fit before, so the fallback changes no previously obtainable result.
+* `options(pictographPlus.vaf_clamp = "bounded")` uses the bounded model for every fit, reproducing 1.2.0.
+* `run_info.csv` records the clamp policy (`vaf_clamp`).
+
 # pictographPlus 1.2.0
 
 ## Non-tumor contamination screen (`screenNonTumor()`)
