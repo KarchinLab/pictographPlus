@@ -295,11 +295,25 @@ runMCMC <- function(box_input_data,
                     n.burn=1000) {
   if (K > 1) box_input_data$K <- K
   # if (K > 1) n.chains <- 4
-  jags.m <- jags.model(jags.file,
-                       box_input_data,
-                       n.chains = n.chains,
-                       inits = inits,
-                       n.adapt = n.adapt)
+  # VAF clamp (1.2.1). The default model files keep the original one-sided clamp (VAF < 0 -> 0, VAF > 1 -> 0.99), which
+  # reproduces analyses run before 1.2.0. If JAGS cannot initialize because a modeled VAF sits exactly on 0 or 1
+  # ("Node inconsistent with parents", issue #52), the fit is retried once with the bounded clamp [1e-6, 0.999999]
+  # (the 1.2.0 model files, *_bounded.jags). options(pictographPlus.vaf_clamp = "bounded") uses the bounded clamp for
+  # every fit, as in 1.2.0.
+  bounded.file <- sub("\\.jags$", "_bounded.jags", jags.file)
+  clamp <- getOption("pictographPlus.vaf_clamp", "legacy")
+  if (!clamp %in% c("legacy", "bounded")) stop("option pictographPlus.vaf_clamp must be \"legacy\" or \"bounded\"")
+  init_model <- function(f) jags.model(f, box_input_data, n.chains = n.chains, inits = inits, n.adapt = n.adapt)
+  if (clamp == "bounded") {
+    jags.m <- init_model(bounded.file)
+  } else {
+    jags.m <- tryCatch(init_model(jags.file), error = function(e) {
+      if (!grepl("inconsistent with parents", conditionMessage(e), fixed = TRUE) || !file.exists(bounded.file)) stop(e)
+      message(sprintf("pictographPlus: JAGS could not initialize %s with K = %s (%s); retrying with the bounded VAF clamp (%s).",
+                      basename(jags.file), K, trimws(conditionMessage(e)), basename(bounded.file)))
+      init_model(bounded.file)
+    })
+  }
   if (n.burn > 0) update(jags.m, n.burn)
   samps <- coda.samples(jags.m, params, n.iter=n.iter, thin=thin)
   # samps_diag <- coda.samples(jags.m, c("mcf"), n.iter=n.iter, thin=thin)

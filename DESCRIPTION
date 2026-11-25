@@ -1,7 +1,7 @@
 Package: pictographPlus
 Type: Package
 Title: Reconstructing Clone-Resolved Transcriptional Programs from Bulk Tumor Sequencing
-Version: 1.2.0
+Version: 1.2.1
 Authors@R: c(
     person("Jiaying", "Lai", email = "jlai33@jh.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-3652-1070")),
@@ -35,7 +35,6 @@ Imports:
   methods,
   parallel,
   rjags (>= 4-16),
-  epiR (>= 2.0.0),
   LaplacesDemon (>= 16.1.6),
   igraph (>= 2.0.1),
   viridis (>= 0.6.5),
